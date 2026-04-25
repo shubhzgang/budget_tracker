@@ -29,7 +29,8 @@ CREATE TABLE labels (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    is_default BOOLEAN NOT NULL DEFAULT FALSE
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Categories Table
@@ -38,7 +39,8 @@ CREATE TABLE categories (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     icon TEXT,
-    is_default BOOLEAN NOT NULL DEFAULT FALSE
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Transactions Table
@@ -52,7 +54,8 @@ CREATE TABLE transactions (
     amount DECIMAL(19, 4) NOT NULL,
     description TEXT,
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    linked_transfer_id UUID REFERENCES transactions(id) ON DELETE SET NULL
+    linked_transfer_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Indexes for performance

@@ -9,5 +9,37 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
+    networks:
+      - budget-tracker-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d budget_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
+
+  backend:
+    build: .
+    container_name: budget-tracker-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_tracker
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/budget_tracker
+      SPRING_FLYWAY_USER: user
+      SPRING_FLYWAY_PASSWORD: password
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - budget-tracker-net
+
+networks:
+  budget-tracker-net:
+    driver: bridge
+
+volumes:
+  pgdata:

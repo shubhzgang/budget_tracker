@@ -10,6 +10,7 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] Resolved PostgreSQL credential mismatch between Docker and Spring Boot configurations.
 - [x] Configured dependency management (fixed `uuid-creator` version and added `H2` for testing).
 - [x] Set up a smoke test (`ApplicationContextTest`) using an in-memory H2 database.
+- [ ] Set up Testcontainers with PostgreSQL for integration testing.
 
 ### Core Backend Foundation
 - [x] Implemented `BaseEntity` with automated UUIDv7 generation.
@@ -26,26 +27,29 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement JPA entity `Label` (include `is_default`).
     - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`).
     - [x] Create Spring Data Repositories for all entities (scoping by `userId`).
+    - [ ] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
 - [ ] **Core Services**:
-    - [ ] Implement `AccountService` (CRUD, calculate balance, handle `credit_limit` and available credit).
+    - [x] Implement `AccountService` (CRUD, calculate balance, handle `credit_limit` and available credit).
+    - [ ] Write unit tests for `AccountService`.
     - [ ] Implement `CategoryService` (CRUD, initializing defaults for new users).
+    - [ ] Write unit tests for `CategoryService`.
     - [ ] Implement `LabelService` (CRUD, initializing defaults for new users).
+    - [ ] Write unit tests for `LabelService`.
     - [ ] Implement `TransactionService` (CRUD for incomes/expenses).
+    - [ ] Write unit tests for `TransactionService` (CRUD).
     - [ ] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
+    - [ ] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
 - [ ] **Security**:
     - [ ] Implement Spring Security with JWT-based authentication.
     - [ ] Establish `UserPrincipal` context.
+    - [ ] Write tests for Security configuration and JWT filter.
 - [ ] **REST API (Controllers)**:
-    - [ ] `POST /auth/register`, `POST /auth/login`
-    - [ ] `GET/POST/PUT/DELETE /accounts`
-    - [ ] `GET/POST/PUT/DELETE /labels`
-    - [ ] `GET/POST/PUT/DELETE /categories`
-    - [ ] `GET/POST/PUT/DELETE /transactions`
-    - [ ] `POST /transactions/transfer` (Specific endpoint for account-to-account transfers, lending/borrowing)
-- [ ] **Testing**:
-    - [ ] DataJpaTests for repository constraints.
-    - [ ] Unit tests (Mockito) for Services (especially `@Transactional` transfer logic).
-    - [ ] WebMvcTests / MockMvc integration tests for controllers.
+    - [ ] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
+    - [ ] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
+    - [ ] `GET/POST/PUT/DELETE /labels` (including `WebMvcTest`)
+    - [ ] `GET/POST/PUT/DELETE /categories` (including `WebMvcTest`)
+    - [ ] `GET/POST/PUT/DELETE /transactions` (including `WebMvcTest`)
+    - [ ] `POST /transactions/transfer` (including `WebMvcTest` with validation checks)
 
 ### Frontend Development (Phase 3)
 - [ ] **Project Setup**:
@@ -65,10 +69,12 @@ This file tracks the progress of the Budget Tracker project against the original
         - [ ] Show "They owe you / You owe them" for `FRIEND_LENDING` accounts.
     - [ ] **Settings/Management**: UI to manage custom Categories (with icons), custom Labels, and Theme switching.
     - [ ] **Account Form Modal**: Create/edit account (conditionally show "Credit Limit" if `CREDIT_CARD`).
+    - [ ] Write component tests using React Testing Library for Dashboards and Modals.
 - [ ] **Transaction Management UI**:
     - [ ] **Transaction List**: Paginated/infinite scrolling list of transactions (show Label badges, Category icons).
     - [ ] **Add Transaction Form**: Select Account, Type, Category, Label, Amount, Date.
     - [ ] **Transfer Funds Form**: Select From/To Account, Amount, Date, Description (used for regular transfers and lending/borrowing).
+    - [ ] Write component tests for Transaction List and Forms.
 - [ ] **Analytics & Insights (Optional)**:
     - [ ] Pie chart for spending breakdown by Label (Needs vs. Wants vs. Savings).
     - [ ] Breakdown by Category.
