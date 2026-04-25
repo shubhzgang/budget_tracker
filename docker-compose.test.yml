@@ -1,0 +1,13 @@
+services:
+  postgres:
+    volumes:
+      - test_pgdata:/var/lib/postgresql
+  backend:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8080/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  test_pgdata:

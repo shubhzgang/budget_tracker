@@ -1,0 +1,31 @@
+package com.budget.tracker.integration;
+
+import org.junit.jupiter.api.Test;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class HealthIntegrationTest {
+
+    private static final String BASE_URL = "http://localhost:8080";
+    private final HttpClient client = HttpClient.newHttpClient();
+
+    @Test
+    void testHealthEndpointIsUp() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/actuator/health"))
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            java.nio.file.Files.writeString(java.nio.file.Paths.get("health_response.txt"), response.body());
+            assertEquals(200, response.statusCode(), "Health endpoint should return 200 OK");
+            assertTrue(response.body().contains("\"status\":\"UP\""), "Response body should indicate status is UP");
+        } catch (Exception e) {
+            fail("Health endpoint is not reachable at " + BASE_URL + "/actuator/health: " + e.getMessage());
+        }
+    }
+}

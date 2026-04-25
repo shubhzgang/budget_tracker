@@ -1,0 +1,13 @@
+FROM postgres:18-alpine
+
+# Set environment variables for the database
+ENV POSTGRES_DB=budget_tracker
+ENV POSTGRES_USER=user
+ENV POSTGRES_PASSWORD=password
+
+# If you have any SQL scripts to run on startup,
+# you can copy them into the docker-entrypoint-initdb.d directory.
+# COPY ./init.sql /docker-entrypoint-initdb.d/
+
+# Expose the default PostgreSQL port
+EXPOSE 5432
