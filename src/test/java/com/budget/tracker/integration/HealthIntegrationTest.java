@@ -1,10 +1,12 @@
 package com.budget.tracker.integration;
 
 import org.junit.jupiter.api.Test;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HealthIntegrationTest {
@@ -13,9 +15,9 @@ public class HealthIntegrationTest {
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
-    void testHealthEndpointIsUp() throws Exception {
+    void testHealthEndpointIsUp() {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/actuator/health"))
+                .uri(URI.create(String.format("%s/actuator/health", BASE_URL)))
                 .GET()
                 .build();
 

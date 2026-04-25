@@ -94,8 +94,41 @@ class TransactionRepositoryTest {
         List<Transaction> user2Transactions = transactionRepository.findAllByUserId(userId2);
 
         assertThat(user1Transactions).hasSize(1);
-        assertThat(user1Transactions.get(0).getDescription()).isEqualTo("User1 Transaction");
+        assertThat(user1Transactions.getFirst().getDescription()).isEqualTo("User1 Transaction");
         assertThat(user2Transactions).hasSize(1);
-        assertThat(user2Transactions.get(0).getDescription()).isEqualTo("User2 Transaction");
+        assertThat(user2Transactions.getFirst().getDescription()).isEqualTo("User2 Transaction");
+    }
+
+    @Test
+    void shouldNotFindTransactionsByUserIdIfOwnedByAnotherUser() {
+        UUID userId1 = UUID.randomUUID();
+        UUID userId2 = UUID.randomUUID();
+
+        Account account1 = new Account();
+        account1.setName("User1 Account");
+        account1.setType(AccountType.CASH);
+        account1.setBalance(BigDecimal.valueOf(100.00));
+        account1.setUserId(userId1);
+        accountRepository.save(account1);
+
+        Account account2 = new Account();
+        account2.setName("User2 Account");
+        account2.setType(AccountType.CASH);
+        account2.setBalance(BigDecimal.valueOf(200.00));
+        account2.setUserId(userId2);
+        accountRepository.save(account2);
+
+        Transaction transaction1 = new Transaction();
+        transaction1.setAmount(BigDecimal.valueOf(10.00));
+        transaction1.setTransactionDate(OffsetDateTime.now());
+        transaction1.setDescription("User1 Transaction");
+        transaction1.setType(TransactionType.EXPENSE);
+        transaction1.setAccount(account1);
+        transaction1.setUserId(account1.getUserId());
+        transactionRepository.save(transaction1);
+
+        List<Transaction> user2Transactions = transactionRepository.findAllByUserId(userId2);
+
+        assertThat(user2Transactions).isEmpty();
     }
 }

@@ -1,8 +1,6 @@
 package com.budget.tracker.model;
 
-import com.github.f4b6a3.uuid.UuidCreator;
 import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import lombok.Getter;

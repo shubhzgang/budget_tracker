@@ -61,8 +61,25 @@ class AccountRepositoryTest {
         List<Account> user2Accounts = accountRepository.findAllByUserId(userId2);
 
         assertThat(user1Accounts).hasSize(1);
-        assertThat(user1Accounts.get(0).getName()).isEqualTo("User1 Account");
+        assertThat(user1Accounts.getFirst().getName()).isEqualTo("User1 Account");
         assertThat(user2Accounts).hasSize(1);
-        assertThat(user2Accounts.get(0).getName()).isEqualTo("User2 Account");
+        assertThat(user2Accounts.getFirst().getName()).isEqualTo("User2 Account");
+    }
+
+    @Test
+    void shouldNotFindAccountByUserIdIfOwnedByAnotherUser() {
+        UUID userId1 = UUID.randomUUID();
+        UUID userId2 = UUID.randomUUID();
+
+        Account account1 = new Account();
+        account1.setName("User1 Account");
+        account1.setType(AccountType.CASH);
+        account1.setBalance(BigDecimal.valueOf(100.00));
+        account1.setUserId(userId1);
+        accountRepository.save(account1);
+
+        List<Account> user2Accounts = accountRepository.findAllByUserId(userId2);
+
+        assertThat(user2Accounts).isEmpty();
     }
 }

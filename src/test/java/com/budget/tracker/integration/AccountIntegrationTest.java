@@ -1,11 +1,15 @@
 package com.budget.tracker.integration;
 
 import org.junit.jupiter.api.Test;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static java.net.http.HttpResponse.BodyHandlers;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class AccountIntegrationTest {
 
@@ -13,17 +17,17 @@ public class AccountIntegrationTest {
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
-    void testBackendIsUp() throws Exception {
+    void testBackendIsUp() {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/"))
+                .uri(URI.create(String.format("%s/", BASE_URL)))
                 .GET()
                 .build();
 
         try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            assertTrue(response.statusCode() < 500, "Server should be up and responding with < 500. Received: " + response.statusCode());
+            HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+            assertTrue(response.statusCode() < 500, () -> "Server should be up and responding with < 500. Received: " + response.statusCode());
         } catch (Exception e) {
-            fail("Server is not reachable at " + BASE_URL + ": " + e.getMessage());
+            fail(String.format("Server is not reachable at %s: %s", BASE_URL, e.getMessage()));
         }
     }
 }

@@ -10,7 +10,7 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] Resolved PostgreSQL credential mismatch between Docker and Spring Boot configurations.
 - [x] Configured dependency management (fixed `uuid-creator` version and added `H2` for testing).
 - [x] Set up a smoke test (`ApplicationContextTest`) using an in-memory H2 database.
-- [ ] Set up Testcontainers with PostgreSQL for integration testing.
+- [x] Set up Testcontainers with PostgreSQL for integration testing.
 
 ### Core Backend Foundation
 - [x] Implemented `BaseEntity` with automated UUIDv7 generation.
@@ -27,7 +27,7 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement JPA entity `Label` (include `is_default`).
     - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`).
     - [x] Create Spring Data Repositories for all entities (scoping by `userId`).
-    - [ ] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
+    - [x] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
 - [ ] **Core Services**:
     - [x] Implement `AccountService` (CRUD, calculate balance, handle `credit_limit` and available credit).
     - [ ] Write unit tests for `AccountService`.

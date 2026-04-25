@@ -1,14 +1,12 @@
 package com.budget.tracker.service;
 
 import com.budget.tracker.model.Account;
-import com.budget.tracker.model.AccountType;
 import com.budget.tracker.repository.AccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 

@@ -46,8 +46,7 @@ class CategoryRepositoryTest {
         category1.setDefault(false);
         category1.setUserId(userId1);
 
-        Category category2 = new
-                Category();
+        Category category2 = new Category();
         category2.setName("Category 2");
         category2.setIcon("icon2");
         category2.setDefault(false);
@@ -60,8 +59,25 @@ class CategoryRepositoryTest {
         List<Category> user2Categories = categoryRepository.findAllByUserId(userId2);
 
         assertThat(user1Categories).hasSize(1);
-        assertThat(user1Categories.get(0).getName()).isEqualTo("Category 1");
+        assertThat(user1Categories.getFirst().getName()).isEqualTo("Category 1");
         assertThat(user2Categories).hasSize(1);
-        assertThat(user2Categories.get(0).getName()).isEqualTo("Category 2");
+        assertThat(user2Categories.getFirst().getName()).isEqualTo("Category 2");
+    }
+
+    @Test
+    void shouldNotFindCategoryByUserIdIfOwnedByAnotherUser() {
+        UUID userId1 = UUID.randomUUID();
+        UUID userId2 = UUID.randomUUID();
+
+        Category category1 = new Category();
+        category1.setName("Category 1");
+        category1.setIcon("icon1");
+        category1.setDefault(false);
+        category1.setUserId(userId1);
+        categoryRepository.save(category1);
+
+        List<Category> user2Categories = categoryRepository.findAllByUserId(userId2);
+
+        assertThat(user2Categories).isEmpty();
     }
 }

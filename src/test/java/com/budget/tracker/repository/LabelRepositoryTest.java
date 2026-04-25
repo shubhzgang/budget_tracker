@@ -55,8 +55,24 @@ class LabelRepositoryTest {
         List<Label> user2Labels = labelRepository.findAllByUserId(userId2);
 
         assertThat(user1Labels).hasSize(1);
-        assertThat(user1Labels.get(0).getName()).isEqualTo("Label 1");
+        assertThat(user1Labels.getFirst().getName()).isEqualTo("Label 1");
         assertThat(user2Labels).hasSize(1);
-        assertThat(user2Labels.get(0).getName()).isEqualTo("Label 2");
+        assertThat(user2Labels.getFirst().getName()).isEqualTo("Label 2");
+    }
+
+    @Test
+    void shouldNotFindLabelsByUserIdIfOwnedByAnotherUser() {
+        UUID userId1 = UUID.randomUUID();
+        UUID userId2 = UUID.randomUUID();
+
+        Label label1 = new Label();
+        label1.setName("Label 1");
+        label1.setDefault(false);
+        label1.setUserId(userId1);
+        labelRepository.save(label1);
+
+        List<Label> user2Labels = labelRepository.findAllByUserId(userId2);
+
+        assertThat(user2Labels).isEmpty();
     }
 }
