@@ -2,7 +2,7 @@
 -- Initial schema for Budget Tracker
 
 -- Enums
-CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK_SAVINGS', 'CURRENT_ACCOUNT', 'FRIEND_LENDING');
+CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK', 'FRIEND_LENDING');
 CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
 
 -- Users Table

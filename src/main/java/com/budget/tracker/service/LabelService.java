@@ -1,5 +1,6 @@
 package com.budget.tracker.service;
 
+import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Label;
 import com.budget.tracker.repository.LabelRepository;
 import org.springframework.stereotype.Service;
@@ -18,29 +19,38 @@ public class LabelService {
         this.labelRepository = labelRepository;
     }
 
+    private UUID getCurrentUserId() {
+        UUID userId = AuthContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("No authenticated user found in context");
+        }
+        return userId;
+    }
+
     public Label createLabel(Label label) {
+        label.setUserId(getCurrentUserId());
         return labelRepository.save(label);
     }
 
-    public Label getLabelById(UUID labelId, UUID userId) {
-        return labelRepository.findAllByUserId(userId).stream()
+    public Label getLabelById(UUID labelId) {
+        return labelRepository.findAllByUserId(getCurrentUserId()).stream()
                 .filter(l -> l.getId().equals(labelId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Label not found or access denied"));
     }
 
-    public List<Label> getAllLabelsForUser(UUID userId) {
-        return labelRepository.findAllByUserId(userId);
+    public List<Label> getAllLabelsForUser() {
+        return labelRepository.findAllByUserId(getCurrentUserId());
     }
 
-    public Label updateLabel(UUID labelId, UUID userId, Label labelDetails) {
-        Label label = getLabelById(labelId, userId);
+    public Label updateLabel(UUID labelId, Label labelDetails) {
+        Label label = getLabelById(labelId);
         label.setName(labelDetails.getName());
         return labelRepository.save(label);
     }
 
-    public void deleteLabel(UUID labelId, UUID userId) {
-        Label label = getLabelById(labelId, userId);
+    public void deleteLabel(UUID labelId) {
+        Label label = getLabelById(labelId);
         labelRepository.delete(label);
     }
 

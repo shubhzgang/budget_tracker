@@ -1,5 +1,6 @@
 package com.budget.tracker.service;
 
+import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Category;
 import com.budget.tracker.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
@@ -18,30 +19,39 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
+    private UUID getCurrentUserId() {
+        UUID userId = AuthContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("No authenticated user found in context");
+        }
+        return userId;
+    }
+
     public Category createCategory(Category category) {
+        category.setUserId(getCurrentUserId());
         return categoryRepository.save(category);
     }
 
-    public Category getCategoryById(UUID categoryId, UUID userId) {
-        return categoryRepository.findAllByUserId(userId).stream()
+    public Category getCategoryById(UUID categoryId) {
+        return categoryRepository.findAllByUserId(getCurrentUserId()).stream()
                 .filter(c -> c.getId().equals(categoryId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Category not found or access denied"));
     }
 
-    public List<Category> getAllCategoriesForUser(UUID userId) {
-        return categoryRepository.findAllByUserId(userId);
+    public List<Category> getAllCategoriesForUser() {
+        return categoryRepository.findAllByUserId(getCurrentUserId());
     }
 
-    public Category updateCategory(UUID categoryId, UUID userId, Category categoryDetails) {
-        Category category = getCategoryById(categoryId, userId);
+    public Category updateCategory(UUID categoryId, Category categoryDetails) {
+        Category category = getCategoryById(categoryId);
         category.setName(categoryDetails.getName());
         category.setIcon(categoryDetails.getIcon());
         return categoryRepository.save(category);
     }
 
-    public void deleteCategory(UUID categoryId, UUID userId) {
-        Category category = getCategoryById(categoryId, userId);
+    public void deleteCategory(UUID categoryId) {
+        Category category = getCategoryById(categoryId);
         categoryRepository.delete(category);
     }
 

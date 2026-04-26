@@ -1,5 +1,6 @@
 package com.budget.tracker.service;
 
+import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
@@ -27,8 +28,18 @@ public class TransactionService {
         this.accountRepository = accountRepository;
     }
 
+    private UUID getCurrentUserId() {
+        UUID userId = AuthContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("No authenticated user found in context");
+        }
+        return userId;
+    }
+
     @Transactional
     public Transaction createTransaction(Transaction transaction) {
+        UUID userId = getCurrentUserId();
+        transaction.setUserId(userId);
         if (transaction.getAmount() == null) {
             throw new IllegalArgumentException("Transaction amount must not be null");
         }
@@ -37,28 +48,29 @@ public class TransactionService {
             throw new IllegalArgumentException("Use createTransfer for TRANSFER type");
         }
 
-        updateBalance(transaction.getAccount().getId(), transaction.getUserId(), type, transaction.getAmount(), BalanceAction.APPLY, false);
+        updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
         return transactionRepository.save(transaction);
     }
 
-    public Transaction getTransactionById(UUID transactionId, UUID userId) {
-        return transactionRepository.findAllByUserId(userId).stream()
+    public Transaction getTransactionById(UUID transactionId) {
+        return transactionRepository.findAllByUserId(getCurrentUserId()).stream()
                 .filter(t -> t.getId().equals(transactionId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Transaction not found or access denied"));
     }
 
-    public List<Transaction> getAllTransactionsForUser(UUID userId) {
-        return transactionRepository.findAllByUserId(userId);
+    public List<Transaction> getAllTransactionsForUser() {
+        return transactionRepository.findAllByUserId(getCurrentUserId());
     }
 
-    public List<Transaction> getTransactionsForAccount(UUID accountId, UUID userId) {
-        return transactionRepository.findAllByAccountIdAndUserId(accountId, userId);
+    public List<Transaction> getTransactionsForAccount(UUID accountId) {
+        return transactionRepository.findAllByAccountIdAndUserId(accountId, getCurrentUserId());
     }
 
     @Transactional
-    public Transaction updateTransaction(UUID transactionId, UUID userId, Transaction transactionDetails) {
-        Transaction existing = getTransactionById(transactionId, userId);
+    public Transaction updateTransaction(UUID transactionId, Transaction transactionDetails) {
+        UUID userId = getCurrentUserId();
+        Transaction existing = getTransactionById(transactionId);
         TransactionType oldType = existing.getType();
         BigDecimal oldAmount = existing.getAmount();
 
@@ -100,8 +112,9 @@ public class TransactionService {
     }
 
     @Transactional
-    public void deleteTransaction(UUID transactionId, UUID userId) {
-        Transaction transaction = getTransactionById(transactionId, userId);
+    public void deleteTransaction(UUID transactionId) {
+        UUID userId = getCurrentUserId();
+        Transaction transaction = getTransactionById(transactionId);
         TransactionType type = transaction.getType();
 
         if (type == TransactionType.TRANSFER) {
@@ -123,6 +136,8 @@ public class TransactionService {
 
     @Transactional
     public Transaction createTransfer(Transaction sourceTransaction, Account toAccount) {
+        UUID userId = getCurrentUserId();
+        sourceTransaction.setUserId(userId);
         if (sourceTransaction.getAmount() == null) {
             throw new IllegalArgumentException("Transfer amount must not be null");
         }
@@ -137,13 +152,13 @@ public class TransactionService {
             throw new IllegalArgumentException("Source and destination accounts must be different");
         }
 
-        if (fromAccount.getUserId() == null || !fromAccount.getUserId().equals(toAccount.getUserId())) {
-            throw new IllegalArgumentException("Both accounts must belong to the same user");
+        if (fromAccount.getUserId() == null || !fromAccount.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Source account must belong to the user");
         }
 
         // Validate dest account belongs to user
         accountRepository.findById(toAccount.getId())
-                .filter(a -> a.getUserId().equals(sourceTransaction.getUserId()))
+                .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new RuntimeException("Destination account not found or access denied"));
 
         // Create paired transaction
@@ -158,7 +173,7 @@ public class TransactionService {
         destTransaction.setDescription(sourceTransaction.getDescription());
         destTransaction.setTransactionDate(sourceTransaction.getTransactionDate());
         destTransaction.setAccount(toAccount);
-        destTransaction.setUserId(sourceTransaction.getUserId());
+        destTransaction.setUserId(userId);
         destTransaction.setCategory(sourceTransaction.getCategory());
 
         sourceTransaction.setLinkedTransferId(destTransaction.getId());
@@ -167,8 +182,8 @@ public class TransactionService {
         Transaction savedSource = transactionRepository.save(sourceTransaction);
         transactionRepository.save(destTransaction);
 
-        updateBalance(fromAccount.getId(), sourceTransaction.getUserId(), type, sourceTransaction.getAmount(), BalanceAction.APPLY, false);
-        updateBalance(toAccount.getId(), sourceTransaction.getUserId(), type, sourceTransaction.getAmount(), BalanceAction.APPLY, true);
+        updateBalance(fromAccount.getId(), userId, type, sourceTransaction.getAmount(), BalanceAction.APPLY, false);
+        updateBalance(toAccount.getId(), userId, type, sourceTransaction.getAmount(), BalanceAction.APPLY, true);
 
         return savedSource;
     }

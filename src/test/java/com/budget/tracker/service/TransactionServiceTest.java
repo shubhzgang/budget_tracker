@@ -1,5 +1,6 @@
 package com.budget.tracker.service;
 
+import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.AccountType;
 import com.budget.tracker.model.Category;
@@ -8,6 +9,7 @@ import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.TransactionRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -49,6 +51,7 @@ class TransactionServiceTest {
         transactionId = UUID.randomUUID();
         accountId = UUID.randomUUID();
         destAccountId = UUID.randomUUID();
+        AuthContext.setUserId(userId);
 
         sourceAccount = new Account();
         sourceAccount.setId(accountId);
@@ -65,6 +68,11 @@ class TransactionServiceTest {
         destAccount.setType(AccountType.BANK);
     }
 
+    @AfterEach
+    void tearDown() {
+        AuthContext.clear();
+    }
+
     // -- createTransaction --
 
     @Test
@@ -78,6 +86,7 @@ class TransactionServiceTest {
         Transaction result = transactionService.createTransaction(tx);
 
         assertNotNull(result);
+        assertEquals(userId, result.getUserId());
         verify(transactionRepository).save(tx);
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) &&
@@ -120,7 +129,7 @@ class TransactionServiceTest {
 
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
 
-        Transaction found = transactionService.getTransactionById(transactionId, userId);
+        Transaction found = transactionService.getTransactionById(transactionId);
 
         assertNotNull(found);
         assertEquals(transactionId, found.getId());
@@ -142,7 +151,7 @@ class TransactionServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        Transaction updated = transactionService.updateTransaction(transactionId, userId, details);
+        Transaction updated = transactionService.updateTransaction(transactionId, details);
 
         assertEquals(new BigDecimal("150"), updated.getAmount());
         assertEquals("Updated", updated.getDescription());
@@ -177,7 +186,7 @@ class TransactionServiceTest {
         Transaction details = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         details.setAmount(new BigDecimal("200"));
 
-        transactionService.updateTransaction(transactionId, userId, details);
+        transactionService.updateTransaction(transactionId, details);
 
         // Source: 1000. Revert sub 100 -> 1100. Apply sub 200 -> 900.
         verify(accountRepository, atLeastOnce()).save(argThat(acct ->
@@ -200,7 +209,7 @@ class TransactionServiceTest {
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
 
-        transactionService.deleteTransaction(transactionId, userId);
+        transactionService.deleteTransaction(transactionId);
 
         // INCOME 200. Revert -> sub 200. 1000 - 200 = 800.
         verify(accountRepository).save(argThat(acct ->
@@ -230,7 +239,7 @@ class TransactionServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
 
-        transactionService.deleteTransaction(transactionId, userId);
+        transactionService.deleteTransaction(transactionId);
 
         // Source: 1000. Revert sub 100 -> add 100 -> 1100.
         verify(accountRepository).save(argThat(acct ->
@@ -279,7 +288,7 @@ class TransactionServiceTest {
         Transaction tx2 = buildTransaction(TransactionType.EXPENSE, sourceAccount);
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx1, tx2));
 
-        List<Transaction> result = transactionService.getAllTransactionsForUser(userId);
+        List<Transaction> result = transactionService.getAllTransactionsForUser();
 
         assertEquals(2, result.size());
     }
@@ -289,7 +298,7 @@ class TransactionServiceTest {
         Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
         when(transactionRepository.findAllByAccountIdAndUserId(accountId, userId)).thenReturn(List.of(tx));
 
-        List<Transaction> result = transactionService.getTransactionsForAccount(accountId, userId);
+        List<Transaction> result = transactionService.getTransactionsForAccount(accountId);
 
         assertEquals(1, result.size());
     }

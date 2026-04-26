@@ -1,5 +1,6 @@
 package com.budget.tracker.config;
 
+import com.budget.tracker.security.AuthContextFilter;
 import com.budget.tracker.security.AuthEntryPointJwt;
 import com.budget.tracker.security.AuthTokenFilter;
 import com.budget.tracker.security.JwtUtils;
@@ -42,6 +43,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public AuthContextFilter authContextFilter() {
+        return new AuthContextFilter();
+    }
+
+    @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
@@ -79,6 +85,7 @@ public class SecurityConfig {
 
             http.authenticationProvider(authenticationProvider());
             http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+            http.addFilterAfter(authContextFilter(), AuthTokenFilter.class);
         }
         return http.build();
     }

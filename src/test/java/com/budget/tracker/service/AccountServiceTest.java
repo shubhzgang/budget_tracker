@@ -1,7 +1,10 @@
 package com.budget.tracker.service;
 
+import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
+import com.budget.tracker.model.AccountType;
 import com.budget.tracker.repository.AccountRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -31,19 +34,25 @@ class AccountServiceTest {
         accountService = new AccountService(accountRepository);
         userId = UUID.randomUUID();
         accountId = UUID.randomUUID();
+        AuthContext.setUserId(userId);
+    }
+
+    @AfterEach
+    void tearDown() {
+        AuthContext.clear();
     }
 
     @Test
     void createAccount_shouldInitializeBalanceFromInitialBalance() {
         Account account = new Account();
         account.setName("Test Account");
-        account.setUserId(userId);
         account.setInitialBalance(new BigDecimal("1000"));
 
         when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
 
         Account savedAccount = accountService.createAccount(account);
 
+        assertEquals(userId, savedAccount.getUserId());
         assertEquals(new BigDecimal("1000"), savedAccount.getBalance());
         assertEquals(new BigDecimal("1000"), savedAccount.getInitialBalance());
     }
@@ -63,7 +72,7 @@ class AccountServiceTest {
         when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
         when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
 
-        Account updated = accountService.updateAccount(accountId, userId, details);
+        Account updated = accountService.updateAccount(accountId, details);
 
         // New balance should be 500 + (1200 - 1000) = 700
         assertEquals(new BigDecimal("700"), updated.getBalance());
@@ -79,32 +88,46 @@ class AccountServiceTest {
 
         when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
 
-        Account foundAccount = accountService.getAccountById(accountId, userId);
+        Account found = accountService.getAccountById(accountId);
 
-        assertNotNull(foundAccount);
-        assertEquals(accountId, foundAccount.getId());
+        assertNotNull(found);
+        assertEquals(accountId, found.getId());
     }
 
     @Test
-    void getAccountById_shouldThrowException_whenNotFound() {
+    void getAccountById_shouldThrow_whenNotFound() {
         when(accountRepository.findAllByUserId(userId)).thenReturn(List.of());
 
-        assertThrows(RuntimeException.class, () -> accountService.getAccountById(accountId, userId));
+        assertThrows(RuntimeException.class, () -> accountService.getAccountById(accountId));
     }
 
     @Test
-    void getAllAccountsForUser_shouldReturnAllAccounts() {
+    void getAllAccountsForUser_shouldReturnAll() {
         Account account1 = new Account();
-        account1.setId(UUID.randomUUID());
         account1.setUserId(userId);
         Account account2 = new Account();
-        account2.setId(UUID.randomUUID());
         account2.setUserId(userId);
 
         when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account1, account2));
 
-        List<Account> accounts = accountService.getAllAccountsForUser(userId);
+        List<Account> accounts = accountService.getAllAccountsForUser();
 
         assertEquals(2, accounts.size());
+    }
+
+    @Test
+    void calculateAvailableCredit_shouldWork() {
+        Account account = new Account();
+        account.setId(accountId);
+        account.setUserId(userId);
+        account.setType(AccountType.CREDIT_CARD);
+        account.setCreditLimit(new BigDecimal("5000"));
+        account.setBalance(new BigDecimal("1000"));
+
+        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
+
+        BigDecimal available = accountService.calculateAvailableCredit(accountId);
+
+        assertEquals(new BigDecimal("4000"), available);
     }
 }

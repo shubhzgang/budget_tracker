@@ -46,8 +46,8 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Establish `UserPrincipal` context.
     - [x] Write tests for Security configuration and JWT filter.
 - [ ] **REST API (Controllers)**:
-    - [ ] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
-    - [ ] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
+    - [x] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
+    - [x] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
     - [ ] `GET/POST/PUT/DELETE /labels` (including `WebMvcTest`)
     - [ ] `GET/POST/PUT/DELETE /categories` (including `WebMvcTest`)
     - [ ] `GET/POST/PUT/DELETE /transactions` (including `WebMvcTest`)
