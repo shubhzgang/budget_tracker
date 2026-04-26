@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,18 +34,41 @@ class AccountServiceTest {
     }
 
     @Test
-    void createAccount_shouldSaveAccount() {
+    void createAccount_shouldInitializeBalanceFromInitialBalance() {
         Account account = new Account();
         account.setName("Test Account");
         account.setUserId(userId);
+        account.setInitialBalance(new BigDecimal("1000"));
 
-        when(accountRepository.save(any(Account.class))).thenReturn(account);
+        when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
 
         Account savedAccount = accountService.createAccount(account);
 
-        assertNotNull(savedAccount);
-        assertEquals("Test Account", savedAccount.getName());
-        verify(accountRepository, times(1)).save(account);
+        assertEquals(new BigDecimal("1000"), savedAccount.getBalance());
+        assertEquals(new BigDecimal("1000"), savedAccount.getInitialBalance());
+    }
+
+    @Test
+    void updateAccount_shouldAdjustBalanceByInitialBalanceDelta() {
+        Account existing = new Account();
+        existing.setId(accountId);
+        existing.setUserId(userId);
+        existing.setInitialBalance(new BigDecimal("1000"));
+        existing.setBalance(new BigDecimal("500")); // 1000 initial - 500 expenses
+
+        Account details = new Account();
+        details.setInitialBalance(new BigDecimal("1200")); // Increase initial by 200
+        details.setName("Updated Name");
+
+        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
+
+        Account updated = accountService.updateAccount(accountId, userId, details);
+
+        // New balance should be 500 + (1200 - 1000) = 700
+        assertEquals(new BigDecimal("700"), updated.getBalance());
+        assertEquals(new BigDecimal("1200"), updated.getInitialBalance());
+        assertEquals("Updated Name", updated.getName());
     }
 
     @Test

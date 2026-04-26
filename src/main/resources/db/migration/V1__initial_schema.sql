@@ -3,7 +3,7 @@
 
 -- Enums
 CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK_SAVINGS', 'CURRENT_ACCOUNT', 'FRIEND_LENDING');
-CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER', 'LEND', 'BORROW');
+CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
 
 -- Users Table
 CREATE TABLE users (
@@ -19,6 +19,7 @@ CREATE TABLE accounts (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     type account_type NOT NULL,
+    initial_balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
     balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
     credit_limit DECIMAL(19, 4),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL

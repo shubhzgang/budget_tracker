@@ -9,8 +9,10 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] Configured database schema via Flyway migration (`V1__initial_schema.sql`).
 - [x] Resolved PostgreSQL credential mismatch between Docker and Spring Boot configurations.
 - [x] Configured dependency management (fixed `uuid-creator` version and added `H2` for testing).
+- [x] Fixed Lombok version to `1.18.38` for Java 26 compatibility.
 - [x] Set up a smoke test (`ApplicationContextTest`) using an in-memory H2 database.
 - [x] Set up Testcontainers with PostgreSQL for integration testing.
+- [x] Excluded integration tests (tagged `@Tag("integration")`) from `gradle test` — they run only via `make test-int` with Docker containers.
 
 ### Core Backend Foundation
 - [x] Implemented `BaseEntity` with automated UUIDv7 generation.
@@ -30,15 +32,15 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
 - [ ] **Core Services**:
     - [x] Implement `AccountService` (CRUD, calculate balance, handle `credit_limit` and available credit).
-    - [ ] Write unit tests for `AccountService`.
-    - [ ] Implement `CategoryService` (CRUD, initializing defaults for new users).
-    - [ ] Write unit tests for `CategoryService`.
-    - [ ] Implement `LabelService` (CRUD, initializing defaults for new users).
-    - [ ] Write unit tests for `LabelService`.
-    - [ ] Implement `TransactionService` (CRUD for incomes/expenses).
-    - [ ] Write unit tests for `TransactionService` (CRUD).
-    - [ ] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
-    - [ ] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
+    - [x] Write unit tests for `AccountService`.
+    - [x] Implement `CategoryService` (CRUD, initializing defaults for new users).
+    - [x] Write unit tests for `CategoryService`.
+    - [x] Implement `LabelService` (CRUD, initializing defaults for new users).
+    - [x] Write unit tests for `LabelService`.
+    - [x] Implement `TransactionService` (CRUD for incomes/expenses).
+    - [x] Write unit tests for `TransactionService` (CRUD).
+    - [x] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
+    - [x] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
 - [ ] **Security**:
     - [ ] Implement Spring Security with JWT-based authentication.
     - [ ] Establish `UserPrincipal` context.

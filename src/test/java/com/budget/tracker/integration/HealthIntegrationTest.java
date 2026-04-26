@@ -1,5 +1,6 @@
 package com.budget.tracker.integration;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
@@ -9,6 +10,7 @@ import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("integration")
 public class HealthIntegrationTest {
 
     private static final String BASE_URL = "http://localhost:8080";

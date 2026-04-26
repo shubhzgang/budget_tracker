@@ -35,7 +35,7 @@ test-int-up:
 
 # Run the integration tests using Gradle
 test-int-run:
-	./gradlew test
+	./gradlew test -Pintegration
 
 # Stop the services
 test-int-down:
