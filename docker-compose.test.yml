@@ -4,7 +4,7 @@ services:
       - test_pgdata:/var/lib/postgresql
   backend:
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:8080/"]
+      test: ["CMD-SHELL", "curl -s http://localhost:8080/actuator/health"]
       interval: 5s
       timeout: 5s
       retries: 5

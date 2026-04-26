@@ -42,9 +42,9 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
     - [x] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
 - [ ] **Security**:
-    - [ ] Implement Spring Security with JWT-based authentication.
-    - [ ] Establish `UserPrincipal` context.
-    - [ ] Write tests for Security configuration and JWT filter.
+    - [x] Implement Spring Security with JWT-based authentication.
+    - [x] Establish `UserPrincipal` context.
+    - [x] Write tests for Security configuration and JWT filter.
 - [ ] **REST API (Controllers)**:
     - [ ] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
     - [ ] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
