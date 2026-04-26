@@ -1,0 +1,173 @@
+package com.budget.tracker.service;
+
+import com.budget.tracker.model.Label;
+import com.budget.tracker.repository.LabelRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class LabelServiceTest {
+
+    @Mock
+    private LabelRepository labelRepository;
+
+    private LabelService labelService;
+
+    private UUID userId;
+    private UUID labelId;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        labelService = new LabelService(labelRepository);
+        userId = UUID.randomUUID();
+        labelId = UUID.randomUUID();
+    }
+
+    @Test
+    void createLabel_shouldSaveLabel() {
+        Label label = new Label();
+        label.setName("NEEDS");
+        label.setUserId(userId);
+
+        when(labelRepository.save(any(Label.class))).thenReturn(label);
+
+        Label savedLabel = labelService.createLabel(label);
+
+        assertNotNull(savedLabel);
+        assertEquals("NEEDS", savedLabel.getName());
+        verify(labelRepository, times(1)).save(label);
+    }
+
+    @Test
+    void getLabelById_shouldReturnLabel_whenExists() {
+        Label label = new Label();
+        label.setId(labelId);
+        label.setUserId(userId);
+
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of(label));
+
+        Label foundLabel = labelService.getLabelById(labelId, userId);
+
+        assertNotNull(foundLabel);
+        assertEquals(labelId, foundLabel.getId());
+    }
+
+    @Test
+    void getLabelById_shouldThrowException_whenNotFound() {
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
+
+        assertThrows(RuntimeException.class, () -> labelService.getLabelById(labelId, userId));
+    }
+
+    @Test
+    void getLabelById_shouldThrowException_whenUserMismatch() {
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
+
+        assertThrows(RuntimeException.class, () -> labelService.getLabelById(labelId, userId));
+    }
+
+    @Test
+    void getAllLabelsForUser_shouldReturnAllLabels() {
+        Label label1 = new Label();
+        label1.setId(UUID.randomUUID());
+        label1.setUserId(userId);
+        Label label2 = new Label();
+        label2.setId(UUID.randomUUID());
+        label2.setUserId(userId);
+
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of(label1, label2));
+
+        List<Label> labels = labelService.getAllLabelsForUser(userId);
+
+        assertEquals(2, labels.size());
+    }
+
+    @Test
+    void updateLabel_shouldUpdateAndSaveLabel() {
+        Label existing = new Label();
+        existing.setId(labelId);
+        existing.setUserId(userId);
+        existing.setName("Old Label");
+
+        Label details = new Label();
+        details.setName("New Label");
+
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(labelRepository.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Label updated = labelService.updateLabel(labelId, userId, details);
+
+        assertEquals("New Label", updated.getName());
+        verify(labelRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void updateLabel_shouldThrowException_whenNotFound() {
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
+
+        Label details = new Label();
+        details.setName("New Label");
+
+        assertThrows(RuntimeException.class, () -> labelService.updateLabel(labelId, userId, details));
+    }
+
+    @Test
+    void deleteLabel_shouldDeleteLabel() {
+        Label label = new Label();
+        label.setId(labelId);
+        label.setUserId(userId);
+
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of(label));
+
+        labelService.deleteLabel(labelId, userId);
+
+        verify(labelRepository, times(1)).delete(label);
+    }
+
+    @Test
+    void deleteLabel_shouldThrowException_whenNotFound() {
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
+
+        assertThrows(RuntimeException.class, () -> labelService.deleteLabel(labelId, userId));
+    }
+
+    @Test
+    void initializeDefaultLabels_shouldCreateDefaults_whenNoneExist() {
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
+
+        labelService.initializeDefaultLabels(userId);
+
+        verify(labelRepository, times(3)).save(any(Label.class));
+
+        verify(labelRepository).save(argThat(l ->
+                l.getName().equals("NEEDS") && l.isDefault() && l.getUserId().equals(userId)
+        ));
+        verify(labelRepository).save(argThat(l ->
+                l.getName().equals("WANTS") && l.isDefault() && l.getUserId().equals(userId)
+        ));
+        verify(labelRepository).save(argThat(l ->
+                l.getName().equals("SAVINGS") && l.isDefault() && l.getUserId().equals(userId)
+        ));
+    }
+
+    @Test
+    void initializeDefaultLabels_shouldNotCreateDefaults_whenLabelsExist() {
+        Label existing = new Label();
+        existing.setId(UUID.randomUUID());
+        existing.setUserId(userId);
+        when(labelRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+
+        labelService.initializeDefaultLabels(userId);
+
+        verify(labelRepository, never()).save(any(Label.class));
+    }
+}
