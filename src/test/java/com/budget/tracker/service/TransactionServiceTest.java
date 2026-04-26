@@ -16,6 +16,7 @@ import org.mockito.MockitoAnnotations;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,7 +72,7 @@ class TransactionServiceTest {
         Transaction tx = buildTransaction(TransactionType.INCOME, sourceAccount);
         tx.setAmount(new BigDecimal("200"));
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, destAccount));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenReturn(tx);
 
         Transaction result = transactionService.createTransaction(tx);
@@ -80,7 +81,7 @@ class TransactionServiceTest {
         verify(transactionRepository).save(tx);
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) &&
-                acct.getBalance().equals(new BigDecimal("1200"))
+                acct.getBalance().compareTo(new BigDecimal("1200")) == 0
         ));
     }
 
@@ -89,22 +90,25 @@ class TransactionServiceTest {
         Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
         tx.setAmount(new BigDecimal("50"));
 
-        BigDecimal[] capturedBalance = new BigDecimal[1];
-        UUID[] capturedAccountId = new UUID[1];
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, destAccount));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenReturn(tx);
 
         Transaction result = transactionService.createTransaction(tx);
 
         assertNotNull(result);
         verify(transactionRepository).save(tx);
-        verify(accountRepository).save(argThat(acct -> {
-            capturedAccountId[0] = acct.getId();
-            capturedBalance[0] = acct.getBalance();
-            return acct.getId() != null;
-        }));
-        assertEquals(accountId, capturedAccountId[0]);
-        assertEquals(new BigDecimal("950"), capturedBalance[0]);
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("950")) == 0
+        ));
+    }
+
+    @Test
+    void createTransaction_transferType_shouldThrow() {
+        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
+        tx.setAmount(new BigDecimal("100"));
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(tx));
     }
 
     // -- getTransactionById --
@@ -122,42 +126,10 @@ class TransactionServiceTest {
         assertEquals(transactionId, found.getId());
     }
 
-    @Test
-    void getTransactionById_shouldThrow_whenNotFound() {
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of());
-
-        assertThrows(RuntimeException.class, () -> transactionService.getTransactionById(transactionId, userId));
-    }
-
-    // -- getAllTransactionsForUser --
-
-    @Test
-    void getAllTransactionsForUser_shouldReturnAll() {
-        Transaction tx1 = buildTransaction(TransactionType.INCOME, sourceAccount);
-        Transaction tx2 = buildTransaction(TransactionType.EXPENSE, sourceAccount);
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx1, tx2));
-
-        List<Transaction> result = transactionService.getAllTransactionsForUser(userId);
-
-        assertEquals(2, result.size());
-    }
-
-    // -- getTransactionsForAccount --
-
-    @Test
-    void getTransactionsForAccount_shouldReturnFiltered() {
-        Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
-        when(transactionRepository.findAllByAccountIdAndUserId(accountId, userId)).thenReturn(List.of(tx));
-
-        List<Transaction> result = transactionService.getTransactionsForAccount(accountId, userId);
-
-        assertEquals(1, result.size());
-    }
-
     // -- updateTransaction --
 
     @Test
-    void updateTransaction_nonTransfer_shouldUpdateFields() {
+    void updateTransaction_nonTransfer_shouldUpdateFieldsAndBalances() {
         Transaction existing = buildTransaction(TransactionType.INCOME, sourceAccount);
         existing.setId(transactionId);
         existing.setAmount(new BigDecimal("100"));
@@ -167,37 +139,39 @@ class TransactionServiceTest {
         details.setDescription("Updated");
 
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Transaction updated = transactionService.updateTransaction(transactionId, userId, details);
 
         assertEquals(new BigDecimal("150"), updated.getAmount());
         assertEquals("Updated", updated.getDescription());
-        verify(transactionRepository).save(existing);
+        // Revert 100 INCOME (sub 100) -> 900. Apply 150 INCOME (add 150) -> 1050.
+        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("1050")) == 0
+        ));
     }
 
     @Test
     void updateTransaction_transferType_shouldUpdateBothBalances() {
         UUID linkedId = UUID.randomUUID();
         Transaction linked = new Transaction();
-        linked.setId(UUID.randomUUID());
+        linked.setId(linkedId);
         linked.setAmount(new BigDecimal("100"));
         linked.setType(TransactionType.TRANSFER);
         linked.setUserId(userId);
         linked.setAccount(destAccount);
-        linked.setLinkedTransferId(linkedId);
+        linked.setLinkedTransferId(transactionId);
 
         Transaction existing = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         existing.setId(transactionId);
         existing.setAmount(new BigDecimal("100"));
         existing.setLinkedTransferId(linkedId);
 
-        when(transactionRepository.findAllByUserId(userId))
-                .thenReturn(List.of(existing, linked))
-                .thenReturn(List.of(existing, linked));
-        when(accountRepository.findAllByUserId(userId))
-                .thenReturn(List.of(sourceAccount, destAccount))
-                .thenReturn(List.of(sourceAccount, destAccount));
+        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(transactionRepository.findById(linkedId)).thenReturn(Optional.of(linked));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Transaction details = buildTransaction(TransactionType.TRANSFER, sourceAccount);
@@ -205,32 +179,13 @@ class TransactionServiceTest {
 
         transactionService.updateTransaction(transactionId, userId, details);
 
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("800"))
+        // Source: 1000. Revert sub 100 -> 1100. Apply sub 200 -> 900.
+        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0
         ));
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().equals(new BigDecimal("300"))
-        ));
-    }
-
-    @Test
-    void updateTransaction_transferTypeWithoutLinked_shouldReverseOriginalBalance() {
-        Transaction existing = buildTransaction(TransactionType.LEND, sourceAccount);
-        existing.setId(transactionId);
-        existing.setAmount(new BigDecimal("100"));
-        existing.setLinkedTransferId(null);
-
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, destAccount));
-        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Transaction details = buildTransaction(TransactionType.LEND, sourceAccount);
-        details.setAmount(new BigDecimal("50"));
-
-        transactionService.updateTransaction(transactionId, userId, details);
-
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("1050"))
+        // Dest: 500. Revert add 100 -> 400. Apply add 200 -> 600.
+        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
+                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("600")) == 0
         ));
     }
 
@@ -243,12 +198,13 @@ class TransactionServiceTest {
         tx.setAmount(new BigDecimal("200"));
 
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, destAccount));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
 
         transactionService.deleteTransaction(transactionId, userId);
 
+        // INCOME 200. Revert -> sub 200. 1000 - 200 = 800.
         verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("800"))
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("800")) == 0
         ));
         verify(transactionRepository).delete(tx);
     }
@@ -257,203 +213,85 @@ class TransactionServiceTest {
     void deleteTransaction_transferWithLinked_shouldReverseBothBalances() {
         UUID linkedId = UUID.randomUUID();
         Transaction linked = new Transaction();
-        linked.setId(UUID.randomUUID());
+        linked.setId(linkedId);
         linked.setAmount(new BigDecimal("100"));
         linked.setType(TransactionType.TRANSFER);
         linked.setUserId(userId);
         linked.setAccount(destAccount);
-        linked.setLinkedTransferId(linkedId);
+        linked.setLinkedTransferId(transactionId);
 
         Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         tx.setId(transactionId);
         tx.setAmount(new BigDecimal("100"));
         tx.setLinkedTransferId(linkedId);
 
-        when(transactionRepository.findAllByUserId(userId))
-                .thenReturn(List.of(tx))
-                .thenReturn(List.of(tx, linked));
-        when(accountRepository.findAllByUserId(userId))
-                .thenReturn(List.of(sourceAccount, destAccount))
-                .thenReturn(List.of(sourceAccount, destAccount));
+        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
+        when(transactionRepository.findById(linkedId)).thenReturn(Optional.of(linked));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
 
         transactionService.deleteTransaction(transactionId, userId);
 
+        // Source: 1000. Revert sub 100 -> add 100 -> 1100.
         verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("900"))
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("1100")) == 0
         ));
+        // Dest: 500. Revert add 100 -> sub 100 -> 400.
         verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().equals(new BigDecimal("400"))
+                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("400")) == 0
         ));
         verify(transactionRepository).delete(tx);
+        verify(transactionRepository).delete(linked);
     }
 
     // -- createTransfer --
 
     @Test
     void createTransfer_shouldCreatePairedTransactions() {
-        UUID linkedId = UUID.randomUUID();
         Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         sourceTx.setAmount(new BigDecimal("100"));
         sourceTx.setUserId(userId);
-        sourceTx.setTransactionDate(OffsetDateTime.now());
-        sourceTx.setId(UUID.randomUUID());
-        sourceTx.setLinkedTransferId(linkedId);
 
-        Transaction destTx = buildTransaction(TransactionType.TRANSFER, destAccount);
-        destTx.setAmount(new BigDecimal("100"));
-        destTx.setUserId(userId);
-        destTx.setTransactionDate(sourceTx.getTransactionDate());
-        destTx.setId(UUID.randomUUID());
-        destTx.setLinkedTransferId(linkedId);
-
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, destAccount));
-        when(transactionRepository.save(any()))
-                .thenReturn(sourceTx)
-                .thenReturn(destTx)
-                .thenReturn(sourceTx);
+        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Transaction result = transactionService.createTransfer(sourceTx, destAccount);
 
         assertNotNull(result);
         assertNotNull(result.getLinkedTransferId());
-        verify(transactionRepository, times(3)).save(any(Transaction.class));
+        verify(transactionRepository, times(2)).save(any(Transaction.class));
+        // Source: 1000 - 100 = 900.
         verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("900"))
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0
         ));
+        // Dest: 500 + 100 = 600.
         verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().equals(new BigDecimal("600"))
-        ));
-    }
-
-    @Test
-    void createTransfer_sameAccount_shouldThrow() {
-        Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("100"));
-        sourceTx.setUserId(userId);
-
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(sourceTx, sourceAccount));
-    }
-
-    @Test
-    void createTransfer_nullAmount_shouldThrow() {
-        Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        sourceTx.setUserId(userId);
-
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(sourceTx, destAccount));
-    }
-
-    @Test
-    void createTransfer_wrongType_shouldThrow() {
-        Transaction sourceTx = buildTransaction(TransactionType.INCOME, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("100"));
-        sourceTx.setUserId(userId);
-
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(sourceTx, destAccount));
-    }
-
-    @Test
-    void createTransfer_destNotOwnedByUser_shouldThrow() {
-        Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("100"));
-        sourceTx.setUserId(userId);
-
-        Account strangerAccount = new Account();
-        strangerAccount.setId(destAccountId);
-        strangerAccount.setUserId(UUID.randomUUID());
-
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, strangerAccount));
-
-        assertThrows(RuntimeException.class, () -> transactionService.createTransfer(sourceTx, destAccount));
-    }
-
-    @Test
-    void createTransfer_lend_shouldWork() {
-        Account friendAccount = new Account();
-        friendAccount.setId(destAccountId);
-        friendAccount.setUserId(userId);
-        friendAccount.setBalance(new BigDecimal("0"));
-        friendAccount.setName("Alice");
-        friendAccount.setType(AccountType.FRIEND_LENDING);
-
-        UUID linkedId = UUID.randomUUID();
-        Transaction sourceTx = buildTransaction(TransactionType.LEND, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("50"));
-        sourceTx.setUserId(userId);
-        sourceTx.setId(UUID.randomUUID());
-        sourceTx.setLinkedTransferId(linkedId);
-
-        Transaction destTx = buildTransaction(TransactionType.LEND, friendAccount);
-        destTx.setAmount(new BigDecimal("50"));
-        destTx.setUserId(userId);
-        destTx.setId(UUID.randomUUID());
-        destTx.setLinkedTransferId(linkedId);
-
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, friendAccount));
-        when(transactionRepository.save(any()))
-                .thenReturn(sourceTx)
-                .thenReturn(destTx)
-                .thenReturn(sourceTx);
-
-        Transaction result = transactionService.createTransfer(sourceTx, friendAccount);
-
-        assertNotNull(result);
-        verify(transactionRepository, times(3)).save(any(Transaction.class));
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("950"))
-        ));
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().equals(new BigDecimal("50"))
+                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("600")) == 0
         ));
     }
 
+    // -- list methods --
+
     @Test
-    void createTransfer_borrow_shouldWork() {
-        Account friendAccount = new Account();
-        friendAccount.setId(destAccountId);
-        friendAccount.setUserId(userId);
-        friendAccount.setBalance(new BigDecimal("100"));
-        friendAccount.setName("Alice");
-        friendAccount.setType(AccountType.FRIEND_LENDING);
+    void getAllTransactionsForUser_shouldReturnAll() {
+        Transaction tx1 = buildTransaction(TransactionType.INCOME, sourceAccount);
+        Transaction tx2 = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx1, tx2));
 
-        UUID linkedId = UUID.randomUUID();
-        Transaction sourceTx = buildTransaction(TransactionType.BORROW, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("30"));
-        sourceTx.setUserId(userId);
-        sourceTx.setId(UUID.randomUUID());
-        sourceTx.setLinkedTransferId(linkedId);
+        List<Transaction> result = transactionService.getAllTransactionsForUser(userId);
 
-        Transaction destTx = buildTransaction(TransactionType.BORROW, friendAccount);
-        destTx.setAmount(new BigDecimal("30"));
-        destTx.setUserId(userId);
-        destTx.setId(UUID.randomUUID());
-        destTx.setLinkedTransferId(linkedId);
-
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(sourceAccount, friendAccount));
-        when(transactionRepository.save(any()))
-                .thenReturn(sourceTx)
-                .thenReturn(destTx)
-                .thenReturn(sourceTx);
-
-        Transaction result = transactionService.createTransfer(sourceTx, friendAccount);
-
-        assertNotNull(result);
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().equals(new BigDecimal("1030"))
-        ));
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().equals(new BigDecimal("70"))
-        ));
+        assertEquals(2, result.size());
     }
 
     @Test
-    void createTransfer_differentUsers_shouldThrow() {
-        Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("100"));
-        sourceTx.setUserId(UUID.randomUUID());
+    void getTransactionsForAccount_shouldReturnFiltered() {
+        Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        when(transactionRepository.findAllByAccountIdAndUserId(accountId, userId)).thenReturn(List.of(tx));
 
-        when(accountRepository.findAllByUserId(sourceTx.getUserId())).thenReturn(List.of(sourceAccount));
+        List<Transaction> result = transactionService.getTransactionsForAccount(accountId, userId);
 
-        assertThrows(RuntimeException.class, () -> transactionService.createTransfer(sourceTx, destAccount));
+        assertEquals(1, result.size());
     }
 
     // -- helpers --

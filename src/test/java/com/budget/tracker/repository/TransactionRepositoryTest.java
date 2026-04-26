@@ -32,6 +32,7 @@ class TransactionRepositoryTest {
         Account account = new Account();
         account.setName("Test Account");
         account.setType(AccountType.CASH);
+        account.setInitialBalance(BigDecimal.valueOf(100.00));
         account.setBalance(BigDecimal.valueOf(100.00));
         account.setUserId(UUID.randomUUID());
         accountRepository.save(account);
@@ -61,6 +62,7 @@ class TransactionRepositoryTest {
         Account account1 = new Account();
         account1.setName("User1 Account");
         account1.setType(AccountType.CASH);
+        account1.setInitialBalance(BigDecimal.valueOf(100.00));
         account1.setBalance(BigDecimal.valueOf(100.00));
         account1.setUserId(userId1);
         accountRepository.save(account1);
@@ -68,6 +70,7 @@ class TransactionRepositoryTest {
         Account account2 = new Account();
         account2.setName("User2 Account");
         account2.setType(AccountType.CASH);
+        account2.setInitialBalance(BigDecimal.valueOf(200.00));
         account2.setBalance(BigDecimal.valueOf(200.00));
         account2.setUserId(userId2);
         accountRepository.save(account2);
@@ -107,6 +110,7 @@ class TransactionRepositoryTest {
         Account account1 = new Account();
         account1.setName("User1 Account");
         account1.setType(AccountType.CASH);
+        account1.setInitialBalance(BigDecimal.valueOf(100.00));
         account1.setBalance(BigDecimal.valueOf(100.00));
         account1.setUserId(userId1);
         accountRepository.save(account1);
@@ -114,6 +118,7 @@ class TransactionRepositoryTest {
         Account account2 = new Account();
         account2.setName("User2 Account");
         account2.setType(AccountType.CASH);
+        account2.setInitialBalance(BigDecimal.valueOf(200.00));
         account2.setBalance(BigDecimal.valueOf(200.00));
         account2.setUserId(userId2);
         accountRepository.save(account2);

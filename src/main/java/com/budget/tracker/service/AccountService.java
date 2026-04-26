@@ -21,6 +21,12 @@ public class AccountService {
     }
 
     public Account createAccount(Account account) {
+        if (account.getInitialBalance() == null) {
+            account.setInitialBalance(BigDecimal.ZERO);
+        }
+        if (account.getBalance() == null) {
+            account.setBalance(account.getInitialBalance());
+        }
         return accountRepository.save(account);
     }
 
@@ -37,9 +43,18 @@ public class AccountService {
 
     public Account updateAccount(UUID accountId, UUID userId, Account accountDetails) {
         Account account = getAccountById(accountId, userId);
+        
+        // Adjust balance if initialBalance changed
+        BigDecimal oldInitial = account.getInitialBalance();
+        BigDecimal newInitial = accountDetails.getInitialBalance();
+        if (newInitial != null && oldInitial.compareTo(newInitial) != 0) {
+            BigDecimal delta = newInitial.subtract(oldInitial);
+            account.setBalance(account.getBalance().add(delta));
+            account.setInitialBalance(newInitial);
+        }
+
         account.setName(accountDetails.getName());
         account.setType(accountDetails.getType());
-        account.setBalance(accountDetails.getBalance());
         account.setCreditLimit(accountDetails.getCreditLimit());
         return accountRepository.save(account);
     }

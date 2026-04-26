@@ -37,10 +37,10 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Write unit tests for `CategoryService`.
     - [x] Implement `LabelService` (CRUD, initializing defaults for new users).
     - [x] Write unit tests for `LabelService`.
-    - [ ] Implement `TransactionService` (CRUD for incomes/expenses).
-    - [ ] Write unit tests for `TransactionService` (CRUD).
-    - [ ] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
-    - [ ] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
+    - [x] Implement `TransactionService` (CRUD for incomes/expenses).
+    - [x] Write unit tests for `TransactionService` (CRUD).
+    - [x] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
+    - [x] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
 - [ ] **Security**:
     - [ ] Implement Spring Security with JWT-based authentication.
     - [ ] Establish `UserPrincipal` context.

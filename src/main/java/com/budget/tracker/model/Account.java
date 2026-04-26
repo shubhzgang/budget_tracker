@@ -20,6 +20,9 @@ public class Account extends BaseEntity {
     @Column(name = "type", nullable = false)
     private AccountType type;
 
+    @Column(name = "initial_balance", nullable = false)
+    private BigDecimal initialBalance;
+
     @Column(name = "balance", nullable = false)
     private BigDecimal balance;
 
