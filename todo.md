@@ -48,10 +48,10 @@ This file tracks the progress of the Budget Tracker project against the original
 - [ ] **REST API (Controllers)**:
     - [x] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
     - [x] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
-    - [ ] `GET/POST/PUT/DELETE /labels` (including `WebMvcTest`)
-    - [ ] `GET/POST/PUT/DELETE /categories` (including `WebMvcTest`)
-    - [ ] `GET/POST/PUT/DELETE /transactions` (including `WebMvcTest`)
-    - [ ] `POST /transactions/transfer` (including `WebMvcTest` with validation checks)
+    - [x] `GET/POST/PUT/DELETE /labels` (including `WebMvcTest`)
+    - [x] `GET/POST/PUT/DELETE /categories` (including `WebMvcTest`)
+    - [x] `GET/POST/PUT/DELETE /transactions` (including `WebMvcTest`)
+    - [x] `POST /transactions/transfer` (including `WebMvcTest` with validation checks)
 
 ### Frontend Development (Phase 3)
 - [ ] **Project Setup**:
