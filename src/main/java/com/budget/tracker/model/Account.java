@@ -1,8 +1,11 @@
 package com.budget.tracker.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -11,12 +14,14 @@ import java.util.UUID;
 @Table(name = "accounts")
 @Getter
 @Setter
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Account extends BaseEntity {
 
     @Column(nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "type", nullable = false)
     private AccountType type;
 

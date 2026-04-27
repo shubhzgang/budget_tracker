@@ -176,6 +176,11 @@ public class TransactionService {
         destTransaction.setUserId(userId);
         destTransaction.setCategory(sourceTransaction.getCategory());
 
+        // First save without linked IDs to satisfy immediate foreign key constraint
+        transactionRepository.save(sourceTransaction);
+        transactionRepository.save(destTransaction);
+
+        // Now link them
         sourceTransaction.setLinkedTransferId(destTransaction.getId());
         destTransaction.setLinkedTransferId(sourceTransaction.getId());
 
@@ -191,7 +196,7 @@ public class TransactionService {
     private void updateBalance(UUID accountId, UUID userId, TransactionType type, BigDecimal amount, BalanceAction action, boolean isDestinationAccount) {
         Account account = accountRepository.findById(accountId)
                 .filter(a -> a.getUserId().equals(userId))
-                .orElseThrow(() -> new RuntimeException("Account not found or access denied"));
+                .orElseThrow(() -> new RuntimeException("Account not found or access denied for userId: " + userId + " and accountId: " + accountId));
 
         boolean shouldAdd;
         if (type == TransactionType.INCOME) {

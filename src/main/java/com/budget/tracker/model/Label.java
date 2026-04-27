@@ -1,5 +1,6 @@
 package com.budget.tracker.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -10,6 +11,7 @@ import lombok.Setter;
 @Table(name = "labels")
 @Getter
 @Setter
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Label extends BaseEntity {
 
     @Column(nullable = false)

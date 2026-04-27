@@ -269,7 +269,7 @@ class TransactionServiceTest {
 
         assertNotNull(result);
         assertNotNull(result.getLinkedTransferId());
-        verify(transactionRepository, times(2)).save(any(Transaction.class));
+        verify(transactionRepository, times(4)).save(any(Transaction.class));
         // Source: 1000 - 100 = 900.
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0

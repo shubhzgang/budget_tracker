@@ -3,6 +3,8 @@ package com.budget.tracker.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -24,6 +26,7 @@ public class Transaction extends BaseEntity {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "type", nullable = false)
     private TransactionType type;
 

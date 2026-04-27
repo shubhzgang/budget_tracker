@@ -8,6 +8,8 @@ import com.budget.tracker.payload.response.MessageResponse;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.JwtUtils;
 import com.budget.tracker.security.UserDetailsImpl;
+import com.budget.tracker.service.CategoryService;
+import com.budget.tracker.service.LabelService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,12 +29,16 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
     private final JwtUtils jwtUtils;
+    private final CategoryService categoryService;
+    private final LabelService labelService;
 
-    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository, PasswordEncoder encoder, JwtUtils jwtUtils) {
+    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository, PasswordEncoder encoder, JwtUtils jwtUtils, CategoryService categoryService, LabelService labelService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.encoder = encoder;
         this.jwtUtils = jwtUtils;
+        this.categoryService = categoryService;
+        this.labelService = labelService;
     }
 
     @PostMapping("/login")
@@ -65,7 +71,11 @@ public class AuthController {
         user.setPasswordHash(encoder.encode(signUpRequest.getPassword()));
         user.setCreatedAt(OffsetDateTime.now());
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Initialize defaults
+        categoryService.initializeDefaultCategories(savedUser.getId());
+        labelService.initializeDefaultLabels(savedUser.getId());
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }

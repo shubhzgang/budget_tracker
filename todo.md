@@ -22,7 +22,7 @@ This file tracks the progress of the Budget Tracker project against the original
 ## 🏗️ In Progress
 
 ### Backend Development (Phase 2)
-- [ ] **Domain Entities & Repositories**:
+- [x] **Domain Entities & Repositories**:
     - [x] Implement JPA entity `User`.
     - [x] Implement JPA entity `Account` (include `type` enum: `CREDIT_CARD`, `CASH`, `BANK_SAVINGS`, `CURRENT_ACCOUNT`, `FRIEND_LENDING` and `credit_limit`).
     - [x] Implement JPA entity `Category` (include `icon`, `is_default`).
@@ -30,7 +30,7 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`).
     - [x] Create Spring Data Repositories for all entities (scoping by `userId`).
     - [x] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
-- [ ] **Core Services**:
+- [x] **Core Services**:
     - [x] Implement `AccountService` (CRUD, calculate balance, handle `credit_limit` and available credit).
     - [x] Write unit tests for `AccountService`.
     - [x] Implement `CategoryService` (CRUD, initializing defaults for new users).
@@ -41,17 +41,21 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Write unit tests for `TransactionService` (CRUD).
     - [x] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
     - [x] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
-- [ ] **Security**:
+- [x] **Security**:
     - [x] Implement Spring Security with JWT-based authentication.
     - [x] Establish `UserPrincipal` context.
     - [x] Write tests for Security configuration and JWT filter.
-- [ ] **REST API (Controllers)**:
+- [x] **REST API (Controllers)**:
     - [x] `POST /auth/register`, `POST /auth/login` (including `WebMvcTest`)
     - [x] `GET/POST/PUT/DELETE /accounts` (including `WebMvcTest`)
     - [x] `GET/POST/PUT/DELETE /labels` (including `WebMvcTest`)
     - [x] `GET/POST/PUT/DELETE /categories` (including `WebMvcTest`)
     - [x] `GET/POST/PUT/DELETE /transactions` (including `WebMvcTest`)
     - [x] `POST /transactions/transfer` (including `WebMvcTest` with validation checks)
+- [x] **Verification**:
+    - [x] Implement full black-box integration tests for all resources.
+    - [x] Verify PostgreSQL enum compatibility in Docker environment.
+    - [x] Fix circular references in Transaction linking logic.
 
 ### Frontend Development (Phase 3)
 - [ ] **Project Setup**:
