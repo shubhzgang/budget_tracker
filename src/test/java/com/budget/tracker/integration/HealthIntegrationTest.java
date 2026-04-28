@@ -25,7 +25,6 @@ public class HealthIntegrationTest {
 
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            java.nio.file.Files.writeString(java.nio.file.Paths.get("health_response.txt"), response.body());
             assertEquals(200, response.statusCode(), "Health endpoint should return 200 OK");
             assertTrue(response.body().contains("\"status\":\"UP\""), "Response body should indicate status is UP");
         } catch (Exception e) {

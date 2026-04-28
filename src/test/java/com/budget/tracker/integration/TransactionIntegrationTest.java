@@ -161,7 +161,6 @@ public class TransactionIntegrationTest {
                 .build();
         HttpResponse<String> response = client.send(getAccountRequest, HttpResponse.BodyHandlers.ofString());
         String body = response.body();
-        System.out.println("Account " + id + " balance check. Expected: " + expected + ", Actual: " + body);
         JsonNode account = mapper.readTree(body);
         assertEquals(expected, account.get("balance").asDouble(), 0.01, "Balance mismatch for account " + id + ". Body: " + body);
     }
