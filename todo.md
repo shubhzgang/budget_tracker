@@ -69,13 +69,13 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Build abstraction around CSS variables (colors, typography, borders, shadows) in `tailwind.config.js`.
     - [x] Implement `ThemeContext` in React.
     - [x] Ensure out-of-the-box support for "Light" and "Dark" themes.
-- [ ] **Core Data Management UI**:
-    - [ ] **Accounts Dashboard**: Fetch and display accounts grouped by type, show balances.
-        - [ ] Show progress bar for credit utilization on `CREDIT_CARD` accounts.
-        - [ ] Show "They owe you / You owe them" for `FRIEND_LENDING` accounts.
-    - [ ] **Settings/Management**: UI to manage custom Categories (with icons), custom Labels, and Theme switching.
-    - [ ] **Account Form Modal**: Create/edit account (conditionally show "Credit Limit" if `CREDIT_CARD`).
-    - [ ] Write component tests using React Testing Library for Dashboards and Modals.
+- [x] **Core Data Management UI**:
+    - [x] **Accounts Dashboard**: Fetch and display accounts grouped by type, show balances.
+        - [x] Show progress bar for credit utilization on `CREDIT_CARD` accounts.
+        - [x] Show "They owe you / You owe them" for `FRIEND_LENDING` accounts.
+    - [x] **Settings/Management**: UI to manage custom Categories (with icons), custom Labels, and Theme switching.
+    - [x] **Account Form Modal**: Create/edit account (conditionally show "Credit Limit" if `CREDIT_CARD`).
+    - [x] Write component tests using React Testing Library for Dashboards and Modals.
 - [ ] **Transaction Management UI**:
     - [ ] **Transaction List**: Paginated/infinite scrolling list of transactions (show Label badges, Category icons).
     - [ ] **Add Transaction Form**: Select Account, Type, Category, Label, Amount, Date.

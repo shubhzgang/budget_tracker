@@ -6,9 +6,11 @@ import { Modal } from '../components/Modal';
 import { AccountForm } from '../components/AccountForm';
 import type { Account, AccountType, CreateAccountRequest } from '../types/account';
 import apiClient from '../api/client';
+import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,6 +70,15 @@ export const Dashboard = () => {
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
           <ThemeToggle />
+          <button
+            onClick={() => navigate('/settings')}
+            className="p-2 hover:bg-secondary rounded-full transition-colors"
+            aria-label="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.062.506.123.76.183L15 18.24V5.76l-3.9-.877c-.254.06-.507.121-.76.183m0 9.18V4.938m0 9.18c-.253.062-.506.123-.76.183L4.5 13.5v-3l1.18-.263c.253.062.506.123.76.183m0 0V4.938" />
+            </svg>
+          </button>
           <button
             onClick={logout}
             className="text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 px-3 py-1 rounded-md transition-colors"
