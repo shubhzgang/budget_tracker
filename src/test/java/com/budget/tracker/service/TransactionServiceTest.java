@@ -113,6 +113,48 @@ class TransactionServiceTest {
     }
 
     @Test
+    void createTransaction_creditCardExpense_shouldIncreaseDebt() {
+        sourceAccount.setType(AccountType.CREDIT_CARD);
+        sourceAccount.setBalance(new BigDecimal("450"));
+
+        Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        tx.setAmount(new BigDecimal("250"));
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenReturn(tx);
+
+        Transaction result = transactionService.createTransaction(tx);
+
+        assertNotNull(result);
+        // Debt should INCREASE: 450 + 250 = 700
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("700")) == 0
+        ));
+    }
+
+    @Test
+    void createTransaction_creditCardIncome_shouldDecreaseDebt() {
+        sourceAccount.setType(AccountType.CREDIT_CARD);
+        sourceAccount.setBalance(new BigDecimal("700"));
+
+        Transaction tx = buildTransaction(TransactionType.INCOME, sourceAccount);
+        tx.setAmount(new BigDecimal("200"));
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenReturn(tx);
+
+        Transaction result = transactionService.createTransaction(tx);
+
+        assertNotNull(result);
+        // Debt should DECREASE: 700 - 200 = 500
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("500")) == 0
+        ));
+    }
+
+    @Test
     void createTransaction_transferType_shouldThrow() {
         Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         tx.setAmount(new BigDecimal("100"));

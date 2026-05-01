@@ -4,41 +4,99 @@ import { useAuth } from '../context/AuthContext';
 import { BalanceCard } from '../components/BalanceCard';
 import { Modal } from '../components/Modal';
 import { AccountForm } from '../components/AccountForm';
+import { TransactionList } from '../components/TransactionList';
+import { TransactionForm } from '../components/TransactionForm';
 import type { Account, AccountType, CreateAccountRequest } from '../types/account';
+import type { Category } from '../types/category';
+import type { Label } from '../types/label';
+import type { Transaction, CreateTransactionRequest } from '../types/transaction';
 import apiClient from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
+  
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchAccounts = async () => {
+  const fetchData = async () => {
     try {
-      const response = await apiClient.get('/accounts');
-      setAccounts(response.data);
+      const [accRes, catRes, lblRes, transRes] = await Promise.all([
+        apiClient.get('/accounts'),
+        apiClient.get('/categories'),
+        apiClient.get('/labels'),
+        apiClient.get('/transactions')
+      ]);
+      setAccounts(accRes.data);
+      setCategories(catRes.data);
+      setLabels(lblRes.data);
+      setTransactions(transRes.data);
     } catch (error) {
-      console.error('Failed to fetch accounts', error);
+      console.error('Failed to fetch dashboard data', error);
     } finally {
-      setLoading(false);
+      setLoadingAccounts(false);
+      setLoadingTransactions(false);
     }
   };
 
   useEffect(() => {
-    fetchAccounts();
+    fetchData();
   }, []);
 
   const handleCreateAccount = async (data: CreateAccountRequest) => {
     setIsSubmitting(true);
     try {
       await apiClient.post('/accounts', data);
-      await fetchAccounts();
-      setIsModalOpen(false);
+      await fetchData();
+      setIsAccountModalOpen(false);
     } catch (error) {
       console.error('Failed to create account', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateTransaction = async (data: CreateTransactionRequest) => {
+    setIsSubmitting(true);
+    try {
+      if (data.type === 'TRANSFER') {
+        // TransferRequest expects fromAccountId, toAccountId directly
+        const transferPayload = {
+          fromAccountId: data.accountId,
+          toAccountId: data.toAccountId,
+          amount: data.amount,
+          description: data.description || '',
+          transactionDate: data.transactionDate,
+          categoryId: data.categoryId
+        };
+        await apiClient.post('/transactions/transfer', transferPayload);
+      } else {
+        // Regular Transaction expects { account: { id: ... }, category: { id: ... }, label: { id: ... } }
+        const transactionPayload = {
+          amount: data.amount,
+          type: data.type,
+          description: data.description,
+          transactionDate: data.transactionDate,
+          account: { id: data.accountId },
+          category: data.categoryId ? { id: data.categoryId } : null,
+          label: data.labelId ? { id: data.labelId } : null
+        };
+        await apiClient.post('/transactions', transactionPayload);
+      }
+      await fetchData();
+      setIsTransactionModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create transaction', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +134,8 @@ export const Dashboard = () => {
             aria-label="Settings"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.062.506.123.76.183L15 18.24V5.76l-3.9-.877c-.254.06-.507.121-.76.183m0 9.18V4.938m0 9.18c-.253.062-.506.123-.76.183L4.5 13.5v-3l1.18-.263c.253.062.506.123.76.183m0 0V4.938" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.592c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.57 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
           <button
@@ -89,39 +148,36 @@ export const Dashboard = () => {
       </header>
 
       <main className="p-4 sm:p-8">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
-          <section className="mb-10">
+        <div className="max-w-6xl mx-auto space-y-12">
+          {/* Accounts Section */}
+          <section>
             <div className="flex justify-between items-end mb-6">
               <div>
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Net Worth</h2>
-                <p className={`text-4xl font-black mt-1 ${totalBalance >= 0 ? 'text-foreground' : 'text-red-500'}`}>
-                  {formatCurrency(totalBalance)}
-                </p>
+                <h2 className="text-3xl font-bold">Accounts</h2>
+                <div className="mt-1">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Net Worth: </span>
+                  <span className={`text-xl font-black ${totalBalance >= 0 ? 'text-foreground' : 'text-red-500'}`}>
+                    {formatCurrency(totalBalance)}
+                  </span>
+                </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity"
+                onClick={() => setIsAccountModalOpen(true)}
+                className="bg-secondary text-secondary-foreground px-4 py-2 rounded-md font-medium hover:bg-secondary/80 transition-colors"
               >
                 + Add Account
               </button>
             </div>
 
-            {loading ? (
+            {loadingAccounts ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="h-32 bg-secondary rounded-lg"></div>
                 ))}
               </div>
             ) : accounts.length === 0 ? (
-              <div className="text-center py-20 bg-card rounded-xl border-2 border-dashed border-border">
-                <p className="text-muted-foreground">No accounts found. Create your first account to get started!</p>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="mt-4 text-primary font-semibold hover:underline"
-                >
-                  Create your first account
-                </button>
+              <div className="text-center py-10 bg-card rounded-xl border-2 border-dashed border-border">
+                <p className="text-muted-foreground">No accounts yet.</p>
               </div>
             ) : (
               <div className="space-y-8">
@@ -141,17 +197,47 @@ export const Dashboard = () => {
               </div>
             )}
           </section>
+
+          {/* Transactions Section */}
+          <section>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold">Recent Transactions</h2>
+              <button
+                onClick={() => setIsTransactionModalOpen(true)}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity"
+              >
+                + Add Transaction
+              </button>
+            </div>
+            <TransactionList transactions={transactions} loading={loadingTransactions} />
+          </section>
         </div>
       </main>
 
+      {/* Modals */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
         title="Create New Account"
       >
         <AccountForm
           onSubmit={handleCreateAccount}
-          onCancel={() => setIsModalOpen(false)}
+          onCancel={() => setIsAccountModalOpen(false)}
+          isLoading={isSubmitting}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        title="Add Transaction"
+      >
+        <TransactionForm
+          accounts={accounts}
+          categories={categories}
+          labels={labels}
+          onSubmit={handleCreateTransaction}
+          onCancel={() => setIsTransactionModalOpen(false)}
           isLoading={isSubmitting}
         />
       </Modal>

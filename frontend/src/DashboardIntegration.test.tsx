@@ -26,15 +26,20 @@ describe('Dashboard Integration', () => {
       expect(screen.getByText('$1,050.00')).toBeInTheDocument();
     });
 
-    // Should show account names
-    expect(screen.getByText('Main Bank')).toBeInTheDocument();
+    // Should show account names (multiple occurrences due to transaction list)
+    expect(screen.getAllByText('Main Bank')[0]).toBeInTheDocument();
     expect(screen.getByText('Cash')).toBeInTheDocument();
 
-    // Should show group headers (using getAllByText because it's in both header and card tag)
+    // Should show group headers
     expect(screen.getAllByText(/BANK/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/CASH/i)[0]).toBeInTheDocument();
     
-    // Verify specific header role for grouping
-    expect(screen.getByRole('heading', { name: /Dashboard/i })).toBeInTheDocument();
+    // Verify Section headings
+    expect(screen.getByRole('heading', { name: /Accounts/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Recent Transactions/i })).toBeInTheDocument();
+
+    // Should show recent transactions
+    expect(screen.getByText('Grocery Shopping')).toBeInTheDocument();
+    expect(screen.getByText('Salary')).toBeInTheDocument();
   });
 });

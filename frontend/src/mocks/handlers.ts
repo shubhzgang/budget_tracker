@@ -70,4 +70,51 @@ export const handlers = [
   http.delete(`${API_URL}/labels/:id`, () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // Mock transactions
+  http.get(`${API_URL}/transactions`, () => {
+    return HttpResponse.json([
+      {
+        id: 't1',
+        amount: 50.00,
+        type: 'EXPENSE',
+        description: 'Grocery Shopping',
+        transactionDate: new Date().toISOString(),
+        accountId: '1',
+        account: { id: '1', name: 'Main Bank' },
+        categoryId: 'c1',
+        category: { id: 'c1', name: 'Food', icon: '🍔' },
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 't2',
+        amount: 1000.00,
+        type: 'INCOME',
+        description: 'Salary',
+        transactionDate: new Date().toISOString(),
+        accountId: '1',
+        account: { id: '1', name: 'Main Bank' },
+        createdAt: new Date().toISOString()
+      }
+    ]);
+  }),
+
+  http.post(`${API_URL}/transactions`, async ({ request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      id: 't3',
+      ...data,
+      createdAt: new Date().toISOString()
+    });
+  }),
+
+  http.post(`${API_URL}/transactions/transfer`, async ({ request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      id: 't4',
+      ...data,
+      type: 'TRANSFER',
+      createdAt: new Date().toISOString()
+    });
+  }),
 ];

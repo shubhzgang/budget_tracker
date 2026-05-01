@@ -49,7 +49,13 @@ public class TransactionService {
             throw new IllegalArgumentException("Use createTransfer for TRANSFER type");
         }
 
-        updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
+        // Fetch and set account to ensure it's managed and belongs to user
+        Account account = accountRepository.findById(transaction.getAccount().getId())
+                .filter(a -> a.getUserId().equals(userId))
+                .orElseThrow(() -> new RuntimeException("Account not found or access denied"));
+        transaction.setAccount(account);
+
+        updateBalance(account.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
         return transactionRepository.save(transaction);
     }
 
@@ -209,6 +215,11 @@ public class TransactionService {
             // Source of TRANSFER (My Bank) subtracts cash.
             // Dest of TRANSFER (Savings/Friend) adds balance.
             shouldAdd = isDestinationAccount;
+        }
+
+        // CREDIT_CARD accounts represent debt, so logic is inverted
+        if (account.getType() == com.budget.tracker.model.AccountType.CREDIT_CARD) {
+            shouldAdd = !shouldAdd;
         }
 
         if (action == BalanceAction.REVERT) {

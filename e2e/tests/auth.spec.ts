@@ -25,7 +25,7 @@ test.describe('Authentication Flow', () => {
 
     // 5. Should be redirected to Dashboard
     await expect(page).toHaveURL(/.*dashboard/);
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounts', exact: true })).toBeVisible();
   });
 
   test('should show error message on invalid login', async ({ page }) => {

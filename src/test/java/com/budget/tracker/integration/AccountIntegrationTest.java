@@ -137,4 +137,57 @@ public class AccountIntegrationTest {
         // GlobalExceptionHandler might return 400 for RuntimeException when account not found
         assertTrue(verifyResponse.statusCode() >= 400);
     }
+
+    @Test
+    void testCreditCardBalanceLogic() throws Exception {
+        // 1. Create Credit Card Account
+        String accountJson = "{" +
+                "\"name\":\"Visa Integration Test\"," +
+                "\"type\":\"CREDIT_CARD\"," +
+                "\"initialBalance\":0.00," +
+                "\"creditLimit\":5000.00" +
+                "}";
+
+        HttpRequest createRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/accounts"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(accountJson))
+                .build();
+
+        HttpResponse<String> createResponse = client.send(createRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, createResponse.statusCode());
+        String accountId = mapper.readTree(createResponse.body()).get("id").asText();
+
+        // 2. Add Expense Transaction
+        String txJson = String.format("{" +
+                "\"amount\":250.00," +
+                "\"transactionDate\":\"2026-05-01T10:00:00Z\"," +
+                "\"description\":\"Dinner\"," +
+                "\"type\":\"EXPENSE\"," +
+                "\"account\":{\"id\":\"%s\"}" +
+                "}", accountId);
+
+        HttpRequest txRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(txJson))
+                .build();
+
+        HttpResponse<String> txResponse = client.send(txRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, txResponse.statusCode());
+
+        // 3. Verify Balance INCREASED (debt increased)
+        HttpRequest getRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/accounts/" + accountId))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+
+        HttpResponse<String> getResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, getResponse.statusCode());
+        JsonNode account = mapper.readTree(getResponse.body());
+        assertEquals(250.00, account.get("balance").asDouble(), 0.01, "Credit card balance should INCREASE after expense");
+    }
 }

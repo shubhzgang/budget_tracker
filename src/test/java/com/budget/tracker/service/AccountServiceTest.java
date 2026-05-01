@@ -62,6 +62,7 @@ class AccountServiceTest {
         Account existing = new Account();
         existing.setId(accountId);
         existing.setUserId(userId);
+        existing.setType(AccountType.BANK);
         existing.setInitialBalance(new BigDecimal("1000"));
         existing.setBalance(new BigDecimal("500")); // 1000 initial - 500 expenses
 
@@ -78,6 +79,29 @@ class AccountServiceTest {
         assertEquals(new BigDecimal("700"), updated.getBalance());
         assertEquals(new BigDecimal("1200"), updated.getInitialBalance());
         assertEquals("Updated Name", updated.getName());
+    }
+
+    @Test
+    void updateAccount_creditCard_shouldAdjustDebtByInitialBalanceDelta() {
+        Account existing = new Account();
+        existing.setId(accountId);
+        existing.setUserId(userId);
+        existing.setType(AccountType.CREDIT_CARD);
+        existing.setInitialBalance(new BigDecimal("1000"));
+        existing.setBalance(new BigDecimal("1500")); // 1000 initial + 500 expenses
+
+        Account details = new Account();
+        details.setInitialBalance(new BigDecimal("1200")); // Increase initial by 200
+        details.setName("Updated Name");
+
+        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
+
+        Account updated = accountService.updateAccount(accountId, details);
+
+        // Debt should increase: 1500 + (1200 - 1000) = 1700
+        assertEquals(new BigDecimal("1700"), updated.getBalance());
+        assertEquals(new BigDecimal("1200"), updated.getInitialBalance());
     }
 
     @Test
