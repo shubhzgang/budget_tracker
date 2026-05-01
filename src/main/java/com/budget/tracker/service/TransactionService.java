@@ -6,6 +6,7 @@ import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.TransactionRepository;
+import com.github.f4b6a3.uuid.UuidCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -163,11 +164,11 @@ public class TransactionService {
 
         // Create paired transaction
         if (sourceTransaction.getId() == null) {
-            sourceTransaction.setId(UUID.randomUUID());
+            sourceTransaction.setId(UuidCreator.getTimeOrderedEpoch());
         }
 
         Transaction destTransaction = new Transaction();
-        destTransaction.setId(UUID.randomUUID());
+        destTransaction.setId(UuidCreator.getTimeOrderedEpoch());
         destTransaction.setType(type);
         destTransaction.setAmount(sourceTransaction.getAmount());
         destTransaction.setDescription(sourceTransaction.getDescription());

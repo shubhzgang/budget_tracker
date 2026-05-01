@@ -1,5 +1,6 @@
 package com.budget.tracker.model;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
@@ -26,7 +27,7 @@ public abstract class BaseEntity {
     @PrePersist
     protected void onCreate() {
         if (id == null) {
-            id = java.util.UUID.randomUUID();
+            id = UuidCreator.getTimeOrderedEpoch();
         }
     }
 }
