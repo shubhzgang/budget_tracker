@@ -75,6 +75,7 @@ public class DataSeeder implements CommandLineRunner {
         account.setName(name);
         account.setType(type);
         account.setBalance(balance);
+        account.setInitialBalance(balance); // Fix: Set initial balance
         account.setCreditLimit(creditLimit);
         account.setCreatedAt(OffsetDateTime.now());
         accountRepository.save(account);

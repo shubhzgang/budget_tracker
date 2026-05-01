@@ -81,4 +81,4 @@ stop-stack:
 # Launch the stack with a pre-seeded test account
 run-demo:
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
-	SPRING_PROFILES_ACTIVE=demo docker compose up --build
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
