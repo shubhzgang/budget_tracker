@@ -24,7 +24,7 @@ This file tracks the progress of the Budget Tracker project against the original
 ### Backend Development (Phase 2)
 - [x] **Domain Entities & Repositories**:
     - [x] Implement JPA entity `User`.
-    - [x] Implement JPA entity `Account` (include `type` enum: `CREDIT_CARD`, `CASH`, `BANK_SAVINGS`, `CURRENT_ACCOUNT`, `FRIEND_LENDING` and `credit_limit`).
+    - [x] Implement JPA entity `Account` (include `type` enum: `CREDIT_CARD`, `CASH`, `BANK`, `FRIEND_LENDING` and `credit_limit`).
     - [x] Implement JPA entity `Category` (include `icon`, `is_default`).
     - [x] Implement JPA entity `Label` (include `is_default`).
     - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`).
@@ -58,17 +58,17 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Fix circular references in Transaction linking logic.
 
 ### Frontend Development (Phase 3)
-- [ ] **Project Setup**:
-    - [ ] Scaffold Vite + React + TypeScript + TailwindCSS project.
-    - [ ] Setup Vitest and React Testing Library.
-    - [ ] Configure Axios with interceptors to attach JWT token.
-    - [ ] Set up React Router for navigation.
-    - [ ] Create Auth Context to manage user session.
-- [ ] **Theming**:
-    - [ ] Set up CSS variables and Tailwind themes for extensible UI theming.
-    - [ ] Build abstraction around CSS variables (colors, typography, borders, shadows) in `tailwind.config.js`.
-    - [ ] Implement `ThemeContext` in React.
-    - [ ] Ensure out-of-the-box support for "Light" and "Dark" themes.
+- [x] **Project Setup**:
+    - [x] Scaffold Vite + React + TypeScript + TailwindCSS project.
+    - [x] Setup Vitest and React Testing Library.
+    - [x] Configure Axios with interceptors to attach JWT token.
+    - [x] Set up React Router for navigation.
+    - [x] Create Auth Context to manage user session.
+- [x] **Theming**:
+    - [x] Set up CSS variables and Tailwind themes for extensible UI theming.
+    - [x] Build abstraction around CSS variables (colors, typography, borders, shadows) in `tailwind.config.js`.
+    - [x] Implement `ThemeContext` in React.
+    - [x] Ensure out-of-the-box support for "Light" and "Dark" themes.
 - [ ] **Core Data Management UI**:
     - [ ] **Accounts Dashboard**: Fetch and display accounts grouped by type, show balances.
         - [ ] Show progress bar for credit utilization on `CREDIT_CARD` accounts.
@@ -88,7 +88,7 @@ This file tracks the progress of the Budget Tracker project against the original
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
 - [ ] **Configuration**: Configure CORS policies in Spring Boot and environment variables.
-- [ ] **Dockerization**:
-    - [ ] Create multi-stage `Dockerfile` for Backend.
-    - [ ] Create multi-stage `Dockerfile` for Frontend.
-- [ ] **Orchestration**: Finalize `docker-compose.yml` for unified stack deployment (Postgres, Backend, Frontend).
+- [x] **Dockerization**:
+    - [x] Create multi-stage `Dockerfile` for Backend.
+    - [x] Create multi-stage `Dockerfile` for Frontend.
+- [x] **Orchestration**: Finalize `docker-compose.yml` for unified stack deployment (Postgres, Backend, Frontend).

@@ -50,3 +50,35 @@ test-int-clean: test-int-down
 # Run local tests
 java-test:
 	./gradlew test
+
+# Main target: Run the full E2E test suite
+test-e2e:
+	@echo "Starting full stack for E2E tests..."
+	docker compose up -d --build
+	@echo "Waiting for frontend and backend to be healthy..."
+	@n=0; until [ $$(docker inspect --format='{{.State.Health.Status}}' budget-tracker-backend) = 'healthy' ] || [ $$n -ge 30 ]; do sleep 2; n=$$(($$n + 1)); done; \
+	if [ $$n -ge 30 ]; then \
+	  echo "Error: Backend failed to become healthy"; \
+	  docker compose down -v; \
+	  exit 1; \
+	fi
+	@echo "Stack is ready. Running Playwright tests..."
+	cd e2e && npx playwright install chromium --with-deps && npm run test; \
+	EXIT_CODE=$$?; \
+	docker compose down -v; \
+	exit $$EXIT_CODE
+
+# Launch the entire stack for local use
+run-stack:
+	@echo "Launching Budget Tracker stack..."
+	docker compose up --build
+
+# Stop the stack and remove volumes
+stop-stack:
+	@echo "Stopping stack and cleaning volumes..."
+	docker compose down -v
+
+# Launch the stack with a pre-seeded test account
+run-demo:
+	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
+	SPRING_PROFILES_ACTIVE=demo docker compose up --build
