@@ -56,6 +56,7 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement full black-box integration tests for all resources.
     - [x] Verify PostgreSQL enum compatibility in Docker environment.
     - [x] Fix circular references in Transaction linking logic.
+    - [x] Fix transfer balance bug (Cash/Bank directionality) and UI visual metadata.
 
 ### Frontend Development (Phase 3)
 - [x] **Project Setup**:
@@ -76,14 +77,14 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] **Settings/Management**: UI to manage custom Categories (with icons), custom Labels, and Theme switching.
     - [x] **Account Form Modal**: Create/edit account (conditionally show "Credit Limit" if `CREDIT_CARD`).
     - [x] Write component tests using React Testing Library for Dashboards and Modals.
-- [ ] **Transaction Management UI**:
-    - [ ] **Transaction List**: Paginated/infinite scrolling list of transactions (show Label badges, Category icons).
-    - [ ] **Add Transaction Form**: Select Account, Type, Category, Label, Amount, Date.
-    - [ ] **Transfer Funds Form**: Select From/To Account, Amount, Date, Description (used for regular transfers and lending/borrowing).
-    - [ ] Write component tests for Transaction List and Forms.
-- [ ] **Analytics & Insights (Optional)**:
-    - [ ] Pie chart for spending breakdown by Label (Needs vs. Wants vs. Savings).
-    - [ ] Breakdown by Category.
+- [x] **Transaction Management UI**:
+    - [x] **Transaction List**: Paginated/infinite scrolling list of transactions (show Label badges, Category icons).
+    - [x] **Add Transaction Form**: Select Account, Type, Category, Label, Amount, Date.
+    - [x] **Transfer Funds Form**: Select From/To Account, Amount, Date, Description (used for regular transfers and lending/borrowing).
+    - [x] Write component tests for Transaction List and Forms.
+- [x] **Analytics & Insights (Optional)**:
+    - [x] Pie chart for spending breakdown by Label (Needs vs. Wants vs. Savings).
+    - [x] Breakdown by Category.
 
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.

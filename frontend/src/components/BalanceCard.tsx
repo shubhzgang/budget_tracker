@@ -31,7 +31,8 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ account }) => {
 
       <div className="mb-4">
         <p className="text-2xl font-bold">
-          {formatCurrency(account.balance)}
+          {isCreditCard ? 'Debt: ' : ''}
+          {formatCurrency(isCreditCard ? Math.abs(account.balance) : account.balance)}
         </p>
         {isLending && (
           <p className={`text-xs mt-1 ${account.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>

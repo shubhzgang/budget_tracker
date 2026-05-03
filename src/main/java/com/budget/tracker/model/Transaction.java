@@ -47,4 +47,11 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "linked_transfer_id")
     private UUID linkedTransferId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "linked_account_id")
+    private Account linkedAccount;
+
+    @Column(name = "is_incoming_transfer")
+    private Boolean isIncomingTransfer;
 }

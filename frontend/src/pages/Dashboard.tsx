@@ -4,6 +4,7 @@ import { BalanceCard } from '../components/BalanceCard';
 import { Modal } from '../components/Modal';
 import { AccountForm } from '../components/AccountForm';
 import { TransactionList } from '../components/TransactionList';
+import { Analytics } from '../components/Analytics';
 import type { Account, AccountType, CreateAccountRequest } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
@@ -19,30 +20,35 @@ export const Dashboard = () => {
   const [, setCategories] = useState<Category[]>([]);
   const [, setLabels] = useState<Label[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [analyticsTransactions, setAnalyticsTransactions] = useState<Transaction[]>([]);
   
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [accRes, catRes, lblRes, transRes] = await Promise.all([
+      const [accRes, catRes, lblRes, transRes, analyticsRes] = await Promise.all([
         apiClient.get('/accounts'),
         apiClient.get('/categories'),
         apiClient.get('/labels'),
-        apiClient.get<PaginatedResponse<Transaction>>('/transactions?page=0&size=10&sort=transactionDate,desc')
+        apiClient.get<PaginatedResponse<Transaction>>('/transactions?page=0&size=10&sort=transactionDate,desc'),
+        apiClient.get<PaginatedResponse<Transaction>>('/transactions?page=0&size=1000&sort=transactionDate,desc')
       ]);
       setAccounts(accRes.data);
       setCategories(catRes.data);
       setLabels(lblRes.data);
       setTransactions(transRes.data.content);
+      setAnalyticsTransactions(analyticsRes.data.content);
     } catch (error) {
       console.error('Failed to fetch dashboard data', error);
     } finally {
       setLoadingAccounts(false);
       setLoadingTransactions(false);
+      setLoadingAnalytics(false);
     }
   }, []);
 
@@ -131,6 +137,12 @@ export const Dashboard = () => {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Analytics Section */}
+      <section>
+        <h2 className="text-2xl md:text-3xl font-bold mb-6">Spending Insights</h2>
+        <Analytics transactions={analyticsTransactions} loading={loadingAnalytics} />
       </section>
 
       {/* Transactions Section */}

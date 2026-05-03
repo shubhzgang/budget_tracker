@@ -155,6 +155,44 @@ class TransactionServiceTest {
     }
 
     @Test
+    void createTransaction_lend_shouldSaveAndDecreaseBalance() {
+        Transaction tx = buildTransaction(TransactionType.LEND, sourceAccount);
+        tx.setAmount(new BigDecimal("100"));
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenReturn(tx);
+
+        Transaction result = transactionService.createTransaction(tx);
+
+        assertNotNull(result);
+        verify(transactionRepository).save(tx);
+        // LEND decreases balance (sending money away): 1000 - 100 = 900
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("900")) == 0
+        ));
+    }
+
+    @Test
+    void createTransaction_borrow_shouldSaveAndIncreaseBalance() {
+        Transaction tx = buildTransaction(TransactionType.BORROW, sourceAccount);
+        tx.setAmount(new BigDecimal("250"));
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenReturn(tx);
+
+        Transaction result = transactionService.createTransaction(tx);
+
+        assertNotNull(result);
+        verify(transactionRepository).save(tx);
+        // BORROW increases balance (getting money): 1000 + 250 = 1250
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("1250")) == 0
+        ));
+    }
+
+    @Test
     void createTransaction_transferType_shouldThrow() {
         Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         tx.setAmount(new BigDecimal("100"));

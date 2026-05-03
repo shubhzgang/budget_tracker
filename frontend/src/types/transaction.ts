@@ -13,7 +13,8 @@ export interface Transaction {
   accountId: string;
   account?: Account;
   toAccountId?: string;
-  toAccount?: Account;
+  linkedAccount?: Account;
+  isIncomingTransfer?: boolean;
   categoryId?: string;
   category?: Category;
   labelId?: string;

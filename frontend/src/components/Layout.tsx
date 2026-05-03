@@ -137,7 +137,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 md:py-8">
+      <main className="container mx-auto px-4 pt-6 pb-32 md:pt-8 md:pb-24">
         {children}
       </main>
 

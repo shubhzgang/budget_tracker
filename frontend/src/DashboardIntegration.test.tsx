@@ -39,6 +39,7 @@ describe('Dashboard Integration', () => {
     
     // Verify Section headings
     expect(screen.getByRole('heading', { name: /Accounts/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Spending Insights/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Recent Transactions/i })).toBeInTheDocument();
 
     // Should show recent transactions

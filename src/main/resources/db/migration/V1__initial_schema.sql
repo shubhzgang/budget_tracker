@@ -3,7 +3,7 @@
 
 -- Enums
 CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK', 'FRIEND_LENDING');
-CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
+CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER', 'LEND', 'BORROW');
 
 -- Users Table
 CREATE TABLE users (
@@ -56,6 +56,8 @@ CREATE TABLE transactions (
     description TEXT,
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
     linked_transfer_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    linked_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    is_incoming_transfer BOOLEAN,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 

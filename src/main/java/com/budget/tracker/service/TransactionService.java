@@ -190,6 +190,12 @@ public class TransactionService {
         destTransaction.setUserId(userId);
         destTransaction.setCategory(sourceTransaction.getCategory());
 
+        // Set transfer metadata
+        sourceTransaction.setLinkedAccount(toAccount);
+        sourceTransaction.setIsIncomingTransfer(false);
+        destTransaction.setLinkedAccount(fromAccount);
+        destTransaction.setIsIncomingTransfer(true);
+
         // First save without linked IDs to satisfy immediate foreign key constraint
         transactionRepository.save(sourceTransaction);
         transactionRepository.save(destTransaction);
@@ -213,9 +219,9 @@ public class TransactionService {
                 .orElseThrow(() -> new RuntimeException("Account not found or access denied for userId: " + userId + " and accountId: " + accountId));
 
         boolean shouldAdd;
-        if (type == TransactionType.INCOME) {
+        if (type == TransactionType.INCOME || type == TransactionType.BORROW) {
             shouldAdd = true;
-        } else if (type == TransactionType.EXPENSE) {
+        } else if (type == TransactionType.EXPENSE || type == TransactionType.LEND) {
             shouldAdd = false;
         } else {
             // TRANSFER

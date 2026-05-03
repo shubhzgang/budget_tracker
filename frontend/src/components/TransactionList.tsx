@@ -54,7 +54,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
             <div>
               <p className="font-semibold text-sm">
                 {transaction.type === 'TRANSFER'
-                  ? `Transfer to ${transaction.toAccount?.name}`
+                  ? (transaction.isIncomingTransfer 
+                      ? `Transfer from ${transaction.linkedAccount?.name}` 
+                      : `Transfer to ${transaction.linkedAccount?.name}`)
                   : transaction.description || transaction.category?.name || 'No description'}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
@@ -75,14 +77,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
           <div className="text-right">
             <p
               className={`font-bold ${
-                transaction.type === 'INCOME' || transaction.type === 'BORROW'
+                transaction.type === 'INCOME' || transaction.type === 'BORROW' || transaction.isIncomingTransfer
                   ? 'text-green-500'
-                  : transaction.type === 'TRANSFER'
+                  : transaction.type === 'TRANSFER' && !transaction.isIncomingTransfer
                   ? 'text-foreground'
                   : 'text-red-500'
               }`}
             >
-              {transaction.type === 'INCOME' || transaction.type === 'BORROW' ? '+' : '-'}
+              {transaction.type === 'INCOME' || transaction.type === 'BORROW' || transaction.isIncomingTransfer ? '+' : '-'}
               {formatCurrency(Math.abs(transaction.amount))}
             </p>
             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
