@@ -137,5 +137,11 @@ dist-ssr/
 .env.test.local
 .env.production.local
 
+# =========================
+# E2E: Playwright
+# =========================
+e2e/playwright-report/
+e2e/test-results/
+
 #Claude
 .claude/
