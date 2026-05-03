@@ -137,4 +137,29 @@
         * `backend`: Spring Boot API container (depends on `db`).
         * `frontend`: Nginx container serving React (depends on `backend`).
     * Utilize a `.env` file to feed environment variables to the containers (e.g., DB passwords, JWT secrets, API URLs).
-    * Ensure the backend waits for the database to be healthy before starting up using `depends_on` and `healthcheck` conditions.
+    *   Ensure the backend waits for the database to be healthy before starting up using `depends_on` and `healthcheck` conditions.
+
+    ---
+
+    ## Phase 5: Refinement & Bug Fixes (Next Session)
+
+    ### 1. Transfer Transaction Logic Fix
+    * **Issue:** When creating a transfer, the UI hides the Category field, but the previously selected category (or the first one in the list) is still being sent and applied to the transaction.
+    * **Fix:** 
+    * Ensure the `TransactionForm` state resets or explicitly clears the `categoryId` and `labelId` when the transaction type is set to `TRANSFER`.
+    * Transfers should be strictly account-to-account without category or label association unless intentionally required.
+
+    ### 2. Currency Customization & Localization
+    * **Default Change:** Update the default currency symbol from `$` to `₹`.
+    * **User Preference:** 
+    * Add a `currencySymbol` field to the `UserPreference` model/entity.
+    * Update the `PreferenceManager` UI to allow users to choose their preferred currency symbol.
+    * Ensure all currency displays throughout the app (Dashboard, Transactions, Analytics) use the user's preferred symbol.
+
+    ### 3. Dashboard UI Refactor (Accounts Section)
+    * **Consolidated List:** Remove separate sections for each account type on the dashboard. Since the type is already displayed within the account card, listing them together reduces vertical clutter.
+    * **Responsive Layout:**
+    * Refactor the accounts container to use a grid layout.
+    * On mobile, maintain a single column.
+    * On larger screens, use multiple columns (e.g., `grid-cols-2` or `grid-cols-3`) to utilize horizontal space effectively.
+    * Ensure the "Add Account" button remains easily accessible or integrated into the new layout.
