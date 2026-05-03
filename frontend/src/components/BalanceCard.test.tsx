@@ -40,13 +40,13 @@ describe('BalanceCard', () => {
     expect(screen.getByText('They owe you')).toBeInTheDocument();
   });
 
-  it('shows "You owe them" for negative lending balance', () => {
-    const lendingAccount: Account = {
+  it('shows "Debt: " prefix for credit cards', () => {
+    const ccAccount: Account = {
       ...mockAccount,
-      type: 'FRIEND_LENDING',
-      balance: -100,
+      type: 'CREDIT_CARD',
+      balance: 450,
     };
-    render(<BalanceCard account={lendingAccount} />);
-    expect(screen.getByText('You owe them')).toBeInTheDocument();
+    render(<BalanceCard account={ccAccount} />);
+    expect(screen.getByText(/Debt: \$450.00/i)).toBeInTheDocument();
   });
 });

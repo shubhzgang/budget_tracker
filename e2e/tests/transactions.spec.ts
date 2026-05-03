@@ -222,4 +222,41 @@ test.describe('Transaction Management', () => {
     // we just ensure the container exists.
     await expect(page.locator('div.grid.grid-cols-1.lg\\:grid-cols-2.gap-8')).toBeVisible();
   });
+
+  test('should handle LEND and BORROW transactions correctly', async ({ page }) => {
+    // 1. Create Friend Lending Account
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Lending Account');
+    await page.selectOption('select[id="account-type"]', 'FRIEND_LENDING');
+    await page.fill('input[id="initial-balance"]', '0');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+    const lendingCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Lending Account' }) });
+
+    // 2. Add BORROW Transaction (Getting money)
+    await page.click('button:has-text("Add Transaction")');
+    await page.selectOption('select[id="trans-type"]', 'BORROW');
+    await page.fill('input[id="trans-amount"]', '50');
+    await page.fill('input[id="trans-desc"]', 'Borrow from Bob');
+    await page.selectOption('select[id="trans-account"]', { label: 'Lending Account' });
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // Verify balance increases (Debt increases / they owe you decreases -> visually balance goes up)
+    await expect(lendingCard.getByText('$50.00')).toBeVisible();
+    await expect(lendingCard.getByText('They owe you')).toBeVisible();
+
+    // 3. Add LEND Transaction (Giving money back or lending more)
+    await page.click('button:has-text("Add Transaction")');
+    await page.selectOption('select[id="trans-type"]', 'LEND');
+    await page.fill('input[id="trans-amount"]', '150'); // 50 - 150 = -100
+    await page.fill('input[id="trans-desc"]', 'Lend more');
+    await page.selectOption('select[id="trans-account"]', { label: 'Lending Account' });
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // Verify balance decreases
+    await expect(lendingCard.getByText('-$100.00')).toBeVisible();
+    await expect(lendingCard.getByText('You owe them')).toBeVisible();
+  });
 });

@@ -8,6 +8,7 @@ import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,7 @@ import java.util.UUID;
 
 @Component
 @Profile("demo")
+@ConditionalOnProperty(name = "app.data-seeder.enabled", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;

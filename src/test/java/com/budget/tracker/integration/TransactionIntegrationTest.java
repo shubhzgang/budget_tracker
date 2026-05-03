@@ -147,6 +147,34 @@ public class TransactionIntegrationTest {
         // Savings: 0 + 200 = 200
         verifyAccountBalance(accountId, 800.00);
         verifyAccountBalance(account2Id, 200.00);
+
+        // Verify metadata in transaction list
+        HttpRequest listRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions?size=100"))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> listResponse = client.send(listRequest, HttpResponse.BodyHandlers.ofString());
+        JsonNode content = mapper.readTree(listResponse.body()).get("content");
+        
+        boolean foundIncoming = false;
+        boolean foundOutgoing = false;
+
+        for (JsonNode tx : content) {
+            if (tx.get("type").asText().equals("TRANSFER")) {
+                if (tx.get("isIncomingTransfer").asBoolean()) {
+                    foundIncoming = true;
+                    assertEquals(account2Id, tx.get("account").get("id").asText());
+                    assertEquals(accountId, tx.get("linkedAccount").get("id").asText());
+                } else {
+                    foundOutgoing = true;
+                    assertEquals(accountId, tx.get("account").get("id").asText());
+                    assertEquals(account2Id, tx.get("linkedAccount").get("id").asText());
+                }
+            }
+        }
+        assertTrue(foundIncoming, "Incoming transfer transaction not found");
+        assertTrue(foundOutgoing, "Outgoing transfer transaction not found");
     }
 
     private void verifyBalance(double expected) throws Exception {
