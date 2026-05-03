@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -134,12 +136,12 @@ public class TransactionControllerTest {
         t.setId(UUID.randomUUID());
         t.setDescription("Salary");
 
-        when(transactionService.getAllTransactionsForUser()).thenReturn(List.of(t));
+        when(transactionService.getTransactions(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of(t)));
 
         mockMvc.perform(get("/api/v1/transactions")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].description").value("Salary"));
+                .andExpect(jsonPath("$.content[0].description").value("Salary"));
     }
 
     @Test

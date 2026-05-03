@@ -97,7 +97,7 @@ public class TransactionIntegrationTest {
                 .build();
         HttpResponse<String> listResponse = client.send(listRequest, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, listResponse.statusCode());
-        assertTrue(mapper.readTree(listResponse.body()).size() > 0);
+        assertTrue(mapper.readTree(listResponse.body()).get("content").size() > 0);
 
         // 3. Delete Transaction
         HttpRequest deleteRequest = HttpRequest.newBuilder()

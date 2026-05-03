@@ -73,30 +73,49 @@ export const handlers = [
 
   // Mock transactions
   http.get(`${API_URL}/transactions`, () => {
-    return HttpResponse.json([
-      {
-        id: 't1',
-        amount: 50.00,
-        type: 'EXPENSE',
-        description: 'Grocery Shopping',
-        transactionDate: new Date().toISOString(),
-        accountId: '1',
-        account: { id: '1', name: 'Main Bank' },
-        categoryId: 'c1',
-        category: { id: 'c1', name: 'Food', icon: '🍔' },
-        createdAt: new Date().toISOString()
+    return HttpResponse.json({
+      content: [
+        {
+          id: 't1',
+          amount: 50.00,
+          type: 'EXPENSE',
+          description: 'Grocery Shopping',
+          transactionDate: new Date().toISOString(),
+          accountId: '1',
+          account: { id: '1', name: 'Main Bank' },
+          categoryId: 'c1',
+          category: { id: 'c1', name: 'Food', icon: '🍔' },
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 't2',
+          amount: 1000.00,
+          type: 'INCOME',
+          description: 'Salary',
+          transactionDate: new Date().toISOString(),
+          accountId: '1',
+          account: { id: '1', name: 'Main Bank' },
+          createdAt: new Date().toISOString()
+        }
+      ],
+      pageable: {
+        sort: { empty: false, sorted: true, unsorted: false },
+        offset: 0,
+        pageNumber: 0,
+        pageSize: 20,
+        paged: true,
+        unpaged: false
       },
-      {
-        id: 't2',
-        amount: 1000.00,
-        type: 'INCOME',
-        description: 'Salary',
-        transactionDate: new Date().toISOString(),
-        accountId: '1',
-        account: { id: '1', name: 'Main Bank' },
-        createdAt: new Date().toISOString()
-      }
-    ]);
+      last: true,
+      totalPages: 1,
+      totalElements: 2,
+      size: 20,
+      number: 0,
+      sort: { empty: false, sorted: true, unsorted: false },
+      first: true,
+      numberOfElements: 2,
+      empty: false
+    });
   }),
 
   http.post(`${API_URL}/transactions`, async ({ request }) => {

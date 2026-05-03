@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { UIProvider } from './context/UIContext';
 import { Dashboard } from './pages/Dashboard';
 
 describe('Dashboard Integration', () => {
@@ -14,9 +15,11 @@ describe('Dashboard Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <MemoryRouter>
-            <Dashboard />
-          </MemoryRouter>
+          <UIProvider>
+            <MemoryRouter>
+              <Dashboard />
+            </MemoryRouter>
+          </UIProvider>
         </AuthProvider>
       </ThemeProvider>
     );

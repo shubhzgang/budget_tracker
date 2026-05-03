@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { UIProvider } from './context/UIContext';
 import { AppRoutes } from './App';
 
 describe('Login Integration', () => {
@@ -10,9 +11,11 @@ describe('Login Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <MemoryRouter initialEntries={['/login']}>
-            <AppRoutes />
-          </MemoryRouter>
+          <UIProvider>
+            <MemoryRouter initialEntries={['/login']}>
+              <AppRoutes />
+            </MemoryRouter>
+          </UIProvider>
         </AuthProvider>
       </ThemeProvider>
     );
@@ -42,9 +45,11 @@ describe('Login Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <MemoryRouter initialEntries={['/login']}>
-            <AppRoutes />
-          </MemoryRouter>
+          <UIProvider>
+            <MemoryRouter initialEntries={['/login']}>
+              <AppRoutes />
+            </MemoryRouter>
+          </UIProvider>
         </AuthProvider>
       </ThemeProvider>
     );

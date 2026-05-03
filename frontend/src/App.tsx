@@ -1,10 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { UIProvider } from './context/UIContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
+import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import './App.css';
 
@@ -17,7 +20,19 @@ export const AppRoutes = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transactions"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Transactions />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -25,7 +40,9 @@ export const AppRoutes = () => {
         path="/settings"
         element={
           <ProtectedRoute>
-            <Settings />
+            <Layout>
+              <Settings />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -38,9 +55,11 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <UIProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </UIProvider>
       </AuthProvider>
     </ThemeProvider>
   );

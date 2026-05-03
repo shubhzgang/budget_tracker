@@ -7,10 +7,13 @@ import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.TransactionRepository;
 import com.github.f4b6a3.uuid.UuidCreator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -68,6 +71,10 @@ public class TransactionService {
 
     public List<Transaction> getAllTransactionsForUser() {
         return transactionRepository.findAllByUserId(getCurrentUserId());
+    }
+
+    public Page<Transaction> getTransactions(String searchTerm, TransactionType type, OffsetDateTime startDate, OffsetDateTime endDate, Pageable pageable) {
+        return transactionRepository.searchTransactions(getCurrentUserId(), searchTerm, type, startDate, endDate, pageable);
     }
 
     public List<Transaction> getTransactionsForAccount(UUID accountId) {
