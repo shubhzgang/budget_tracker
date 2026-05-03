@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -55,11 +56,13 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <UIProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </UIProvider>
+        <PreferenceProvider>
+          <UIProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
+          </UIProvider>
+        </PreferenceProvider>
       </AuthProvider>
     </ThemeProvider>
   );

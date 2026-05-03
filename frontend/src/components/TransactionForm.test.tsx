@@ -5,6 +5,17 @@ import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
 
+vi.mock('../context/PreferenceContext', () => ({
+  usePreferences: () => ({
+    preferences: {
+      defaultAccountId: '1',
+      defaultTransactionType: 'EXPENSE',
+      defaultCategoryId: 'c1',
+      defaultLabelId: 'l1'
+    }
+  })
+}));
+
 describe('TransactionForm', () => {
   const mockAccounts: Account[] = [
     { id: '1', name: 'Bank 1', balance: 1000, type: 'BANK', createdAt: '' },

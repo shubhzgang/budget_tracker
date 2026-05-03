@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePreferences } from '../context/PreferenceContext';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
@@ -21,15 +22,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onCancel,
   isLoading
 }) => {
-  const [formData, setFormData] = useState<CreateTransactionRequest>({
-    amount: 0,
-    type: 'EXPENSE',
-    transactionDate: new Date().toISOString().split('T')[0],
-    accountId: accounts[0]?.id || '',
-    toAccountId: '',
-    categoryId: categories[0]?.id || '',
-    labelId: labels.find(l => l.isDefault)?.id || labels[0]?.id || '',
-    description: ''
+  const { preferences } = usePreferences();
+
+  const [formData, setFormData] = useState<CreateTransactionRequest>(() => {
+    // 1. Initial fallbacks
+    const initialType = preferences?.defaultTransactionType || 'EXPENSE';
+    const initialAccount = preferences?.defaultAccountId || accounts[0]?.id || '';
+    const initialCategory = preferences?.defaultCategoryId || categories[0]?.id || '';
+    const initialLabel = preferences?.defaultLabelId || labels.find(l => l.isDefault)?.id || labels[0]?.id || '';
+
+    // 2. Validate fallbacks exist in current props
+    const validatedAccount = accounts.some(a => a.id === initialAccount) ? initialAccount : (accounts[0]?.id || '');
+    const validatedCategory = categories.some(c => c.id === initialCategory) ? initialCategory : (categories[0]?.id || '');
+    const validatedLabel = (initialLabel === '' || labels.some(l => l.id === initialLabel)) ? initialLabel : (labels[0]?.id || '');
+
+    return {
+      amount: 0,
+      type: initialType,
+      transactionDate: new Date().toISOString().split('T')[0],
+      accountId: validatedAccount,
+      toAccountId: '',
+      categoryId: validatedCategory,
+      labelId: validatedLabel,
+      description: ''
+    };
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
