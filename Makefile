@@ -94,4 +94,5 @@ stop-stack:
 # Launch the stack with a pre-seeded test account
 run-demo:
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
