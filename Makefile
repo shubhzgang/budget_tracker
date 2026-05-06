@@ -51,6 +51,9 @@ test-int-clean: test-int-down
 java-test:
 	./gradlew test
 
+# Detect OS for Playwright install flags
+OS_NAME := $(shell uname -s)
+
 # Main target: Run the full E2E test suite
 test-e2e:
 	@echo "Starting full stack for E2E tests..."
@@ -62,8 +65,18 @@ test-e2e:
 	  docker compose down -v; \
 	  exit 1; \
 	fi
-	@echo "Stack is ready. Running Playwright tests..."
-	cd e2e && npx playwright install chromium --with-deps && npm run test; \
+	@echo "Stack is ready. Running Playwright tests on $(OS_NAME)..."
+	@if [ "$(OS_NAME)" = "Linux" ]; then \
+		DISTRO=$$(. /etc/os-release && echo $${ID:-""}); \
+		if echo "$${DISTRO}" | grep -qE "^(debian|ubuntu)$$"; then \
+			PLAYWRIGHT_INSTALL_CMD="npx playwright install chromium --with-deps"; \
+		else \
+			PLAYWRIGHT_INSTALL_CMD="npx playwright install chromium"; \
+		fi; \
+	else \
+		PLAYWRIGHT_INSTALL_CMD="npx playwright install chromium"; \
+	fi; \
+	cd e2e && $${PLAYWRIGHT_INSTALL_CMD} && npm run test; \
 	EXIT_CODE=$$?; \
 	docker compose down -v; \
 	exit $$EXIT_CODE
@@ -81,4 +94,5 @@ stop-stack:
 # Launch the stack with a pre-seeded test account
 run-demo:
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build

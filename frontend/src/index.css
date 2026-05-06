@@ -64,6 +64,26 @@
     --input: #1e293b;
     --ring: #cbd5e1;
   }
+
+  .oled {
+    --background: #000000;
+    --foreground: #f8fafc;
+    --card: #000000;
+    --card-foreground: #f8fafc;
+    --primary: #f8fafc;
+    --primary-foreground: #000000;
+    --secondary: #1a1a1a;
+    --secondary-foreground: #f8fafc;
+    --muted: #1a1a1a;
+    --muted-foreground: #94a3b8;
+    --accent: #1a1a1a;
+    --accent-foreground: #f8fafc;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f8fafc;
+    --border: #262626;
+    --input: #262626;
+    --ring: #cbd5e1;
+  }
 }
 
 @layer base {
