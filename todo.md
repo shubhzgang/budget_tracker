@@ -89,6 +89,8 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Add `currencySymbol` to `UserPreference` (default ₹).
     - [x] Update `PreferenceManager` UI to allow choosing symbol.
     - [x] Update formatting across the app to use preferred symbol.
+- [ ] **Toast Notifications**:
+    - [ ] Implement toast notifications for successful actions (e.g., "Account created", "Transaction saved").
 
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.

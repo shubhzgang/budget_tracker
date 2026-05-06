@@ -164,3 +164,10 @@
     * On mobile, maintain a single column.
     * On larger screens, use multiple columns (e.g., `grid-cols-2` or `grid-cols-3`) to utilize horizontal space effectively.
     * Ensure the "Add Account" button remains easily accessible or integrated into the new layout.
+
+    ### 4. Prevent Zero-Amount Transactions
+    * **Requirement:** Transactions with an amount of 0 should not be allowed.
+    * **Backend Fix:** Add validation to the API layer to return a `400 Bad Request` if a transaction is submitted with an amount of 0 or less.
+    * **Frontend Fix:**
+    * Update transaction forms to prevent submission if the amount is 0.
+    * **Visual Feedback:** If a zero amount is entered, the input box should highlight in red and/or provide a subtle vibration effect to notify the user.
