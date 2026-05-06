@@ -60,6 +60,7 @@ class UserPreferenceControllerTest {
         UserPreference prefs = new UserPreference();
         prefs.setUserId(userId);
         prefs.setDefaultTransactionType(TransactionType.EXPENSE);
+        prefs.setCurrencySymbol("₹");
 
         when(userPreferenceService.getPreferences(userId)).thenReturn(prefs);
 
@@ -67,17 +68,20 @@ class UserPreferenceControllerTest {
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.defaultTransactionType").value("EXPENSE"));
+                .andExpect(jsonPath("$.defaultTransactionType").value("EXPENSE"))
+                .andExpect(jsonPath("$.currencySymbol").value("₹"));
     }
 
     @Test
     void shouldUpdatePreferences() throws Exception {
         UserPreferenceRequest request = new UserPreferenceRequest();
         request.setDefaultTransactionType(TransactionType.INCOME);
+        request.setCurrencySymbol("$");
 
         UserPreference saved = new UserPreference();
         saved.setUserId(userId);
         saved.setDefaultTransactionType(TransactionType.INCOME);
+        saved.setCurrencySymbol("$");
 
         when(userPreferenceService.updatePreferences(eq(userId), any(UserPreference.class))).thenReturn(saved);
 
@@ -86,6 +90,7 @@ class UserPreferenceControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.defaultTransactionType").value("INCOME"));
+                .andExpect(jsonPath("$.defaultTransactionType").value("INCOME"))
+                .andExpect(jsonPath("$.currencySymbol").value("$"));
     }
 }

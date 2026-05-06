@@ -32,4 +32,7 @@ public class UserPreference extends BaseEntity {
     @Column(name = "default_label_id")
     private UUID defaultLabelId;
 
+    @Column(name = "currency_symbol", length = 10)
+    private String currencySymbol = "₹";
+
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePreferences } from '../context/PreferenceContext';
 import type { Account } from '../types/account';
 
 interface BalanceCardProps {
@@ -6,14 +7,17 @@ interface BalanceCardProps {
 }
 
 export const BalanceCard: React.FC<BalanceCardProps> = ({ account }) => {
+  const { preferences } = usePreferences();
   const isCreditCard = account.type === 'CREDIT_CARD';
   const isLending = account.type === 'FRIEND_LENDING';
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
+    const symbol = preferences?.currencySymbol || '₹';
+    const formatted = new Intl.NumberFormat('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(value));
+    return `${value < 0 ? '-' : ''}${symbol}${formatted}`;
   };
 
   const creditUtilization = isCreditCard && account.creditLimit

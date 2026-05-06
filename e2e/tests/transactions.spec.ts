@@ -34,7 +34,7 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
     const checkingsCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Checkings' }) });
     await expect(checkingsCard).toBeVisible();
-    await expect(checkingsCard.getByText('$1,000.00')).toBeVisible();
+    await expect(checkingsCard.getByText('₹1,000.00')).toBeVisible();
 
     // 2. Add an Expense Transaction
     await page.click('button:has-text("Add Transaction")');
@@ -47,10 +47,10 @@ test.describe('Transaction Management', () => {
 
     // 3. Verify Transaction in List
     await expect(page.getByText('Shopping')).toBeVisible();
-    await expect(page.getByText('-$200.00')).toBeVisible();
+    await expect(page.getByText('-₹200.00')).toBeVisible();
 
     // 4. Verify Account Balance Update (1000 - 200 = 800)
-    await expect(checkingsCard.getByText('$800.00')).toBeVisible();
+    await expect(checkingsCard.getByText('₹800.00')).toBeVisible();
   });
 
   test('should allow transferring money between accounts', async ({ page }) => {
@@ -82,14 +82,14 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
     // 4. Verify Balances (Source: 500-150=350, Dest: 0+150=150)
-    await expect(sourceCard.getByText('$350.00')).toBeVisible();
-    await expect(destCard.getByText('$150.00')).toBeVisible();
+    await expect(sourceCard.getByText('₹350.00')).toBeVisible();
+    await expect(destCard.getByText('₹150.00')).toBeVisible();
 
     // 5. Verify Transaction List Visuals
     await expect(page.getByText('Transfer to Dest Acc')).toBeVisible();
-    await expect(page.getByText('-$150.00')).toBeVisible();
+    await expect(page.getByText('-₹150.00')).toBeVisible();
     await expect(page.getByText('Transfer from Source Acc')).toBeVisible();
-    await expect(page.getByText('+$150.00')).toBeVisible();
+    await expect(page.getByText('+₹150.00')).toBeVisible();
   });
 
   test('should allow transferring from Cash to Bank', async ({ page }) => {
@@ -123,13 +123,13 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
     // 4. Verify Balances (Cash: 200-50=150, Bank: 500+50=550)
-    await expect(cashCard.getByText('$150.00')).toBeVisible();
-    await expect(bankCard.getByText('$550.00')).toBeVisible();
+    await expect(cashCard.getByText('₹150.00')).toBeVisible();
+    await expect(bankCard.getByText('₹550.00')).toBeVisible();
 
     // 5. Verify Transaction List
     await expect(page.getByText('Transfer to My Bank')).toBeVisible();
     await expect(page.getByText('Transfer from My Cash')).toBeVisible();
-    await expect(page.getByText('+$50.00')).toBeVisible();
+    await expect(page.getByText('+₹50.00')).toBeVisible();
   });
 
   test('should correctly handle bank to credit card transfer (paying bill)', async ({ page }) => {
@@ -146,7 +146,7 @@ test.describe('Transaction Management', () => {
     await page.click('button:has-text("Add Account")');
     await page.fill('input[id="account-name"]', 'Visa CC');
     await page.selectOption('select[id="account-type"]', 'CREDIT_CARD');
-    await page.fill('input[id="initial-balance"]', '500'); // $500 debt
+    await page.fill('input[id="initial-balance"]', '500'); // ₹500 debt
     await page.fill('input[id="credit-limit"]', '5000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
@@ -165,8 +165,8 @@ test.describe('Transaction Management', () => {
     // 4. Verify Balances
     // Bank: 1000 - 200 = 800
     // CC Debt: 500 - 200 = 300
-    await expect(bankCard.getByText('$800.00')).toBeVisible();
-    await expect(ccCard.getByText('Debt: $300.00')).toBeVisible();
+    await expect(bankCard.getByText('₹800.00')).toBeVisible();
+    await expect(ccCard.getByText('Debt: ₹300.00')).toBeVisible();
   });
 
   test('should correctly handle credit card expenses (increase debt)', async ({ page }) => {
@@ -181,7 +181,7 @@ test.describe('Transaction Management', () => {
 
     const visaCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Visa Credit' }) });
     await expect(visaCard).toBeVisible();
-    await expect(visaCard.getByText('Debt: $450.00')).toBeVisible();
+    await expect(visaCard.getByText('Debt: ₹450.00')).toBeVisible();
     await expect(visaCard.getByText('9.0%')).toBeVisible(); // 450/5000 = 9%
 
     // 2. Add Expense Transaction
@@ -194,7 +194,7 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
     // 3. Verify Balance and Utilization INCREASED (450 + 250 = 700)
-    await expect(visaCard.getByText('Debt: $700.00')).toBeVisible();
+    await expect(visaCard.getByText('Debt: ₹700.00')).toBeVisible();
     await expect(visaCard.getByText('14.0%')).toBeVisible(); // 700/5000 = 14%
   });
 
@@ -243,7 +243,7 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
     // Verify balance increases (Debt increases / they owe you decreases -> visually balance goes up)
-    await expect(lendingCard.getByText('$50.00')).toBeVisible();
+    await expect(lendingCard.getByText('₹50.00')).toBeVisible();
     await expect(lendingCard.getByText('They owe you')).toBeVisible();
 
     // 3. Add LEND Transaction (Giving money back or lending more)
@@ -256,7 +256,7 @@ test.describe('Transaction Management', () => {
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
     // Verify balance decreases
-    await expect(lendingCard.getByText('-$100.00')).toBeVisible();
+    await expect(lendingCard.getByText('-₹100.00')).toBeVisible();
     await expect(lendingCard.getByText('You owe them')).toBeVisible();
   });
 });

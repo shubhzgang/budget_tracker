@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { usePreferences } from '../context/PreferenceContext';
 import {
   PieChart,
   Pie,
@@ -22,6 +23,7 @@ interface AnalyticsProps {
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F', '#FFBB28', '#FF8042'];
 
 export const Analytics: React.FC<AnalyticsProps> = ({ transactions, loading }) => {
+  const { preferences } = usePreferences();
   const expenseTransactions = useMemo(() => 
     transactions.filter(t => t.type === 'EXPENSE' || t.type === 'LEND'),
     [transactions]
@@ -51,11 +53,12 @@ export const Analytics: React.FC<AnalyticsProps> = ({ transactions, loading }) =
   }, [expenseTransactions]);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value);
+    const symbol = preferences?.currencySymbol || '₹';
+    const formatted = new Intl.NumberFormat('en-IN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.abs(value));
+    return `${value < 0 ? '-' : ''}${symbol}${formatted}`;
   };
 
   if (loading) {

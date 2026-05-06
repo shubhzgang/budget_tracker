@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TransactionList } from './TransactionList';
 import type { Transaction } from '../types/transaction';
+
+// Mock usePreferences
+vi.mock('../context/PreferenceContext', () => ({
+  usePreferences: () => ({
+    preferences: { currencySymbol: '₹' },
+    isLoading: false,
+    updatePreferences: vi.fn(),
+    refreshPreferences: vi.fn(),
+  }),
+}));
 
 describe('TransactionList', () => {
   const mockTransactions: Transaction[] = [
@@ -23,7 +33,7 @@ describe('TransactionList', () => {
     render(<TransactionList transactions={mockTransactions} />);
     
     expect(screen.getByText('Groceries')).toBeInTheDocument();
-    expect(screen.getByText('-$50.00')).toBeInTheDocument();
+    expect(screen.getByText('-₹50.00')).toBeInTheDocument();
     expect(screen.getByText('Main Bank')).toBeInTheDocument();
     expect(screen.getByText('🍔')).toBeInTheDocument();
   });

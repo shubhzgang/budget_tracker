@@ -85,6 +85,10 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] **Analytics & Insights (Optional)**:
     - [x] Pie chart for spending breakdown by Label (Needs vs. Wants vs. Savings).
     - [x] Breakdown by Category.
+- [x] **Currency Customization**:
+    - [x] Add `currencySymbol` to `UserPreference` (default ₹).
+    - [x] Update `PreferenceManager` UI to allow choosing symbol.
+    - [x] Update formatting across the app to use preferred symbol.
 
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.

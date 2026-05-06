@@ -39,6 +39,7 @@ public class UserPreferenceService {
         existingPrefs.setDefaultTransactionType(updatedPrefs.getDefaultTransactionType());
         existingPrefs.setDefaultCategoryId(updatedPrefs.getDefaultCategoryId());
         existingPrefs.setDefaultLabelId(updatedPrefs.getDefaultLabelId());
+        existingPrefs.setCurrencySymbol(updatedPrefs.getCurrencySymbol());
 
         return userPreferenceRepository.save(existingPrefs);
     }

@@ -49,6 +49,7 @@ class UserPreferenceServiceTest {
 
         assertNotNull(result);
         assertEquals(userId, result.getUserId());
+        assertEquals("₹", result.getCurrencySymbol());
     }
 
     @Test
@@ -56,10 +57,12 @@ class UserPreferenceServiceTest {
         UUID userId = UUID.randomUUID();
         UserPreference existing = new UserPreference();
         existing.setUserId(userId);
+        existing.setCurrencySymbol("₹");
         
         UserPreference updated = new UserPreference();
         UUID accountId = UUID.randomUUID();
         updated.setDefaultAccountId(accountId);
+        updated.setCurrencySymbol("$");
 
         when(userPreferenceRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
         when(userPreferenceRepository.save(any(UserPreference.class))).thenAnswer(i -> i.getArguments()[0]);
@@ -67,6 +70,7 @@ class UserPreferenceServiceTest {
         UserPreference result = userPreferenceService.updatePreferences(userId, updated);
 
         assertEquals(accountId, result.getDefaultAccountId());
+        assertEquals("$", result.getCurrencySymbol());
         verify(userPreferenceRepository).save(existing);
     }
 }

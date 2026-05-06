@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
 import { AppRoutes } from './App';
@@ -11,11 +12,13 @@ describe('Login Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <UIProvider>
-            <MemoryRouter initialEntries={['/login']}>
-              <AppRoutes />
-            </MemoryRouter>
-          </UIProvider>
+          <PreferenceProvider>
+            <UIProvider>
+              <MemoryRouter initialEntries={['/login']}>
+                <AppRoutes />
+              </MemoryRouter>
+            </UIProvider>
+          </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>
     );
@@ -45,11 +48,13 @@ describe('Login Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <UIProvider>
-            <MemoryRouter initialEntries={['/login']}>
-              <AppRoutes />
-            </MemoryRouter>
-          </UIProvider>
+          <PreferenceProvider>
+            <UIProvider>
+              <MemoryRouter initialEntries={['/login']}>
+                <AppRoutes />
+              </MemoryRouter>
+            </UIProvider>
+          </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>
     );

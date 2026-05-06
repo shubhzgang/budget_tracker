@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
+import { usePreferences } from '../context/PreferenceContext';
 import { BalanceCard } from '../components/BalanceCard';
 import { Modal } from '../components/Modal';
 import { AccountForm } from '../components/AccountForm';
@@ -15,6 +16,7 @@ import { Link } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { refreshTrigger, triggerRefresh } = useUI();
+  const { preferences } = usePreferences();
   
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [, setCategories] = useState<Category[]>([]);
@@ -82,10 +84,12 @@ export const Dashboard = () => {
   }, {} as Record<AccountType, Account[]>);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
+    const symbol = preferences?.currencySymbol || '₹';
+    const formatted = new Intl.NumberFormat('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(value));
+    return `${value < 0 ? '-' : ''}${symbol}${formatted}`;
   };
 
   return (

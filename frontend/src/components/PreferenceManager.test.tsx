@@ -14,7 +14,8 @@ const mockPreferences = {
   defaultAccountId: 'a1',
   defaultTransactionType: 'EXPENSE',
   defaultCategoryId: 'c1',
-  defaultLabelId: 'l1'
+  defaultLabelId: 'l1',
+  currencySymbol: '₹'
 };
 
 vi.mock('../context/PreferenceContext', () => ({
@@ -42,6 +43,7 @@ describe('PreferenceManager', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/Default Account/i)).toHaveValue('a1');
       expect(screen.getByLabelText(/Default Type/i)).toHaveValue('EXPENSE');
+      expect(screen.getByLabelText(/Currency Symbol/i)).toHaveValue('₹');
     });
   });
 
@@ -53,10 +55,12 @@ describe('PreferenceManager', () => {
     });
 
     fireEvent.change(screen.getByLabelText(/Default Type/i), { target: { value: 'INCOME' } });
+    fireEvent.change(screen.getByLabelText(/Currency Symbol/i), { target: { value: '$' } });
     fireEvent.click(screen.getByRole('button', { name: /Save Preferences/i }));
 
     expect(mockUpdatePreferences).toHaveBeenCalledWith(expect.objectContaining({
-      defaultTransactionType: 'INCOME'
+      defaultTransactionType: 'INCOME',
+      currencySymbol: '$'
     }));
   });
 });

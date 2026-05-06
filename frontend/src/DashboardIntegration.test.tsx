@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
 import { Dashboard } from './pages/Dashboard';
@@ -15,18 +16,20 @@ describe('Dashboard Integration', () => {
     render(
       <ThemeProvider>
         <AuthProvider>
-          <UIProvider>
-            <MemoryRouter>
-              <Dashboard />
-            </MemoryRouter>
-          </UIProvider>
+          <PreferenceProvider>
+            <UIProvider>
+              <MemoryRouter>
+                <Dashboard />
+              </MemoryRouter>
+            </UIProvider>
+          </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>
     );
 
     // Should show Net Worth (calculated from MSW mock in handlers.ts: 1000 + 50 = 1050)
     await waitFor(() => {
-      expect(screen.getByText('$1,050.00')).toBeInTheDocument();
+      expect(screen.getByText('₹1,050.00')).toBeInTheDocument();
     });
 
     // Should show account names (multiple occurrences due to transaction list)

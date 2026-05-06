@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { BalanceCard } from './BalanceCard';
 import type { Account } from '../types/account';
+
+// Mock usePreferences
+vi.mock('../context/PreferenceContext', () => ({
+  usePreferences: () => ({
+    preferences: { currencySymbol: '₹' },
+    isLoading: false,
+    updatePreferences: vi.fn(),
+    refreshPreferences: vi.fn(),
+  }),
+}));
 
 describe('BalanceCard', () => {
   const mockAccount: Account = {
@@ -15,7 +25,9 @@ describe('BalanceCard', () => {
   it('renders account name and formatted balance', () => {
     render(<BalanceCard account={mockAccount} />);
     expect(screen.getByText('Test Bank')).toBeInTheDocument();
-    expect(screen.getByText('$1,000.50')).toBeInTheDocument();
+    // Non-breaking space might be used by Intl.NumberFormat in some environments, 
+    // but here we are using our custom formatter which just prepends the symbol.
+    expect(screen.getByText('₹1,000.50')).toBeInTheDocument();
   });
 
   it('shows credit utilization for credit cards', () => {
@@ -27,7 +39,7 @@ describe('BalanceCard', () => {
     };
     render(<BalanceCard account={ccAccount} />);
     expect(screen.getByText('50.0%')).toBeInTheDocument();
-    expect(screen.getByText('Limit: $1,000.00')).toBeInTheDocument();
+    expect(screen.getByText('Limit: ₹1,000.00')).toBeInTheDocument();
   });
 
   it('shows "They owe you" for positive lending balance', () => {
@@ -47,6 +59,6 @@ describe('BalanceCard', () => {
       balance: 450,
     };
     render(<BalanceCard account={ccAccount} />);
-    expect(screen.getByText(/Debt: \$450.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/Debt: ₹450.00/i)).toBeInTheDocument();
   });
 });

@@ -62,10 +62,11 @@ public class UserPreferenceIntegrationTest {
         assertEquals(200, getResponse.statusCode());
         JsonNode getNode = mapper.readTree(getResponse.body());
         assertTrue(getNode.get("defaultTransactionType").isNull());
+        assertEquals("₹", getNode.get("currencySymbol").asText());
 
         // 2. Update preferences
         UUID accountId = UUID.randomUUID();
-        String updateJson = String.format("{\"defaultTransactionType\":\"INCOME\", \"defaultAccountId\":\"%s\"}", accountId);
+        String updateJson = String.format("{\"defaultTransactionType\":\"INCOME\", \"defaultAccountId\":\"%s\", \"currencySymbol\":\"$\"}", accountId);
         HttpRequest putRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/preferences"))
                 .header("Authorization", "Bearer " + token)
@@ -78,10 +79,12 @@ public class UserPreferenceIntegrationTest {
         JsonNode putNode = mapper.readTree(putResponse.body());
         assertEquals("INCOME", putNode.get("defaultTransactionType").asText());
         assertEquals(accountId.toString(), putNode.get("defaultAccountId").asText());
+        assertEquals("$", putNode.get("currencySymbol").asText());
 
         // 3. Verify update
         HttpResponse<String> verifyResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
         JsonNode verifyNode = mapper.readTree(verifyResponse.body());
         assertEquals("INCOME", verifyNode.get("defaultTransactionType").asText());
+        assertEquals("$", verifyNode.get("currencySymbol").asText());
     }
 }

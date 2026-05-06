@@ -13,4 +13,5 @@ public class UserPreferenceRequest {
     private TransactionType defaultTransactionType;
     private UUID defaultCategoryId;
     private UUID defaultLabelId;
+    private String currencySymbol;
 }

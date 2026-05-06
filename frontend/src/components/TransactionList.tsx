@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePreferences } from '../context/PreferenceContext';
 import type { Transaction } from '../types/transaction';
 
 interface TransactionListProps {
@@ -7,11 +8,14 @@ interface TransactionListProps {
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({ transactions, loading }) => {
+  const { preferences } = usePreferences();
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
+    const symbol = preferences?.currencySymbol || '₹';
+    const formatted = new Intl.NumberFormat('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(value));
+    return `${value < 0 ? '-' : ''}${symbol}${formatted}`;
   };
 
   const formatDate = (dateString: string) => {

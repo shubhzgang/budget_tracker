@@ -18,7 +18,8 @@ export const PreferenceManager: React.FC = () => {
     defaultAccountId: '',
     defaultTransactionType: '' as TransactionType | '',
     defaultCategoryId: '',
-    defaultLabelId: ''
+    defaultLabelId: '',
+    currencySymbol: '₹'
   });
 
   useEffect(() => {
@@ -47,7 +48,8 @@ export const PreferenceManager: React.FC = () => {
         defaultAccountId: preferences.defaultAccountId || '',
         defaultTransactionType: preferences.defaultTransactionType || '',
         defaultCategoryId: preferences.defaultCategoryId || '',
-        defaultLabelId: preferences.defaultLabelId || ''
+        defaultLabelId: preferences.defaultLabelId || '',
+        currencySymbol: preferences.currencySymbol || '₹'
       });
     }
   }, [preferences]);
@@ -58,7 +60,8 @@ export const PreferenceManager: React.FC = () => {
       defaultAccountId: formData.defaultAccountId || null,
       defaultTransactionType: (formData.defaultTransactionType as TransactionType) || null,
       defaultCategoryId: formData.defaultCategoryId || null,
-      defaultLabelId: formData.defaultLabelId || null
+      defaultLabelId: formData.defaultLabelId || null,
+      currencySymbol: formData.currencySymbol
     });
   };
 
@@ -137,6 +140,19 @@ export const PreferenceManager: React.FC = () => {
                 <option key={lbl.id} value={lbl.id}>{lbl.name}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="pref-currency" className="text-sm font-semibold">Currency Symbol</label>
+            <input
+              id="pref-currency"
+              type="text"
+              value={formData.currencySymbol}
+              onChange={e => setFormData({ ...formData, currencySymbol: e.target.value })}
+              placeholder="e.g. ₹, $, €"
+              className="w-full border border-input bg-background p-2 rounded-md outline-none focus:ring-2 focus:ring-ring"
+              maxLength={5}
+            />
           </div>
         </div>
 

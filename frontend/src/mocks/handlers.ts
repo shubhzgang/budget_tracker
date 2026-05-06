@@ -136,4 +136,24 @@ export const handlers = [
       createdAt: new Date().toISOString()
     });
   }),
+
+  // Mock preferences
+  http.get(`${API_URL}/preferences`, () => {
+    return HttpResponse.json({
+      userId: 'mock-user-id',
+      defaultAccountId: '1',
+      defaultTransactionType: 'EXPENSE',
+      defaultCategoryId: 'c1',
+      defaultLabelId: 'l1',
+      currencySymbol: '₹'
+    });
+  }),
+
+  http.put(`${API_URL}/preferences`, async ({ request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      userId: 'mock-user-id',
+      ...data
+    });
+  }),
 ];

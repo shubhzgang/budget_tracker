@@ -6,6 +6,7 @@ export interface UserPreference {
   defaultTransactionType: TransactionType | null;
   defaultCategoryId: string | null;
   defaultLabelId: string | null;
+  currencySymbol: string;
 }
 
 export interface UserPreferenceRequest {
@@ -13,4 +14,5 @@ export interface UserPreferenceRequest {
   defaultTransactionType: TransactionType | null;
   defaultCategoryId: string | null;
   defaultLabelId: string | null;
+  currencySymbol: string | null;
 }

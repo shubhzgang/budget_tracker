@@ -35,6 +35,7 @@ public class UserPreferenceController {
         updatedPrefs.setDefaultTransactionType(request.getDefaultTransactionType());
         updatedPrefs.setDefaultCategoryId(request.getDefaultCategoryId());
         updatedPrefs.setDefaultLabelId(request.getDefaultLabelId());
+        updatedPrefs.setCurrencySymbol(request.getCurrencySymbol());
 
         UserPreference savedPrefs = userPreferenceService.updatePreferences(userId, updatedPrefs);
         return ResponseEntity.ok(mapToResponse(savedPrefs));
@@ -47,6 +48,7 @@ public class UserPreferenceController {
                 .defaultTransactionType(prefs.getDefaultTransactionType())
                 .defaultCategoryId(prefs.getDefaultCategoryId())
                 .defaultLabelId(prefs.getDefaultLabelId())
+                .currencySymbol(prefs.getCurrencySymbol())
                 .build();
     }
 }
