@@ -180,6 +180,86 @@ public class TransactionIntegrationTest {
         assertTrue(foundOutgoing, "Outgoing transfer transaction not found");
     }
 
+    @Test
+    void testUpdateTransferIntegration() throws Exception {
+        // 1. Setup: Create two accounts
+        String account2Json = "{\"name\":\"Savings\", \"type\":\"BANK\", \"initialBalance\":100.00}";
+        HttpRequest createAccount2Request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/accounts"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(account2Json))
+                .build();
+        String account2Id = mapper.readTree(client.send(createAccount2Request, HttpResponse.BodyHandlers.ofString()).body()).get("id").asText();
+
+        // 2. Perform Transfer (Main Account -> Savings): 50.00
+        // Main: 1000 - 50 = 950
+        // Savings: 100 + 50 = 150
+        String transferJson = String.format("{" +
+                "\"fromAccountId\":\"%s\"," +
+                "\"toAccountId\":\"%s\"," +
+                "\"amount\":50.00," +
+                "\"transactionDate\":\"2026-04-27T12:00:00Z\"," +
+                "\"description\":\"Initial Transfer\"" +
+                "}", accountId, account2Id);
+
+        HttpRequest transferRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions/transfer"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(transferJson))
+                .build();
+
+        HttpResponse<String> transferResponse = client.send(transferRequest, HttpResponse.BodyHandlers.ofString());
+        String sourceTxId = mapper.readTree(transferResponse.body()).get("id").asText();
+
+        verifyAccountBalance(accountId, 950.00);
+        verifyAccountBalance(account2Id, 150.00);
+
+        // 3. Update Transfer: Change amount to 150.00
+        // Expected: 
+        // Main: 950 (current) + 50 (revert) - 150 (new) = 850
+        // Savings: 150 (current) - 50 (revert) + 150 (new) = 250
+        String updateJson = "{" +
+                "\"amount\":150.00," +
+                "\"transactionDate\":\"2026-04-27T12:00:00Z\"," +
+                "\"description\":\"Updated Transfer\"" +
+                "}";
+
+        HttpRequest updateRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions/" + sourceTxId))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .PUT(HttpRequest.BodyPublishers.ofString(updateJson))
+                .build();
+
+        HttpResponse<String> updateResponse = client.send(updateRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, updateResponse.statusCode());
+
+        // 4. Verify balances
+        verifyAccountBalance(accountId, 850.00);
+        verifyAccountBalance(account2Id, 250.00);
+
+        // 5. Verify both transactions in list are updated
+        HttpRequest listRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions?size=100"))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> listResponse = client.send(listRequest, HttpResponse.BodyHandlers.ofString());
+        JsonNode content = mapper.readTree(listResponse.body()).get("content");
+
+        int transferCount = 0;
+        for (JsonNode tx : content) {
+            if (tx.get("type").asText().equals("TRANSFER")) {
+                transferCount++;
+                assertEquals(150.00, tx.get("amount").asDouble(), 0.01);
+                assertEquals("Updated Transfer", tx.get("description").asText());
+            }
+        }
+        assertEquals(2, transferCount, "Should have exactly two transfer records");
+    }
+
     private void verifyBalance(double expected) throws Exception {
         verifyAccountBalance(accountId, expected);
     }
