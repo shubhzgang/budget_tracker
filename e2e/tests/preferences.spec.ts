@@ -1,3 +1,7 @@
+/**
+ * Run these tests with:
+ * make test-e2e
+ */
 import { test, expect } from '@playwright/test';
 
 test.describe('User Preferences', () => {

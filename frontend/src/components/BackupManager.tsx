@@ -89,6 +89,23 @@ export const BackupManager: React.FC = () => {
     }
   };
 
+  const handleDeleteAllData = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete ALL your data? This cannot be undone.");
+    if (!confirmDelete) return;
+
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      await apiClient.delete('/backups/clear');
+      setMessage({ type: 'success', text: 'All data has been deleted.' });
+      fetchHistory();
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete data.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -143,6 +160,14 @@ export const BackupManager: React.FC = () => {
               {isImporting ? 'Restoring...' : 'Restore from Backup'}
             </label>
           </div>
+
+          <button
+            onClick={handleDeleteAllData}
+            disabled={isLoading}
+            className="bg-red-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-600 disabled:opacity-50"
+          >
+            Delete All Data
+          </button>
         </div>
 
         <h4 className="text-md font-bold mb-4">Backup History (on server)</h4>

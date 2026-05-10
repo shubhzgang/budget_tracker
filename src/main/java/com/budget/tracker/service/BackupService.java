@@ -223,6 +223,14 @@ public class BackupService {
         return path.toFile();
     }
 
+    @Transactional
+    public void clearUserData(UUID userId) {
+        transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
+        accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
+        categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
+        labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
+    }
+
     private BackupRecord createRecord(UUID userId, String filename, String format, long size) {
         BackupRecord record = new BackupRecord();
         record.setUserId(userId);

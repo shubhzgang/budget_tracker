@@ -69,4 +69,11 @@ public class BackupController {
 
         return ResponseEntity.ok("Backup imported successfully");
     }
+
+    @DeleteMapping("/clear")
+    public ResponseEntity<Void> clearAllData() {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        backupService.clearUserData(userId);
+        return ResponseEntity.noContent().build();
+    }
 }
