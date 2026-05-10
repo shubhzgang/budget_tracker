@@ -171,3 +171,10 @@
     * **Frontend Fix:**
     * Update transaction forms to prevent submission if the amount is 0.
     * **Visual Feedback:** If a zero amount is entered, the input box should highlight in red and/or provide a subtle vibration effect to notify the user.
+
+    ### 5. Reported Bugs
+    *   **Bug 1: Transaction Search (Transfer Type):** Search on transactions page is not working when the transaction type is `TRANSFER`. Searching for a word in the description works for `EXPENSE` type but fails for `TRANSFER`.
+    *   **Bug 2: SQL Restore Failure:** Restoring from a SQL backup file failed after performing "Delete All Data" and verifying that data was deleted.
+
+    ### 6. Future Enhancements
+    *   **In-Place Restore from Server:** Implement a feature to restore a backup directly from the server-side history table in the UI, eliminating the need to download the file and upload it again.

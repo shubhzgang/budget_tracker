@@ -92,6 +92,13 @@ This file tracks the progress of the Budget Tracker project against the original
 - [ ] **Toast Notifications**:
     - [ ] Implement toast notifications for successful actions (e.g., "Account created", "Transaction saved").
 
+### 🐛 Pending Bug Fixes
+- [ ] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description).
+- [ ] **SQL Restore**: Backup failed to restore after "Delete All Data" operation was performed.
+
+### 🚀 Future Enhancements
+- [ ] **In-Place Restore**: Ability to restore directly from the server-side backup history in the UI without downloading/uploading.
+
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
 - [ ] **Configuration**: Configure CORS policies in Spring Boot and environment variables.
