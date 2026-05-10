@@ -7,12 +7,14 @@ import com.budget.tracker.model.Category;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.model.User;
+import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.CategoryRepository;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
 import com.budget.tracker.service.TransactionService;
+import com.budget.tracker.service.UserPreferenceService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -29,6 +31,7 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "app.data-seeder.enabled", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
 
+    private static final UUID DEMO_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
@@ -36,6 +39,7 @@ public class DataSeeder implements CommandLineRunner {
     private final CategoryService categoryService;
     private final LabelService labelService;
     private final TransactionService transactionService;
+    private final UserPreferenceService userPreferenceService;
 
     public DataSeeder(UserRepository userRepository,
                       AccountRepository accountRepository,
@@ -43,7 +47,8 @@ public class DataSeeder implements CommandLineRunner {
                       PasswordEncoder passwordEncoder,
                       CategoryService categoryService,
                       LabelService labelService,
-                      TransactionService transactionService) {
+                      TransactionService transactionService,
+                      UserPreferenceService userPreferenceService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
@@ -51,6 +56,7 @@ public class DataSeeder implements CommandLineRunner {
         this.categoryService = categoryService;
         this.labelService = labelService;
         this.transactionService = transactionService;
+        this.userPreferenceService = userPreferenceService;
     }
 
     @Override
@@ -63,34 +69,39 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        System.out.println("Seeding demo data...");
+        System.out.println("Seeding demo data for user: " + testEmail + " (ID: " + DEMO_USER_ID + ")...");
 
-        // 1. Create User
+        // 1. Create User with Fixed ID
         User user = new User();
+        user.setId(DEMO_USER_ID);
         user.setEmail(testEmail);
         user.setPasswordHash(passwordEncoder.encode("password"));
         user.setCreatedAt(OffsetDateTime.now());
-        User savedUser = userRepository.save(user);
-        UUID userId = savedUser.getId();
-
+        userRepository.save(user);
+        
         // Set AuthContext for services to work
-        AuthContext.setUserId(userId);
+        AuthContext.setUserId(DEMO_USER_ID);
 
         try {
             // 2. Initialize Defaults
-            categoryService.initializeDefaultCategories(userId);
-            labelService.initializeDefaultLabels(userId);
+            categoryService.initializeDefaultCategories(DEMO_USER_ID);
+            labelService.initializeDefaultLabels(DEMO_USER_ID);
+            
+            // 3. Initialize Preferences
+            UserPreference prefs = new UserPreference();
+            prefs.setCurrencySymbol("₹");
+            userPreferenceService.updatePreferences(DEMO_USER_ID, prefs);
 
-            // 3. Create Accounts
-            Account mainBank = createAccount(userId, "Main Bank", AccountType.BANK, new BigDecimal("2500.00"), null);
-            Account cash = createAccount(userId, "Cash", AccountType.CASH, new BigDecimal("120.50"), null);
-            createAccount(userId, "Visa Credit", AccountType.CREDIT_CARD, new BigDecimal("450.00"), new BigDecimal("5000.00"));
-            createAccount(userId, "Bob (Lend)", AccountType.FRIEND_LENDING, new BigDecimal("50.00"), null);
+            // 4. Create Accounts
+            Account mainBank = createAccount(DEMO_USER_ID, "Main Bank", AccountType.BANK, new BigDecimal("2500.00"), null);
+            Account cash = createAccount(DEMO_USER_ID, "Cash", AccountType.CASH, new BigDecimal("120.50"), null);
+            createAccount(DEMO_USER_ID, "Visa Credit", AccountType.CREDIT_CARD, new BigDecimal("450.00"), new BigDecimal("5000.00"));
+            createAccount(DEMO_USER_ID, "Bob (Lend)", AccountType.FRIEND_LENDING, new BigDecimal("50.00"), null);
 
-            // 4. Create Transactions
+            // 5. Create Transactions
 
             // Find a category for Food
-            Category foodCategory = categoryRepository.findAllByUserId(userId).stream()
+            Category foodCategory = categoryRepository.findAllByUserId(DEMO_USER_ID).stream()
                     .filter(c -> c.getName().equals("Food"))
                     .findFirst()
                     .orElse(null);
