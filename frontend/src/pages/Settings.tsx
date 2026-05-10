@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { CategoryManager } from '../components/CategoryManager';
 import { LabelManager } from '../components/LabelManager';
 import { PreferenceManager } from '../components/PreferenceManager';
+import { BackupManager } from '../components/BackupManager';
 
-type SettingsTab = 'categories' | 'labels' | 'defaults';
+type SettingsTab = 'categories' | 'labels' | 'defaults' | 'data';
 
 export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('categories');
@@ -43,12 +44,23 @@ export const Settings: React.FC = () => {
         >
           Defaults
         </button>
+        <button
+          onClick={() => setActiveTab('data')}
+          className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 -mb-[1px] whitespace-nowrap ${
+            activeTab === 'data'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Data & Backup
+        </button>
       </div>
 
       <div className="animate-in fade-in duration-300">
         {activeTab === 'categories' && <CategoryManager />}
         {activeTab === 'labels' && <LabelManager />}
         {activeTab === 'defaults' && <PreferenceManager />}
+        {activeTab === 'data' && <BackupManager />}
       </div>
     </div>
   );

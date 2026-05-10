@@ -35,4 +35,12 @@ public class UserPreference extends BaseEntity {
     @Column(name = "currency_symbol", length = 10)
     private String currencySymbol = "₹";
 
+    @Column(name = "auto_backup_enabled")
+    private Boolean autoBackupEnabled = false;
+
+    @Column(name = "auto_backup_frequency")
+    private String autoBackupFrequency;
+
+    @Column(name = "auto_backup_format")
+    private String autoBackupFormat;
 }

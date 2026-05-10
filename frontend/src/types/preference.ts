@@ -7,6 +7,9 @@ export interface UserPreference {
   defaultCategoryId: string | null;
   defaultLabelId: string | null;
   currencySymbol: string;
+  autoBackupEnabled: boolean;
+  autoBackupFrequency: string | null;
+  autoBackupFormat: string | null;
 }
 
 export interface UserPreferenceRequest {
@@ -15,4 +18,7 @@ export interface UserPreferenceRequest {
   defaultCategoryId: string | null;
   defaultLabelId: string | null;
   currencySymbol: string | null;
+  autoBackupEnabled: boolean | null;
+  autoBackupFrequency: string | null;
+  autoBackupFormat: string | null;
 }

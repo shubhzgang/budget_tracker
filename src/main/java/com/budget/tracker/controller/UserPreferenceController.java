@@ -36,6 +36,9 @@ public class UserPreferenceController {
         updatedPrefs.setDefaultCategoryId(request.getDefaultCategoryId());
         updatedPrefs.setDefaultLabelId(request.getDefaultLabelId());
         updatedPrefs.setCurrencySymbol(request.getCurrencySymbol());
+        updatedPrefs.setAutoBackupEnabled(request.getAutoBackupEnabled());
+        updatedPrefs.setAutoBackupFrequency(request.getAutoBackupFrequency());
+        updatedPrefs.setAutoBackupFormat(request.getAutoBackupFormat());
 
         UserPreference savedPrefs = userPreferenceService.updatePreferences(userId, updatedPrefs);
         return ResponseEntity.ok(mapToResponse(savedPrefs));
@@ -49,6 +52,9 @@ public class UserPreferenceController {
                 .defaultCategoryId(prefs.getDefaultCategoryId())
                 .defaultLabelId(prefs.getDefaultLabelId())
                 .currencySymbol(prefs.getCurrencySymbol())
+                .autoBackupEnabled(prefs.getAutoBackupEnabled())
+                .autoBackupFrequency(prefs.getAutoBackupFrequency())
+                .autoBackupFormat(prefs.getAutoBackupFormat())
                 .build();
     }
 }

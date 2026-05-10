@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql:10.10.0'
     implementation 'com.github.f4b6a3:uuid-creator:6.0.0'
+    implementation 'com.opencsv:opencsv:5.9'
     implementation 'com.h2database:h2'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'

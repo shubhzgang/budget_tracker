@@ -17,4 +17,7 @@ public class UserPreferenceResponse {
     private UUID defaultCategoryId;
     private UUID defaultLabelId;
     private String currencySymbol;
+    private Boolean autoBackupEnabled;
+    private String autoBackupFrequency;
+    private String autoBackupFormat;
 }

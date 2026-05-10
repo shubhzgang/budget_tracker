@@ -1,3 +1,6 @@
+/**
+ * NOTE: Use 'make test-int' to run integration tests and not gradle.
+ */
 package com.budget.tracker.integration;
 
 import org.junit.jupiter.api.Tag;

@@ -61,6 +61,34 @@ CREATE TABLE transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
+-- User Preferences Table
+CREATE TABLE user_preferences (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL UNIQUE,
+    default_account_id UUID,
+    default_transaction_type VARCHAR(20),
+    default_category_id UUID,
+    default_label_id UUID,
+    currency_symbol VARCHAR(10) DEFAULT '₹',
+    auto_backup_enabled BOOLEAN DEFAULT FALSE,
+    auto_backup_frequency VARCHAR(20),
+    auto_backup_format VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_preferences_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Backup Records Table
+CREATE TABLE backup_records (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    format VARCHAR(20) NOT NULL,
+    size_bytes BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 -- Indexes for performance
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX idx_labels_user_id ON labels(user_id);
@@ -68,3 +96,5 @@ CREATE INDEX idx_categories_user_id ON categories(user_id);
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_account_id ON transactions(account_id);
 CREATE INDEX idx_transactions_date ON transactions(transaction_date);
+CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
+CREATE INDEX idx_backup_records_user_id ON backup_records(user_id);

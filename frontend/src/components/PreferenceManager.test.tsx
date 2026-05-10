@@ -15,7 +15,10 @@ const mockPreferences = {
   defaultTransactionType: 'EXPENSE',
   defaultCategoryId: 'c1',
   defaultLabelId: 'l1',
-  currencySymbol: '₹'
+  currencySymbol: '₹',
+  autoBackupEnabled: true,
+  autoBackupFrequency: 'WEEKLY',
+  autoBackupFormat: 'CSV'
 };
 
 vi.mock('../context/PreferenceContext', () => ({
@@ -44,6 +47,9 @@ describe('PreferenceManager', () => {
       expect(screen.getByLabelText(/Default Account/i)).toHaveValue('a1');
       expect(screen.getByLabelText(/Default Type/i)).toHaveValue('EXPENSE');
       expect(screen.getByLabelText(/Currency Symbol/i)).toHaveValue('₹');
+      expect(screen.getByLabelText(/Enable Automatic Backups/i)).toBeChecked();
+      expect(screen.getByLabelText(/Frequency/i)).toHaveValue('WEEKLY');
+      expect(screen.getByLabelText(/Format/i)).toHaveValue('CSV');
     });
   });
 
@@ -56,11 +62,14 @@ describe('PreferenceManager', () => {
 
     fireEvent.change(screen.getByLabelText(/Default Type/i), { target: { value: 'INCOME' } });
     fireEvent.change(screen.getByLabelText(/Currency Symbol/i), { target: { value: '$' } });
+    fireEvent.click(screen.getByLabelText(/Enable Automatic Backups/i)); // Toggle to false
+    
     fireEvent.click(screen.getByRole('button', { name: /Save Preferences/i }));
 
     expect(mockUpdatePreferences).toHaveBeenCalledWith(expect.objectContaining({
       defaultTransactionType: 'INCOME',
-      currencySymbol: '$'
+      currencySymbol: '$',
+      autoBackupEnabled: false
     }));
   });
 });

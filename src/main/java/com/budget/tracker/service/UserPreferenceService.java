@@ -40,6 +40,9 @@ public class UserPreferenceService {
         existingPrefs.setDefaultCategoryId(updatedPrefs.getDefaultCategoryId());
         existingPrefs.setDefaultLabelId(updatedPrefs.getDefaultLabelId());
         existingPrefs.setCurrencySymbol(updatedPrefs.getCurrencySymbol());
+        existingPrefs.setAutoBackupEnabled(updatedPrefs.getAutoBackupEnabled());
+        existingPrefs.setAutoBackupFrequency(updatedPrefs.getAutoBackupFrequency());
+        existingPrefs.setAutoBackupFormat(updatedPrefs.getAutoBackupFormat());
 
         return userPreferenceRepository.save(existingPrefs);
     }

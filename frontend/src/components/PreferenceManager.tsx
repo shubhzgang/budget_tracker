@@ -19,7 +19,10 @@ export const PreferenceManager: React.FC = () => {
     defaultTransactionType: '' as TransactionType | '',
     defaultCategoryId: '',
     defaultLabelId: '',
-    currencySymbol: '₹'
+    currencySymbol: '₹',
+    autoBackupEnabled: false,
+    autoBackupFrequency: 'DAILY',
+    autoBackupFormat: 'SQL'
   });
 
   useEffect(() => {
@@ -49,7 +52,10 @@ export const PreferenceManager: React.FC = () => {
         defaultTransactionType: preferences.defaultTransactionType || '',
         defaultCategoryId: preferences.defaultCategoryId || '',
         defaultLabelId: preferences.defaultLabelId || '',
-        currencySymbol: preferences.currencySymbol || '₹'
+        currencySymbol: preferences.currencySymbol || '₹',
+        autoBackupEnabled: preferences.autoBackupEnabled || false,
+        autoBackupFrequency: preferences.autoBackupFrequency || 'DAILY',
+        autoBackupFormat: preferences.autoBackupFormat || 'SQL'
       });
     }
   }, [preferences]);
@@ -61,7 +67,10 @@ export const PreferenceManager: React.FC = () => {
       defaultTransactionType: (formData.defaultTransactionType as TransactionType) || null,
       defaultCategoryId: formData.defaultCategoryId || null,
       defaultLabelId: formData.defaultLabelId || null,
-      currencySymbol: formData.currencySymbol
+      currencySymbol: formData.currencySymbol,
+      autoBackupEnabled: formData.autoBackupEnabled,
+      autoBackupFrequency: formData.autoBackupFrequency,
+      autoBackupFormat: formData.autoBackupFormat
     });
   };
 
@@ -153,6 +162,58 @@ export const PreferenceManager: React.FC = () => {
               className="w-full border border-input bg-background p-2 rounded-md outline-none focus:ring-2 focus:ring-ring"
               maxLength={5}
             />
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <h3 className="text-lg font-bold mb-1">Automatic Backups</h3>
+          <p className="text-sm text-muted-foreground mb-6">
+            Schedule automatic data backups to the server.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center space-x-2">
+              <input
+                id="auto-backup"
+                type="checkbox"
+                checked={formData.autoBackupEnabled}
+                onChange={e => setFormData({ ...formData, autoBackupEnabled: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="auto-backup" className="text-sm font-semibold">Enable Automatic Backups</label>
+            </div>
+
+            {formData.autoBackupEnabled && (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="backup-frequency" className="text-sm font-semibold">Frequency</label>
+                  <select
+                    id="backup-frequency"
+                    value={formData.autoBackupFrequency}
+                    onChange={e => setFormData({ ...formData, autoBackupFrequency: e.target.value })}
+                    className="w-full border border-input bg-background p-2 rounded-md outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="backup-format" className="text-sm font-semibold">Format</label>
+                  <select
+                    id="backup-format"
+                    value={formData.autoBackupFormat}
+                    onChange={e => setFormData({ ...formData, autoBackupFormat: e.target.value })}
+                    className="w-full border border-input bg-background p-2 rounded-md outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="SQL">SQL (Full Restore)</option>
+                    <option value="CSV">CSV (Transaction Export)</option>
+                    <option value="BOTH">Both</option>
+                  </select>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
