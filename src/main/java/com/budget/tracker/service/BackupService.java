@@ -69,15 +69,14 @@ public class BackupService {
         // Transactions
         List<Transaction> transactions = transactionRepository.findAllByUserId(userId);
         for (Transaction transaction : transactions) {
-            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, label_id, type, amount, description, transaction_date, linked_transfer_id, linked_account_id, is_incoming_transfer, created_at) VALUES ('%s', '%s', '%s', %s, %s, '%s', %s, '%s', '%s', %s, %s, %s, '%s');\n",
+            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, label_id, type, amount, description, transaction_date, to_account_id, created_at) VALUES ('%s', '%s', '%s', %s, %s, '%s', %s, '%s', '%s', %s, '%s');\n",
                     transaction.getId(), userId, transaction.getAccount().getId(),
                     transaction.getCategory() != null ? "'" + transaction.getCategory().getId() + "'" : "NULL",
                     transaction.getLabel() != null ? "'" + transaction.getLabel().getId() + "'" : "NULL",
                     transaction.getType(), transaction.getAmount(), escapeSql(transaction.getDescription()),
                     transaction.getTransactionDate(),
-                    transaction.getLinkedTransferId() != null ? "'" + transaction.getLinkedTransferId() + "'" : "NULL",
-                    transaction.getLinkedAccount() != null ? "'" + transaction.getLinkedAccount().getId() + "'" : "NULL",
-                    transaction.getIsIncomingTransfer(), transaction.getCreatedAt()));
+                    transaction.getToAccount() != null ? "'" + transaction.getToAccount().getId() + "'" : "NULL",
+                    transaction.getCreatedAt()));
         }
 
         Files.writeString(path, sql.toString());
@@ -120,10 +119,18 @@ public class BackupService {
     @Transactional
     public void importFromSql(UUID userId, InputStream inputStream) throws IOException {
         String content = new String(inputStream.readAllBytes());
+
+        // Extract original user ID from header comment (e.g. "-- Budget Tracker Backup for User: xxx")
+        String originalUserId = null;
+        for (String line : content.split("\n")) {
+            if (line.startsWith("-- Budget Tracker Backup for User:")) {
+                originalUserId = line.substring(line.lastIndexOf(":") + 1).trim();
+                break;
+            }
+        }
+
         String[] statements = content.split(";\n");
 
-        // Simple cleanup for the user before import - maybe risky, but for full restore it's often needed.
-        // For safety, we only delete if the SQL contains INSERT statements for this user.
         if (content.contains("INSERT INTO")) {
             transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
             accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
@@ -133,6 +140,9 @@ public class BackupService {
 
         for (String statement : statements) {
             if (statement.trim().isEmpty()) continue;
+            if (originalUserId != null) {
+                statement = statement.replace(originalUserId, userId.toString());
+            }
             entityManager.createNativeQuery(statement).executeUpdate();
         }
     }

@@ -6,7 +6,6 @@ import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.TransactionRepository;
-import com.github.f4b6a3.uuid.UuidCreator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -78,7 +77,7 @@ public class TransactionService {
     }
 
     public List<Transaction> getTransactionsForAccount(UUID accountId) {
-        return transactionRepository.findAllByAccountIdAndUserId(accountId, getCurrentUserId());
+        return transactionRepository.findAccountTransactions(accountId, getCurrentUserId());
     }
 
     @Transactional
@@ -88,32 +87,18 @@ public class TransactionService {
         TransactionType oldType = existing.getType();
         BigDecimal oldAmount = existing.getAmount();
 
+       Account toAccountForApply = transactionDetails.getToAccount() != null ? transactionDetails.getToAccount() : existing.getToAccount();
         if (oldType == TransactionType.TRANSFER) {
-            if (existing.getLinkedTransferId() != null) {
-                Transaction linked = transactionRepository.findById(existing.getLinkedTransferId())
-                        .orElseThrow(() -> new RuntimeException("Linked transaction not found"));
-
-                // Revert old transfer
-                updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
-                updateBalance(linked.getAccount().getId(), userId, linked.getType(), linked.getAmount(), BalanceAction.REVERT, true);
-
-                // Apply new transfer
-                BigDecimal newAmount = transactionDetails.getAmount();
-                updateBalance(existing.getAccount().getId(), userId, oldType, newAmount, BalanceAction.APPLY, false);
-                updateBalance(linked.getAccount().getId(), userId, linked.getType(), newAmount, BalanceAction.APPLY, true);
-
-                linked.setAmount(newAmount);
-                linked.setDescription(transactionDetails.getDescription());
-                linked.setTransactionDate(transactionDetails.getTransactionDate());
-                transactionRepository.save(linked);
-            } else {
-                updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
-                updateBalance(existing.getAccount().getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, false);
+            updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
+            if (existing.getToAccount() != null) {
+                updateBalance(existing.getToAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, true);
+            }
+            updateBalance(existing.getAccount().getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, false);
+            if (toAccountForApply != null) {
+                updateBalance(toAccountForApply.getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, true);
             }
         } else {
-            // Revert old
             updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
-            // Apply new
             updateBalance(existing.getAccount().getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, false);
         }
 
@@ -122,6 +107,9 @@ public class TransactionService {
         existing.setTransactionDate(transactionDetails.getTransactionDate());
         existing.setCategory(transactionDetails.getCategory());
         existing.setLabel(transactionDetails.getLabel());
+        if (transactionDetails.getToAccount() != null) {
+            existing.setToAccount(transactionDetails.getToAccount());
+        }
         return transactionRepository.save(existing);
     }
 
@@ -132,15 +120,9 @@ public class TransactionService {
         TransactionType type = transaction.getType();
 
         if (type == TransactionType.TRANSFER) {
-            if (transaction.getLinkedTransferId() != null) {
-                Transaction linked = transactionRepository.findById(transaction.getLinkedTransferId()).orElse(null);
-                updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
-                if (linked != null) {
-                    updateBalance(linked.getAccount().getId(), userId, linked.getType(), linked.getAmount(), BalanceAction.REVERT, true);
-                    transactionRepository.delete(linked);
-                }
-            } else {
-                updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
+            updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
+            if (transaction.getToAccount() != null) {
+                updateBalance(transaction.getToAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, true);
             }
         } else {
             updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
@@ -149,19 +131,19 @@ public class TransactionService {
     }
 
     @Transactional
-    public Transaction createTransfer(Transaction sourceTransaction, Account toAccount) {
+    public Transaction createTransfer(Transaction transaction, Account toAccount) {
         UUID userId = getCurrentUserId();
-        sourceTransaction.setUserId(userId);
-        if (sourceTransaction.getAmount() == null) {
+        transaction.setUserId(userId);
+        if (transaction.getAmount() == null) {
             throw new IllegalArgumentException("Transfer amount must not be null");
         }
 
-        TransactionType type = sourceTransaction.getType();
+        TransactionType type = transaction.getType();
         if (type != TransactionType.TRANSFER) {
             throw new IllegalArgumentException("Transaction type must be TRANSFER for transfer");
         }
 
-        Account fromAccount = sourceTransaction.getAccount();
+        Account fromAccount = transaction.getAccount();
         if (fromAccount.getId().equals(toAccount.getId())) {
             throw new IllegalArgumentException("Source and destination accounts must be different");
         }
@@ -170,47 +152,17 @@ public class TransactionService {
             throw new IllegalArgumentException("Source account must belong to the user");
         }
 
-        // Validate dest account belongs to user
         accountRepository.findById(toAccount.getId())
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new RuntimeException("Destination account not found or access denied"));
 
-        // Create paired transaction
-        if (sourceTransaction.getId() == null) {
-            sourceTransaction.setId(UuidCreator.getTimeOrderedEpoch());
-        }
+        transaction.setToAccount(toAccount);
+        transactionRepository.save(transaction);
 
-        Transaction destTransaction = new Transaction();
-        destTransaction.setId(UuidCreator.getTimeOrderedEpoch());
-        destTransaction.setType(type);
-        destTransaction.setAmount(sourceTransaction.getAmount());
-        destTransaction.setDescription(sourceTransaction.getDescription());
-        destTransaction.setTransactionDate(sourceTransaction.getTransactionDate());
-        destTransaction.setAccount(toAccount);
-        destTransaction.setUserId(userId);
-        destTransaction.setCategory(sourceTransaction.getCategory());
+        updateBalance(fromAccount.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
+        updateBalance(toAccount.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, true);
 
-        // Set transfer metadata
-        sourceTransaction.setLinkedAccount(toAccount);
-        sourceTransaction.setIsIncomingTransfer(false);
-        destTransaction.setLinkedAccount(fromAccount);
-        destTransaction.setIsIncomingTransfer(true);
-
-        // First save without linked IDs to satisfy immediate foreign key constraint
-        transactionRepository.save(sourceTransaction);
-        transactionRepository.save(destTransaction);
-
-        // Now link them
-        sourceTransaction.setLinkedTransferId(destTransaction.getId());
-        destTransaction.setLinkedTransferId(sourceTransaction.getId());
-
-        Transaction savedSource = transactionRepository.save(sourceTransaction);
-        transactionRepository.save(destTransaction);
-
-        updateBalance(fromAccount.getId(), userId, type, sourceTransaction.getAmount(), BalanceAction.APPLY, false);
-        updateBalance(toAccount.getId(), userId, type, sourceTransaction.getAmount(), BalanceAction.APPLY, true);
-
-        return savedSource;
+        return transaction;
     }
 
     private void updateBalance(UUID accountId, UUID userId, TransactionType type, BigDecimal amount, BalanceAction action, boolean isDestinationAccount) {

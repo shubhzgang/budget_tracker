@@ -16,7 +16,9 @@ import java.util.UUID;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
     List<Transaction> findAllByUserId(UUID userId);
-    List<Transaction> findAllByAccountIdAndUserId(UUID accountId, UUID userId);
+
+    @Query("SELECT t FROM Transaction t WHERE (t.account.id = :accountId OR (t.toAccount.id = :accountId AND t.type = com.budget.tracker.model.TransactionType.TRANSFER)) AND t.userId = :userId")
+    List<Transaction> findAccountTransactions(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
 
     @Query("SELECT t FROM Transaction t LEFT JOIN t.category c LEFT JOIN t.label l WHERE t.userId = :userId " +
             "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +

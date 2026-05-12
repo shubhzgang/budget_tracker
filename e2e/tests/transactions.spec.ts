@@ -89,11 +89,9 @@ test.describe('Transaction Management', () => {
     await expect(sourceCard.getByText('₹350.00')).toBeVisible();
     await expect(destCard.getByText('₹150.00')).toBeVisible();
 
-    // 5. Verify Transaction List Visuals
+    // 5. Verify Transaction List Visuals — single row
     await expect(page.getByText('Transfer to Dest Acc')).toBeVisible();
     await expect(page.getByText('-₹150.00')).toBeVisible();
-    await expect(page.getByText('Transfer from Source Acc')).toBeVisible();
-    await expect(page.getByText('+₹150.00')).toBeVisible();
   });
 
   test('should allow transferring from Cash to Bank', async ({ page }) => {
@@ -130,10 +128,9 @@ test.describe('Transaction Management', () => {
     await expect(cashCard.getByText('₹150.00')).toBeVisible();
     await expect(bankCard.getByText('₹550.00')).toBeVisible();
 
-    // 5. Verify Transaction List
+    // 5. Verify Transaction List — single row
     await expect(page.getByText('Transfer to My Bank')).toBeVisible();
-    await expect(page.getByText('Transfer from My Cash')).toBeVisible();
-    await expect(page.getByText('+₹50.00')).toBeVisible();
+    await expect(page.getByText('-₹50.00')).toBeVisible();
   });
 
   test('should correctly handle bank to credit card transfer (paying bill)', async ({ page }) => {

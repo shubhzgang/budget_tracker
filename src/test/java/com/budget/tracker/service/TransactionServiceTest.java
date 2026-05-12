@@ -243,28 +243,19 @@ class TransactionServiceTest {
 
     @Test
     void updateTransaction_transferType_shouldUpdateBothBalances() {
-        UUID linkedId = UUID.randomUUID();
-        Transaction linked = new Transaction();
-        linked.setId(linkedId);
-        linked.setAmount(new BigDecimal("100"));
-        linked.setType(TransactionType.TRANSFER);
-        linked.setUserId(userId);
-        linked.setAccount(destAccount);
-        linked.setLinkedTransferId(transactionId);
-
         Transaction existing = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         existing.setId(transactionId);
         existing.setAmount(new BigDecimal("100"));
-        existing.setLinkedTransferId(linkedId);
+        existing.setToAccount(destAccount);
 
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
-        when(transactionRepository.findById(linkedId)).thenReturn(Optional.of(linked));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Transaction details = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         details.setAmount(new BigDecimal("200"));
+        details.setToAccount(destAccount);
 
         transactionService.updateTransaction(transactionId, details);
 
@@ -299,23 +290,13 @@ class TransactionServiceTest {
     }
 
     @Test
-    void deleteTransaction_transferWithLinked_shouldReverseBothBalances() {
-        UUID linkedId = UUID.randomUUID();
-        Transaction linked = new Transaction();
-        linked.setId(linkedId);
-        linked.setAmount(new BigDecimal("100"));
-        linked.setType(TransactionType.TRANSFER);
-        linked.setUserId(userId);
-        linked.setAccount(destAccount);
-        linked.setLinkedTransferId(transactionId);
-
+    void deleteTransaction_transfer_shouldReverseBothBalances() {
         Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
         tx.setId(transactionId);
         tx.setAmount(new BigDecimal("100"));
-        tx.setLinkedTransferId(linkedId);
+        tx.setToAccount(destAccount);
 
         when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
-        when(transactionRepository.findById(linkedId)).thenReturn(Optional.of(linked));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
 
@@ -330,7 +311,6 @@ class TransactionServiceTest {
                 acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("400")) == 0
         ));
         verify(transactionRepository).delete(tx);
-        verify(transactionRepository).delete(linked);
     }
 
     // -- createTransfer --
@@ -348,8 +328,8 @@ class TransactionServiceTest {
         Transaction result = transactionService.createTransfer(sourceTx, destAccount);
 
         assertNotNull(result);
-        assertNotNull(result.getLinkedTransferId());
-        verify(transactionRepository, times(4)).save(any(Transaction.class));
+        assertEquals(destAccount, result.getToAccount());
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
         // Source: 1000 - 100 = 900.
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0
@@ -376,7 +356,7 @@ class TransactionServiceTest {
     @Test
     void getTransactionsForAccount_shouldReturnFiltered() {
         Transaction tx = buildTransaction(TransactionType.EXPENSE, sourceAccount);
-        when(transactionRepository.findAllByAccountIdAndUserId(accountId, userId)).thenReturn(List.of(tx));
+        when(transactionRepository.findAccountTransactions(accountId, userId)).thenReturn(List.of(tx));
 
         List<Transaction> result = transactionService.getTransactionsForAccount(accountId);
 

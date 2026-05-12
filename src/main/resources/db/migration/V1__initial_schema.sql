@@ -55,9 +55,7 @@ CREATE TABLE transactions (
     amount DECIMAL(19, 4) NOT NULL,
     description TEXT,
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    linked_transfer_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
-    linked_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
-    is_incoming_transfer BOOLEAN,
+    to_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -95,6 +93,7 @@ CREATE INDEX idx_labels_user_id ON labels(user_id);
 CREATE INDEX idx_categories_user_id ON categories(user_id);
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_account_id ON transactions(account_id);
+CREATE INDEX idx_transactions_to_account_id ON transactions(to_account_id);
 CREATE INDEX idx_transactions_date ON transactions(transaction_date);
 CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
 CREATE INDEX idx_backup_records_user_id ON backup_records(user_id);

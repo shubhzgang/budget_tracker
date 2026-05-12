@@ -136,4 +136,48 @@ class TransactionRepositoryTest {
 
         assertThat(user2Transactions).isEmpty();
     }
+
+    @Test
+    void shouldFindAccountTransactionsIncludingTransferDestination() {
+        UUID userId = UUID.randomUUID();
+
+        Account fromAccount = new Account();
+        fromAccount.setName("From Account");
+        fromAccount.setType(AccountType.BANK);
+        fromAccount.setInitialBalance(BigDecimal.valueOf(1000.00));
+        fromAccount.setBalance(BigDecimal.valueOf(1000.00));
+        fromAccount.setUserId(userId);
+        accountRepository.save(fromAccount);
+
+        Account toAccount = new Account();
+        toAccount.setName("To Account");
+        toAccount.setType(AccountType.BANK);
+        toAccount.setInitialBalance(BigDecimal.valueOf(500.00));
+        toAccount.setBalance(BigDecimal.valueOf(500.00));
+        toAccount.setUserId(userId);
+        accountRepository.save(toAccount);
+
+        Transaction transfer = new Transaction();
+        transfer.setAmount(BigDecimal.valueOf(50.00));
+        transfer.setTransactionDate(OffsetDateTime.now());
+        transfer.setDescription("Transfer");
+        transfer.setType(TransactionType.TRANSFER);
+        transfer.setAccount(fromAccount);
+        transfer.setToAccount(toAccount);
+        transfer.setUserId(userId);
+        transactionRepository.save(transfer);
+
+        Transaction expense = new Transaction();
+        expense.setAmount(BigDecimal.valueOf(20.00));
+        expense.setTransactionDate(OffsetDateTime.now());
+        expense.setDescription("Expense");
+        expense.setType(TransactionType.EXPENSE);
+        expense.setAccount(toAccount);
+        expense.setUserId(userId);
+        transactionRepository.save(expense);
+
+        List<Transaction> toAccountTx = transactionRepository.findAccountTransactions(toAccount.getId(), userId);
+
+        assertThat(toAccountTx).hasSize(2);
+    }
 }
