@@ -12,9 +12,26 @@ test-int: test-int-build test-int-up
 	fi; \
 	exit $$EXIT_CODE
 
-# Build the application jar
-test-int-build:
-	./gradlew bootJar
+# Verify Java 21 is installed
+check-java:
+	@if ! command -v java >/dev/null 2>&1; then \
+		echo "Error: java is not installed or not in PATH."; \
+		echo "This project requires Java 21. Install it."; \
+		exit 1; \
+	fi
+	@JAVA_VER=$$(java -version 2>&1 | head -1 | grep -oP '"\K[^"]+'); \
+	if [[ "$$JAVA_VER" != 21* ]]; then \
+		echo "Error: Java version $$JAVA_VER detected."; \
+		echo "This project requires Java 21."; \
+		exit 1; \
+	fi
+
+# Build the application jar locally
+build: check-java
+	./gradlew bootJar -x test
+
+# Build the application jar (alias for test-int compatibility)
+test-int-build: build
 
 # Start the services
 test-int-up:
@@ -55,7 +72,7 @@ java-test:
 OS_NAME := $(shell uname -s)
 
 # Main target: Run the full E2E test suite
-test-e2e:
+test-e2e: build
 	@echo "Starting full stack for E2E tests..."
 	docker compose up -d --build
 	@echo "Waiting for frontend and backend to be healthy..."
@@ -82,7 +99,7 @@ test-e2e:
 	exit $$EXIT_CODE
 
 # Launch the entire stack for local use
-run-stack:
+run-stack: build
 	@echo "Launching Budget Tracker stack..."
 	docker compose up --build
 
@@ -92,7 +109,7 @@ stop-stack:
 	docker compose down -v
 
 # Launch the stack with a pre-seeded test account
-run-demo:
+run-demo: build
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
