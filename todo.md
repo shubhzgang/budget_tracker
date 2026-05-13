@@ -99,6 +99,10 @@ This file tracks the progress of the Budget Tracker project against the original
 
 ### 🚀 Future Enhancements
 - [ ] **In-Place Restore**: Ability to restore directly from the server-side backup history in the UI without downloading/uploading.
+- [ ] When I search with type income on all transactions page, I want to see these transfer transactions also because the amount is being added to an account. Also, add
+  filter to search transactions by account which also returns these kind of incoming transfers. On the UI page, I want to see the description instead of the generic    
+  "Transfer to account" text. For transfer types, in the UI show arrow from one account to another where just the main account is shown. Read @CLAUDE_CONTEXT.md file   
+  for basic understanding of project.
 
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
