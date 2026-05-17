@@ -40,6 +40,8 @@ class BackupServiceTest {
     @Mock
     private BackupRecordRepository backupRecordRepository;
     @Mock
+    private UserPreferenceRepository userPreferenceRepository;
+    @Mock
     private EntityManager entityManager;
 
     private BackupService backupService;
@@ -57,6 +59,7 @@ class BackupServiceTest {
                 labelRepository,
                 transactionRepository,
                 backupRecordRepository,
+                userPreferenceRepository,
                 entityManager
         );
         userId = UUID.randomUUID();

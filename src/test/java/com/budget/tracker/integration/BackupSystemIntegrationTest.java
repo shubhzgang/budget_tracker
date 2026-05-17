@@ -3,12 +3,16 @@
  */
 package com.budget.tracker.integration;
 
-import com.budget.tracker.model.Account;
-import com.budget.tracker.model.AccountType;
 import com.budget.tracker.model.BackupRecord;
+import com.budget.tracker.repository.AccountRepository;
+import com.budget.tracker.repository.CategoryRepository;
+import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.UserDetailsImpl;
-import com.budget.tracker.service.AccountService;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.budget.tracker.service.CategoryService;
+import com.budget.tracker.service.LabelService;
+import com.budget.tracker.service.TransactionService;
+import com.budget.tracker.service.UserPreferenceService;
+import com.budget.tracker.util.DataSeeder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,15 +20,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,18 +46,44 @@ public class BackupSystemIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private AccountService accountService;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
-    private UUID userId;
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AccountRepository accountRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CategoryService categoryService;
+
+    @Autowired
+    private LabelService labelService;
+
+    @Autowired
+    private TransactionService transactionService;
+
+    @Autowired
+    private UserPreferenceService userPreferenceService;
+
+    private static final UUID DEMO_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final String DEMO_EMAIL = "test@example.com";
     private UserDetailsImpl userDetails;
 
     @BeforeEach
-    void setUp() {
-        userId = UUID.randomUUID();
-        userDetails = new UserDetailsImpl(userId, "integration@test.com", "password");
+    void setUp() throws Exception {
+        // Ensure user doesn't exist to allow seeder to run
+        if (userRepository.existsByEmail(DEMO_EMAIL)) {
+            userRepository.deleteById(DEMO_USER_ID);
+        }
+
+        userDetails = new UserDetailsImpl(DEMO_USER_ID, DEMO_EMAIL, "password");
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
@@ -61,28 +91,40 @@ public class BackupSystemIntegrationTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        if (userRepository.existsByEmail(DEMO_EMAIL)) {
+            userRepository.deleteById(DEMO_USER_ID);
+        }
     }
 
     @Test
     void testFullBackupAndRestoreFlow() throws Exception {
-        // 1. Create some data
-        Account account = new Account();
-        account.setName("Integration Savings");
-        account.setType(AccountType.BANK);
-        account.setInitialBalance(new BigDecimal("5000"));
-        
-        mockMvc.perform(post("/api/v1/accounts")
-                .with(user(userDetails))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(account)))
-                .andExpect(status().isOk());
+        // 1. Seed Data using DataSeeder
+        DataSeeder seeder = new DataSeeder(
+                userRepository,
+                accountRepository,
+                categoryRepository,
+                passwordEncoder,
+                categoryService,
+                labelService,
+                transactionService,
+                userPreferenceService
+        );
+        seeder.run();
 
-        // Verify data exists
-        MvcResult listResultBefore = mockMvc.perform(get("/api/v1/accounts")
+        // Verify data exists (Seeder creates 4 accounts and 2 transactions)
+        MvcResult accountsBefore = mockMvc.perform(get("/api/v1/accounts")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertTrue(listResultBefore.getResponse().getContentAsString().contains("Integration Savings"));
+        assertTrue(accountsBefore.getResponse().getContentAsString().contains("Main Bank"));
+        assertTrue(accountsBefore.getResponse().getContentAsString().contains("Bob (Lend)"));
+
+        MvcResult transactionsBefore = mockMvc.perform(get("/api/v1/transactions")
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertTrue(transactionsBefore.getResponse().getContentAsString().contains("Lunch"));
+        assertTrue(transactionsBefore.getResponse().getContentAsString().contains("ATM Withdrawal"));
 
         // 2. Export to SQL
         MvcResult exportResult = mockMvc.perform(post("/api/v1/backups/export")
@@ -103,26 +145,26 @@ public class BackupSystemIntegrationTest {
         
         byte[] backupContent = downloadResult.getResponse().getContentAsByteArray();
         assertTrue(backupContent.length > 0);
-        String sqlContent = new String(backupContent);
-        assertTrue(sqlContent.contains("Integration Savings"));
+        String sqlContent = new String(backupContent, StandardCharsets.UTF_8);
+        assertTrue(sqlContent.contains("Main Bank"));
+        assertTrue(sqlContent.contains("Lunch"));
+        assertTrue(sqlContent.contains("₹"));
 
-        // 4. Delete the account (simulate data loss or cleanup)
-        MvcResult accountsRes = mockMvc.perform(get("/api/v1/accounts")
-                .with(user(userDetails)))
-                .andReturn();
-        JsonNode accountsNode = objectMapper.readTree(accountsRes.getResponse().getContentAsString());
-        String accountId = accountsNode.get(0).get("id").asText();
-
-        mockMvc.perform(delete("/api/v1/accounts/" + accountId)
+        // 4. Delete All Data
+        mockMvc.perform(delete("/api/v1/backups/clear")
                 .with(user(userDetails)))
                 .andExpect(status().isNoContent());
 
         // Verify data is gone
-        MvcResult listResultAfterDelete = mockMvc.perform(get("/api/v1/accounts")
+        mockMvc.perform(get("/api/v1/accounts")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
-                .andReturn();
-        assertFalse(listResultAfterDelete.getResponse().getContentAsString().contains("Integration Savings"));
+                .andExpect(result -> assertEquals("[]", result.getResponse().getContentAsString()));
+
+        mockMvc.perform(get("/api/v1/transactions")
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertTrue(result.getResponse().getContentAsString().contains("\"content\":[]")));
 
         // 5. Restore from backup
         MockMultipartFile file = new MockMultipartFile("file", "backup.sql", "text/plain", backupContent);
@@ -132,10 +174,25 @@ public class BackupSystemIntegrationTest {
                 .andExpect(status().isOk());
 
         // 6. Verify data is restored
-        MvcResult listResultRestored = mockMvc.perform(get("/api/v1/accounts")
+        MvcResult accountsRestored = mockMvc.perform(get("/api/v1/accounts")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertTrue(listResultRestored.getResponse().getContentAsString().contains("Integration Savings"));
+        assertTrue(accountsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Main Bank"));
+        assertTrue(accountsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Bob (Lend)"));
+
+        MvcResult transactionsRestored = mockMvc.perform(get("/api/v1/transactions")
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertTrue(transactionsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Lunch"));
+        assertTrue(transactionsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("ATM Withdrawal"));
+        
+        // Check preferences (DataSeeder sets currency to ₹)
+        MvcResult prefsRestored = mockMvc.perform(get("/api/v1/preferences")
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertTrue(prefsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("₹"));
     }
 }

@@ -35,7 +35,7 @@
     * `amount` (Decimal)
     * `description` (Text)
     * `transaction_date` (Timestamp)
-    * `linked_transfer_id` (UUID - Self-referencing FK used ONLY for transfers to link the outgoing and incoming transaction records)
+    * `to_account_id` (UUID - Reference to the destination account for transfers)
 
 *Note on PostgreSQL 13+ vs UUIDv7:* While PostgreSQL supports standard UUIDs natively, UUIDv7 (time-ordered) isn't a built-in function until potentially Postgres 17+. We will use a library like `uuid-creator` in Java or a custom Postgres extension/function if we want to generate them at the DB level. For simplicity, we'll generate them in the application layer (Spring Boot).
 
@@ -71,7 +71,7 @@
         * Validate both `from_account` and `to_account` belong to the user.
         * Handle regular account-to-account transfers.
         * Handle LENDING/BORROWING logic (which fundamentally operates as a transfer to/from a `FRIEND_LENDING` account type).
-        * Link both transactions via the `linked_transfer_id`.
+        * Record the destination account in `to_account_id`.
         * Adjust balances for both accounts.
 * **Testing:** Write extensive unit tests using Mockito for Services, especially the `@Transactional` transfer logic. Ensure validations are covered.
 

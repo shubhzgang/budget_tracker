@@ -31,6 +31,7 @@ public class BackupService {
     private final LabelRepository labelRepository;
     private final TransactionRepository transactionRepository;
     private final BackupRecordRepository backupRecordRepository;
+    private final UserPreferenceRepository userPreferenceRepository;
     private final EntityManager entityManager;
 
     @Value("${app.backup.directory:backups}")
@@ -44,6 +45,22 @@ public class BackupService {
 
         StringBuilder sql = new StringBuilder();
         sql.append("-- Budget Tracker Backup for User: ").append(userId).append("\n\n");
+
+        // Preferences
+        Optional<UserPreference> prefs = userPreferenceRepository.findByUserId(userId);
+        if (prefs.isPresent()) {
+            UserPreference p = prefs.get();
+            sql.append(String.format("INSERT INTO user_preferences (id, user_id, currency_symbol, default_account_id, default_transaction_type, default_category_id, default_label_id, auto_backup_enabled, auto_backup_frequency, auto_backup_format, created_at) VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %b, %s, %s, '%s');\n",
+                    p.getId(), userId, escapeSql(p.getCurrencySymbol()),
+                    p.getDefaultAccountId() != null ? "'" + p.getDefaultAccountId() + "'" : "NULL",
+                    p.getDefaultTransactionType() != null ? "'" + p.getDefaultTransactionType() + "'" : "NULL",
+                    p.getDefaultCategoryId() != null ? "'" + p.getDefaultCategoryId() + "'" : "NULL",
+                    p.getDefaultLabelId() != null ? "'" + p.getDefaultLabelId() + "'" : "NULL",
+                    p.getAutoBackupEnabled(),
+                    p.getAutoBackupFrequency() != null ? "'" + p.getAutoBackupFrequency() + "'" : "NULL",
+                    p.getAutoBackupFormat() != null ? "'" + p.getAutoBackupFormat() + "'" : "NULL",
+                    p.getCreatedAt()));
+        }
 
         // Labels
         List<Label> labels = labelRepository.findAllByUserId(userId);
@@ -136,6 +153,7 @@ public class BackupService {
             accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
             categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
             labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
+            userPreferenceRepository.findByUserId(userId).ifPresent(userPreferenceRepository::delete);
         }
 
         for (String statement : statements) {
@@ -239,6 +257,7 @@ public class BackupService {
         accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
         categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
         labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
+        userPreferenceRepository.findByUserId(userId).ifPresent(userPreferenceRepository::delete);
     }
 
     private BackupRecord createRecord(UUID userId, String filename, String format, long size) {

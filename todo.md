@@ -27,7 +27,7 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Implement JPA entity `Account` (include `type` enum: `CREDIT_CARD`, `CASH`, `BANK`, `FRIEND_LENDING` and `credit_limit`).
     - [x] Implement JPA entity `Category` (include `icon`, `is_default`).
     - [x] Implement JPA entity `Label` (include `is_default`).
-    - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`).
+    - [x] Implement JPA entity `Transaction` (include `type` enum: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW` and `to_account_id`).
     - [x] Create Spring Data Repositories for all entities (scoping by `userId`).
     - [x] Write `DataJpaTest` cases for all repositories verifying `userId` constraints.
 - [x] **Core Services**:
@@ -39,7 +39,7 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Write unit tests for `LabelService`.
     - [x] Implement `TransactionService` (CRUD for incomes/expenses).
     - [x] Write unit tests for `TransactionService` (CRUD).
-    - [x] Implement `TransactionService` transfer logic (`@Transactional`, linking `linked_transfer_id`, adjusting balances, handling lending/borrowing).
+    - [x] Implement `TransactionService` transfer logic (`@Transactional`, using `to_account_id`, adjusting balances, handling lending/borrowing).
     - [x] Write unit tests for `TransactionService` transfer logic ensuring atomicity.
 - [x] **Security**:
     - [x] Implement Spring Security with JWT-based authentication.
@@ -94,7 +94,7 @@ This file tracks the progress of the Budget Tracker project against the original
 
 ### 🐛 Pending Bug Fixes
 - [ ] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description).
-- [ ] **SQL Restore**: Backup failed to restore after "Delete All Data" operation was performed.
+- [x] **SQL Restore**: Backup failed to restore after "Delete All Data" operation was performed. (Fixed: improved SQL split logic and added UTF-8 support in `BackupService`).
 - [ ] **"Transfer to undefined" in UI**: Transfer transactions display "Transfer to undefined" instead of the destination account name. Root cause: `Transaction` entity is missing `@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})`, so the lazy-loaded `toAccount` serializes as `null` in JSON. Fix: add the annotation to `Transaction.java` (like `Account.java` already has).
 
 ### 🚀 Future Enhancements

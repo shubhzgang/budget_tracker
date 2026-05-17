@@ -13,7 +13,7 @@ Budget Tracker is a full-stack application for managing personal finances, featu
 - **Identity**: Multi-user architecture. All entities (`Account`, `Category`, `Label`, `Transaction`) are scoped to a `user_id`.
 - **Primary Keys**: Uses UUIDv7 for all entities to ensure time-ordered, distributed ID generation and prevent B-Tree fragmentation.
 - **Security**: JWT-based authentication with a `UserPrincipal` context.
-- **Transactions**: Supports Income, Expense, Transfer, Lend, and Borrow. Transfers (including lending/borrowing) use a `linked_transfer_id` to maintain atomicity and auditability.
+- **Transactions**: Supports Income, Expense, Transfer, Lend, and Borrow. Transfers (including lending/borrowing) use a `to_account_id` to maintain atomicity and auditability within a single record.
 - **Theming**: Extensible CSS variable-based theming (Light/Dark) using Tailwind CSS.
 
 ## Core Components
