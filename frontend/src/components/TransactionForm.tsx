@@ -62,7 +62,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     await onSubmit(payload);
   };
 
-  const showCategory = formData.type === 'EXPENSE' || formData.type === 'INCOME';
+  const showCategory = true; // Always show category for all types to ensure visibility and control
   const showToAccount = formData.type === 'TRANSFER';
 
   return (
