@@ -19,7 +19,7 @@ check-java:
 		echo "This project requires Java 21. Install it."; \
 		exit 1; \
 	fi
-	@JAVA_VER=$$(java -version 2>&1 | head -1 | grep -oP '"\K[^"]+'); \
+	@JAVA_VER=$$(java -version 2>&1 | head -1 | cut -d'"' -f2); \
 	if [[ "$$JAVA_VER" != 21* ]]; then \
 		echo "Error: Java version $$JAVA_VER detected."; \
 		echo "This project requires Java 21."; \
