@@ -145,3 +145,5 @@ e2e/test-results/
 
 #Claude
 .claude/
+
+backups/
