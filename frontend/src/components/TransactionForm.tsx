@@ -51,6 +51,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (formData.amount <= 0) {
+      alert('Amount must be greater than zero');
+      return;
+    }
+
     // Ensure transactionDate is ISO 8601 string (with time and offset) for backend OffsetDateTime
     const payload = {
       ...formData,
@@ -90,7 +95,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             required
             type="number"
             step="0.01"
-            min="0"
+            min="0.01"
             value={formData.amount}
             onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
             className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"

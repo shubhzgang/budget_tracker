@@ -200,6 +200,22 @@ class TransactionServiceTest {
         assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(tx));
     }
 
+    @Test
+    void createTransaction_zeroAmount_shouldThrow() {
+        Transaction tx = buildTransaction(TransactionType.INCOME, sourceAccount);
+        tx.setAmount(BigDecimal.ZERO);
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(tx));
+    }
+
+    @Test
+    void createTransaction_negativeAmount_shouldThrow() {
+        Transaction tx = buildTransaction(TransactionType.INCOME, sourceAccount);
+        tx.setAmount(new BigDecimal("-10"));
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(tx));
+    }
+
     // -- getTransactionById --
 
     @Test
@@ -338,6 +354,22 @@ class TransactionServiceTest {
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("600")) == 0
         ));
+    }
+
+    @Test
+    void createTransfer_zeroAmount_shouldThrow() {
+        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
+        tx.setAmount(BigDecimal.ZERO);
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(tx, destAccount));
+    }
+
+    @Test
+    void createTransfer_negativeAmount_shouldThrow() {
+        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
+        tx.setAmount(new BigDecimal("-50"));
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(tx, destAccount));
     }
 
     // -- list methods --

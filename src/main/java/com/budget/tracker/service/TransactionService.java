@@ -43,8 +43,8 @@ public class TransactionService {
     public Transaction createTransaction(Transaction transaction) {
         UUID userId = getCurrentUserId();
         transaction.setUserId(userId);
-        if (transaction.getAmount() == null) {
-            throw new IllegalArgumentException("Transaction amount must not be null");
+        if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Transaction amount must be greater than zero");
         }
         TransactionType type = transaction.getType();
         if (type == TransactionType.TRANSFER) {
@@ -134,8 +134,8 @@ public class TransactionService {
     public Transaction createTransfer(Transaction transaction, Account toAccount) {
         UUID userId = getCurrentUserId();
         transaction.setUserId(userId);
-        if (transaction.getAmount() == null) {
-            throw new IllegalArgumentException("Transfer amount must not be null");
+        if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero");
         }
 
         TransactionType type = transaction.getType();

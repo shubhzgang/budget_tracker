@@ -70,4 +70,30 @@ describe('TransactionForm', () => {
       type: 'EXPENSE'
     }));
   });
+
+  it('prevents submission when amount is zero', async () => {
+    const handleSubmit = vi.fn();
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    
+    const { container } = render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+      />
+    );
+
+    // Initial amount is 0 in state
+    const form = container.querySelector('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    expect(alertMock).toHaveBeenCalledWith('Amount must be greater than zero');
+    expect(handleSubmit).not.toHaveBeenCalled();
+    
+    alertMock.mockRestore();
+  });
 });
