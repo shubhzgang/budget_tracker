@@ -1,4 +1,4 @@
-.PHONY: test-int test-int-up test-int-down test-int-clean test-int-build java-test
+.PHONY: test-int test-int-up test-int-down test-int-clean test-int-build java-test test-e2e
 
 # Main target: Run the full integration test suite
 test-int: test-int-build test-int-up
@@ -93,7 +93,7 @@ test-e2e: build
 	else \
 		PLAYWRIGHT_INSTALL_CMD="npx playwright install chromium"; \
 	fi; \
-	cd e2e && $${PLAYWRIGHT_INSTALL_CMD} && npm run test; \
+	cd e2e && npm install && $${PLAYWRIGHT_INSTALL_CMD} && npm run test; \
 	EXIT_CODE=$$?; \
 	docker compose down -v; \
 	exit $$EXIT_CODE

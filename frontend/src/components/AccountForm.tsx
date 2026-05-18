@@ -8,16 +8,31 @@ interface AccountFormProps {
 }
 
 export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, isLoading }) => {
-  const [formData, setFormData] = useState<CreateAccountRequest>({
+  const [formData, setFormData] = useState<{
+    name: string;
+    type: AccountType;
+    balance: string;
+    creditLimit: string;
+  }>({
     name: '',
     type: 'BANK',
-    balance: 0,
-    creditLimit: undefined,
+    balance: '',
+    creditLimit: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+    
+    const balanceNum = parseFloat(formData.balance);
+    const creditLimitNum = formData.creditLimit ? parseFloat(formData.creditLimit) : undefined;
+    
+    const payload: CreateAccountRequest = {
+      ...formData,
+      balance: isNaN(balanceNum) ? 0 : balanceNum,
+      creditLimit: isNaN(creditLimitNum as number) ? undefined : creditLimitNum,
+    };
+    
+    await onSubmit(payload);
   };
 
   return (
@@ -55,11 +70,16 @@ export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, is
         <input
           id="initial-balance"
           required
-          type="number"
-          step="0.01"
-          placeholder="0.00"
+          type="text"
+          inputMode="decimal"
+          placeholder="123"
           value={formData.balance}
-          onChange={(e) => setFormData({ ...formData, balance: parseFloat(e.target.value) })}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === '' || /^\d*\.?\d*$/.test(val)) {
+              setFormData({ ...formData, balance: val });
+            }
+          }}
           className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
         />
       </div>
@@ -70,11 +90,16 @@ export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, is
           <input
             id="credit-limit"
             required
-            type="number"
-            step="0.01"
-            placeholder="5000.00"
-            value={formData.creditLimit || ''}
-            onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) })}
+            type="text"
+            inputMode="decimal"
+            placeholder="5000"
+            value={formData.creditLimit}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                setFormData({ ...formData, creditLimit: val });
+              }
+            }}
             className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
           />
         </div>

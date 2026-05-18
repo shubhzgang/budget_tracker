@@ -24,7 +24,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const { preferences } = usePreferences();
 
-  const [formData, setFormData] = useState<CreateTransactionRequest>(() => {
+  const [formData, setFormData] = useState<Omit<CreateTransactionRequest, 'amount'> & { amount: string }>(() => {
     // 1. Initial fallbacks
     const initialType = preferences?.defaultTransactionType || 'EXPENSE';
     const initialAccount = preferences?.defaultAccountId || accounts[0]?.id || '';
@@ -37,7 +37,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const validatedLabel = (initialLabel === '' || labels.some(l => l.id === initialLabel)) ? initialLabel : (labels[0]?.id || '');
 
     return {
-      amount: 0,
+      amount: '',
       type: initialType,
       transactionDate: new Date().toISOString().split('T')[0],
       accountId: validatedAccount,
@@ -51,14 +51,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.amount <= 0) {
+    const amountNum = parseFloat(formData.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
       alert('Amount must be greater than zero');
       return;
     }
 
     // Ensure transactionDate is ISO 8601 string (with time and offset) for backend OffsetDateTime
-    const payload = {
+    const payload: CreateTransactionRequest = {
       ...formData,
+      amount: amountNum,
       transactionDate: formData.transactionDate.includes('T') 
         ? formData.transactionDate 
         : `${formData.transactionDate}T00:00:00Z`
@@ -93,11 +95,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <input
             id="trans-amount"
             required
-            type="number"
-            step="0.01"
-            min="0.01"
+            type="text"
+            inputMode="decimal"
             value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                setFormData({ ...formData, amount: val });
+              }
+            }}
+            placeholder="123"
             className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
           />
         </div>

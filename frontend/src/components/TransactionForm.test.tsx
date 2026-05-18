@@ -71,7 +71,7 @@ describe('TransactionForm', () => {
     }));
   });
 
-  it('prevents submission when amount is zero', async () => {
+  it('prevents submission when amount is empty or zero', async () => {
     const handleSubmit = vi.fn();
     const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
     
@@ -85,7 +85,7 @@ describe('TransactionForm', () => {
       />
     );
 
-    // Initial amount is 0 in state
+    // Initial amount is '' in state
     const form = container.querySelector('form');
     if (form) {
       fireEvent.submit(form);
@@ -93,6 +93,13 @@ describe('TransactionForm', () => {
 
     expect(alertMock).toHaveBeenCalledWith('Amount must be greater than zero');
     expect(handleSubmit).not.toHaveBeenCalled();
+    
+    // Test with zero string
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '0' } });
+    if (form) {
+      fireEvent.submit(form);
+    }
+    expect(alertMock).toHaveBeenCalledWith('Amount must be greater than zero');
     
     alertMock.mockRestore();
   });
