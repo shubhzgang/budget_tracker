@@ -103,8 +103,14 @@ This file tracks the progress of the Budget Tracker project against the original
   filter to search transactions by account which also returns these kind of incoming transfers. On the UI page, I want to see the description instead of the generic    
   "Transfer to account" text. For transfer types, in the UI show arrow from one account to another where just the main account is shown. Read @CLAUDE_CONTEXT.md file   
   for basic understanding of project.
-- [ ] Sometimes, there are some savings when paying credit card bill or some cashbacks in wallet account. think about how to add this functionality.
-
+- [ ] I want to have different tables for transaction and transfer. Also, I want to have the         
+  feature to define how much savings I did. Like and example, when I pay bill of 100 rupees      
+  for credit card, I have to pay 95 rupees only because 5 rupees discount. So, from the main     
+  bank 95 is getting deducted, but credit card debt reduces by 100. I want to track this         
+  extra 5 rupees. Also, I get cashback when spending using credit card. Cashback in some         
+  wallet account which can then be used for spending. How do I go about tracking this spend?     
+  On the UI, show all three fields like from amount, to amount and discount. Have a check        
+  whether from amount is present and either of to amount and discount are present. DB can have only from amount and discount fields, to amount can be calculated on the fly. no need for migration script since this is not deployed. transfer can happen between any kind of accounts. use same UI for transaction and transfer adding, change based on the type selected. For cashback, manual transfer creation is fine.
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
 - [ ] **Configuration**: Configure CORS policies in Spring Boot and environment variables.
