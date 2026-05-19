@@ -103,6 +103,7 @@ This file tracks the progress of the Budget Tracker project against the original
   filter to search transactions by account which also returns these kind of incoming transfers. On the UI page, I want to see the description instead of the generic    
   "Transfer to account" text. For transfer types, in the UI show arrow from one account to another where just the main account is shown. Read @CLAUDE_CONTEXT.md file   
   for basic understanding of project.
+- [ ] Sometimes, there are some savings when paying credit card bill or some cashbacks in wallet account. think about how to add this functionality.
 
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
