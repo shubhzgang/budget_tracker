@@ -58,13 +58,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
             <div>
               <p className="font-semibold text-sm">
                 {transaction.type === 'TRANSFER'
-                  ? `Transfer to ${transaction.toAccount?.name}`
+                  ? transaction.description || 'Transfer'
                   : transaction.description || transaction.category?.name || 'No description'}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-muted-foreground">{formatDate(transaction.transactionDate)}</span>
                 <span className="text-[10px] text-muted-foreground uppercase font-bold">•</span>
-                <span className="text-xs text-muted-foreground">{transaction.account?.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {transaction.account?.name}
+                  {transaction.type === 'TRANSFER'
+                    ? ` → ${transaction.toAccount?.name}`
+                    : ''}
+                </span>
                 {transaction.label && (
                   <>
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">•</span>

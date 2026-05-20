@@ -89,8 +89,9 @@ test.describe('Transaction Management', () => {
     await expect(sourceCard.getByText('₹350.00')).toBeVisible();
     await expect(destCard.getByText('₹150.00')).toBeVisible();
 
-    // 5. Verify Transaction List Visuals — single row
-    await expect(page.getByText('Transfer to Dest Acc')).toBeVisible();
+    // 5. Verify Transaction List Visuals — arrow visualization and fallback "Transfer"
+    await expect(page.getByText('Transfer', { exact: true })).toBeVisible();
+    await expect(page.getByText('Source Acc → Dest Acc')).toBeVisible();
     await expect(page.getByText('-₹150.00')).toBeVisible();
   });
 
@@ -128,9 +129,40 @@ test.describe('Transaction Management', () => {
     await expect(cashCard.getByText('₹150.00')).toBeVisible();
     await expect(bankCard.getByText('₹550.00')).toBeVisible();
 
-    // 5. Verify Transaction List — single row
-    await expect(page.getByText('Transfer to My Bank')).toBeVisible();
+    // 5. Verify Transaction List — arrow visualization
+    await expect(page.getByText('Transfer', { exact: true })).toBeVisible();
+    await expect(page.getByText('My Cash → My Bank')).toBeVisible();
     await expect(page.getByText('-₹50.00')).toBeVisible();
+  });
+
+  test('should display custom description and arrow for transfers', async ({ page }) => {
+    // 1. Create two accounts
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Account A');
+    await page.fill('input[id="initial-balance"]', '1000');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Account B');
+    await page.fill('input[id="initial-balance"]', '0');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+
+    // 2. Perform transfer with a custom description
+    await page.click('button:has-text("Add Transaction")');
+    await page.selectOption('select[id="trans-type"]', 'TRANSFER');
+    await page.fill('input[id="trans-amount"]', '100');
+    await page.fill('input[id="trans-desc"]', 'Emergency fund');
+    await page.selectOption('select[id="trans-account"]', { label: 'Account A' });
+    await page.selectOption('select[id="trans-to-account"]', { label: 'Account B' });
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // 3. Verify custom description is shown (not "Transfer to Account B")
+    await expect(page.getByText('Emergency fund')).toBeVisible();
+    await expect(page.getByText('Account A → Account B')).toBeVisible();
+    await expect(page.getByText('-₹100.00')).toBeVisible();
   });
 
   test('should correctly handle bank to credit card transfer (paying bill)', async ({ page }) => {

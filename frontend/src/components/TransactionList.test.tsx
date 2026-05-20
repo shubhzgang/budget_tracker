@@ -42,4 +42,49 @@ describe('TransactionList', () => {
     render(<TransactionList transactions={[]} />);
     expect(screen.getByText(/No transactions yet/i)).toBeInTheDocument();
   });
+
+  it('renders transfer with description and arrow visualization', () => {
+    const transferTransaction: Transaction = {
+      id: 't-transfer',
+      amount: 200,
+      type: 'TRANSFER',
+      description: 'Monthly savings',
+      transactionDate: '2026-05-15T00:00:00Z',
+      accountId: '1',
+      account: { id: '1', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
+      toAccountId: '2',
+      toAccount: { id: '2', name: 'Savings', balance: 0, type: 'BANK', createdAt: '' },
+      createdAt: ''
+    };
+    render(<TransactionList transactions={[transferTransaction]} />);
+
+    expect(screen.getByText('Monthly savings')).toBeInTheDocument();
+    expect(screen.getByText('Main Bank → Savings')).toBeInTheDocument();
+    expect(screen.getByText('TRANSFER')).toBeInTheDocument();
+  });
+
+  it('renders transfer without description as "Transfer"', () => {
+    const transferTransaction: Transaction = {
+      id: 't-transfer-no-desc',
+      amount: 100,
+      type: 'TRANSFER',
+      transactionDate: '2026-05-15T00:00:00Z',
+      accountId: '1',
+      account: { id: '1', name: 'Cash', balance: 0, type: 'CASH', createdAt: '' },
+      toAccountId: '2',
+      toAccount: { id: '2', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
+      createdAt: ''
+    };
+    render(<TransactionList transactions={[transferTransaction]} />);
+
+    expect(screen.getByText('Transfer')).toBeInTheDocument();
+    expect(screen.getByText('Cash → Main Bank')).toBeInTheDocument();
+  });
+
+  it('renders non-transfer transactions without arrow', () => {
+    render(<TransactionList transactions={mockTransactions} />);
+    expect(screen.getByText('Main Bank')).toBeInTheDocument();
+    // Should not have arrow for non-transfer types
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+  });
 });
