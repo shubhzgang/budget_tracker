@@ -95,7 +95,7 @@ This file tracks the progress of the Budget Tracker project against the original
 ### 🐛 Pending Bug Fixes
 - [ ] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description).
 - [x] **SQL Restore**: Backup failed to restore after "Delete All Data" operation was performed. (Fixed: improved SQL split logic and added UTF-8 support in `BackupService`).
-- [ ] **"Transfer to undefined" in UI**: Transfer transactions display "Transfer to undefined" instead of the destination account name. Root cause: `Transaction` entity is missing `@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})`, so the lazy-loaded `toAccount` serializes as `null` in JSON. Fix: add the annotation to `Transaction.java` (like `Account.java` already has).
+- [x] **"Transfer to undefined" in UI**: Fixed. Added `@JsonIgnoreProperties` to `Transaction.java` and `LEFT JOIN FETCH` to all repository queries. Added `TransactionSerializationTest` with `open-in-view=false` to prevent regression.
 
 ### 🚀 Future Enhancements
 - [ ] **In-Place Restore**: Ability to restore directly from the server-side backup history in the UI without downloading/uploading.

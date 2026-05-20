@@ -1,5 +1,6 @@
 package com.budget.tracker.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @Table(name = "transactions")
 @Getter
 @Setter
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Transaction extends BaseEntity {
 
     @Column(nullable = false)

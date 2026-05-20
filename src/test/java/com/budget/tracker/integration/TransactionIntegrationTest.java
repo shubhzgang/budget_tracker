@@ -115,6 +115,71 @@ public class TransactionIntegrationTest {
     }
 
     @Test
+    void testTransferToAccountSerializedAfterSessionClose() throws Exception {
+        // Create second account for the transfer
+        String account2Json = "{\"name\":\"Dest Account\", \"type\":\"BANK\", \"initialBalance\":0.00}";
+        HttpRequest createAccount2Request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/accounts"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(account2Json))
+                .build();
+        String account2Id = mapper.readTree(client.send(createAccount2Request, HttpResponse.BodyHandlers.ofString()).body()).get("id").asText();
+
+        // Perform transfer
+        String transferJson = String.format("{" +
+                "\"fromAccountId\":\"%s\"," +
+                "\"toAccountId\":\"%s\"," +
+                "\"amount\":100.00," +
+                "\"transactionDate\":\"2026-05-01T10:00:00Z\"," +
+                "\"description\":\"Test transfer serialization\"" +
+                "}", accountId, account2Id);
+
+        HttpRequest transferRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions/transfer"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(transferJson))
+                .build();
+        HttpResponse<String> transferResponse = client.send(transferRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, transferResponse.statusCode());
+
+        // Simulate page refresh: fetch transactions in a fresh request (Hibernate session is closed)
+        HttpRequest listRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions?size=100"))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> listResponse = client.send(listRequest, HttpResponse.BodyHandlers.ofString());
+        JsonNode content = mapper.readTree(listResponse.body()).get("content");
+
+        // Find the transfer transaction and assert toAccount is fully serialized
+        int transferCount = 0;
+        for (JsonNode tx : content) {
+            if (tx.get("type").asText().equals("TRANSFER")) {
+                transferCount++;
+
+                // toAccount must not be null — this fails when @JsonIgnoreProperties is missing
+                // and the lazy-loaded toAccount isn't fetched by the query
+                JsonNode toAccount = tx.get("toAccount");
+                assertNotNull(toAccount, "toAccount should not be null for TRANSFER transactions");
+                assertFalse(toAccount.isMissingNode(), "toAccount node should be present in JSON");
+                assertEquals(account2Id, toAccount.get("id").asText(),
+                        "toAccount.id should match the destination account");
+                assertEquals("Dest Account", toAccount.get("name").asText(),
+                        "toAccount.name should be serialized, not undefined");
+
+                // Also verify the source account is serialized
+                JsonNode account = tx.get("account");
+                assertNotNull(account, "account should not be null");
+                assertEquals(accountId, account.get("id").asText(),
+                        "account.id should match the source account");
+            }
+        }
+        assertEquals(1, transferCount, "Should have exactly one transfer record");
+    }
+
+    @Test
     void testTransferIntegration() throws Exception {
         // Create second account
         String account2Json = "{\"name\":\"Savings\", \"type\":\"BANK\", \"initialBalance\":0.00}";
