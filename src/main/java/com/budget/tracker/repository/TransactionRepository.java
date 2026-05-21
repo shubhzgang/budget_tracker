@@ -15,26 +15,30 @@ import java.util.UUID;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
-    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label LEFT JOIN FETCH t.toAccount WHERE t.userId = :userId")
-    List<Transaction> findAllByUserId(@Param("userId") UUID userId);
+        @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label WHERE t.userId = :userId")
+        List<Transaction> findAllByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label LEFT JOIN FETCH t.toAccount " +
-            "WHERE (t.account.id = :accountId OR (t.toAccount.id = :accountId AND t.type = com.budget.tracker.model.TransactionType.TRANSFER)) " +
-            "AND t.userId = :userId")
-    List<Transaction> findAccountTransactions(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
+        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label "
+                        +
+                        "WHERE t.account.id = :accountId "
+                        +
+                        "AND t.userId = :userId")
+        List<Transaction> findAccountTransactions(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
 
-    @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label LEFT JOIN FETCH t.toAccount WHERE t.userId = :userId " +
-            "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "OR LOWER(t.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
-            "AND (cast(:type as string) IS NULL OR t.type = :type) " +
-            "AND (cast(:startDate as string) IS NULL OR t.transactionDate >= :startDate) " +
-            "AND (cast(:endDate as string) IS NULL OR t.transactionDate <= :endDate)")
-    Page<Transaction> searchTransactions(
-            @Param("userId") UUID userId,
-            @Param("searchTerm") String searchTerm,
-            @Param("type") TransactionType type,
-            @Param("startDate") OffsetDateTime startDate,
-            @Param("endDate") OffsetDateTime endDate,
-            Pageable pageable);
+        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label WHERE t.userId = :userId "
+                        +
+                        "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) "
+                        +
+                        "OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+                        "OR LOWER(t.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+                        "AND (cast(:type as string) IS NULL OR t.type = :type) " +
+                        "AND (cast(:startDate as string) IS NULL OR t.transactionDate >= :startDate) " +
+                        "AND (cast(:endDate as string) IS NULL OR t.transactionDate <= :endDate)")
+        Page<Transaction> searchTransactions(
+                        @Param("userId") UUID userId,
+                        @Param("searchTerm") String searchTerm,
+                        @Param("type") TransactionType type,
+                        @Param("startDate") OffsetDateTime startDate,
+                        @Param("endDate") OffsetDateTime endDate,
+                        Pageable pageable);
 }

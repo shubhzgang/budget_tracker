@@ -1,7 +1,6 @@
 package com.budget.tracker.payload.request;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,9 +17,11 @@ public class TransferRequest {
     @NotNull
     private UUID toAccountId;
 
-    @Positive(message = "Transfer amount must be greater than zero")
-    @NotNull
-    private BigDecimal amount;
+    private BigDecimal fromAmount;
+
+    private BigDecimal toAmount;
+
+    private BigDecimal adjustment;
 
     @NotNull
     private OffsetDateTime transactionDate;
@@ -29,4 +30,14 @@ public class TransferRequest {
     private String description;
 
     private UUID categoryId;
+
+    private UUID labelId;
+
+    public boolean isValid() {
+        int count = 0;
+        if (fromAmount != null) count++;
+        if (toAmount != null) count++;
+        if (adjustment != null) count++;
+        return count == 2;
+    }
 }

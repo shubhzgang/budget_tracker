@@ -4,7 +4,7 @@ import { usePreferences } from './context/PreferenceContext';
 import { BalanceCard } from './components/BalanceCard';
 import { TransactionList } from './components/TransactionList';
 import type { Account } from './types/account';
-import type { Transaction } from './types/transaction';
+import type { ActivityItem } from './types/activity';
 
 // Mock usePreferences hook
 vi.mock('./context/PreferenceContext', () => ({
@@ -20,16 +20,15 @@ describe('Currency Formatting across components', () => {
     createdAt: new Date().toISOString(),
   };
 
-  const mockTransactions: Transaction[] = [
+  const mockTransactions: ActivityItem[] = [
     {
       id: 't1',
+      kind: 'TRANSACTION',
       amount: 123.45,
       type: 'EXPENSE',
       description: 'Test Expense',
       transactionDate: '2026-05-01T00:00:00Z',
-      accountId: '1',
       account: { id: '1', name: 'Test Bank', balance: 0, type: 'BANK', createdAt: '' },
-      categoryId: 'c1',
       category: { id: 'c1', name: 'Food', icon: '🍔', isDefault: true, createdAt: '' },
       createdAt: ''
     }

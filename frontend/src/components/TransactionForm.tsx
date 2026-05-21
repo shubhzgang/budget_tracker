@@ -3,13 +3,12 @@ import { usePreferences } from '../context/PreferenceContext';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
-import type { TransactionType, CreateTransactionRequest } from '../types/transaction';
 
 interface TransactionFormProps {
   accounts: Account[];
   categories: Category[];
   labels: Label[];
-  onSubmit: (data: CreateTransactionRequest) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -24,7 +23,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const { preferences } = usePreferences();
 
-  const [formData, setFormData] = useState<Omit<CreateTransactionRequest, 'amount'> & { amount: string }>(() => {
+  const [formData, setFormData] = useState(() => {
     // 1. Initial fallbacks
     const initialType = preferences?.defaultTransactionType || 'EXPENSE';
     const initialAccount = preferences?.defaultAccountId || accounts[0]?.id || '';
@@ -38,7 +37,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     return {
       amount: '',
-      type: initialType,
+      fromAmount: '',
+      toAmount: '',
+      adjustment: '',
+      type: initialType as any,
       transactionDate: new Date().toISOString().split('T')[0],
       accountId: validatedAccount,
       toAccountId: '',
@@ -48,39 +50,126 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     };
   });
 
+  const [lastEdited, setLastEdited] = useState<('fromAmount' | 'toAmount' | 'adjustment')[]>([]);
+
+  const handleAmountChange = (field: 'fromAmount' | 'toAmount' | 'adjustment', value: string) => {
+    if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
+
+    const newFormData = { ...formData, [field]: value };
+    
+    let newLastEdited = [field, ...lastEdited.filter(f => f !== field)];
+    if (newLastEdited.length > 2) {
+      newLastEdited = newLastEdited.slice(0, 2);
+    }
+    setLastEdited(newLastEdited);
+
+    if (newLastEdited.length === 2) {
+      const field1 = newLastEdited[0];
+      const field2 = newLastEdited[1];
+      const val1 = parseFloat(newFormData[field1]);
+      const val2 = parseFloat(newFormData[field2]);
+
+      if (!isNaN(val1) && !isNaN(val2)) {
+        const targetField = (['fromAmount', 'toAmount', 'adjustment'] as const).find(
+          f => f !== field1 && f !== field2
+        )!;
+
+        let computedValue = 0;
+        if (targetField === 'adjustment') {
+          const fromVal = field1 === 'fromAmount' ? val1 : val2;
+          const toVal = field1 === 'toAmount' ? val1 : val2;
+          computedValue = toVal - fromVal;
+        } else if (targetField === 'toAmount') {
+          const fromVal = field1 === 'fromAmount' ? val1 : val2;
+          const adjVal = field1 === 'adjustment' ? val1 : val2;
+          computedValue = fromVal + adjVal;
+        } else if (targetField === 'fromAmount') {
+          const toVal = field1 === 'toAmount' ? val1 : val2;
+          const adjVal = field1 === 'adjustment' ? val1 : val2;
+          computedValue = toVal - adjVal;
+        }
+
+        if (computedValue >= 0) {
+          newFormData[targetField] = parseFloat(computedValue.toFixed(4)).toString();
+        }
+      }
+    }
+
+    setFormData(newFormData);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const amountNum = parseFloat(formData.amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      alert('Amount must be greater than zero');
-      return;
-    }
+    if (formData.type === 'TRANSFER') {
+      const fromVal = parseFloat(formData.fromAmount);
+      const toVal = parseFloat(formData.toAmount);
+      const adjVal = parseFloat(formData.adjustment);
 
-    // Ensure transactionDate is ISO 8601 string (with time and offset) for backend OffsetDateTime
-    const payload: CreateTransactionRequest = {
-      ...formData,
-      amount: amountNum,
-      transactionDate: formData.transactionDate.includes('T') 
-        ? formData.transactionDate 
-        : `${formData.transactionDate}T00:00:00Z`
-    };
-    
-    await onSubmit(payload);
+      let validCount = 0;
+      if (!isNaN(fromVal) && fromVal > 0) validCount++;
+      if (!isNaN(toVal) && toVal > 0) validCount++;
+      if (!isNaN(adjVal) && adjVal >= 0) validCount++;
+
+      if (validCount < 2) {
+        alert('At least two of From Amount, To Amount, or Adjustment must be valid positive numbers');
+        return;
+      }
+
+      if (!formData.toAccountId) {
+        alert('Please select a destination account');
+        return;
+      }
+
+      const payload: any = {
+        type: 'TRANSFER',
+        transactionDate: formData.transactionDate.includes('T') 
+          ? formData.transactionDate 
+          : `${formData.transactionDate}T00:00:00Z`,
+        fromAccountId: formData.accountId,
+        toAccountId: formData.toAccountId,
+        categoryId: formData.categoryId || null,
+        labelId: formData.labelId || null,
+        description: formData.description
+      };
+
+      const fieldsToSend = lastEdited.length === 2 ? lastEdited : (['fromAmount', 'adjustment'] as const);
+      fieldsToSend.forEach(field => {
+        payload[field] = parseFloat(formData[field]);
+      });
+
+      await onSubmit(payload);
+    } else {
+      const amountNum = parseFloat(formData.amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        alert('Amount must be greater than zero');
+        return;
+      }
+
+      const payload: any = {
+        ...formData,
+        amount: amountNum,
+        transactionDate: formData.transactionDate.includes('T') 
+          ? formData.transactionDate 
+          : `${formData.transactionDate}T00:00:00Z`
+      };
+      
+      await onSubmit(payload);
+    }
   };
 
-  const showCategory = true; // Always show category for all types to ensure visibility and control
+  const showCategory = true;
   const showToAccount = formData.type === 'TRANSFER';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1 col-span-2 md:col-span-1">
           <label htmlFor="trans-type" className="text-sm font-medium">Type</label>
           <select
             id="trans-type"
             value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
             className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
           >
             <option value="EXPENSE">Expense</option>
@@ -90,25 +179,68 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             <option value="BORROW">Borrow</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <label htmlFor="trans-amount" className="text-sm font-medium">Amount</label>
-          <input
-            id="trans-amount"
-            required
-            type="text"
-            inputMode="decimal"
-            value={formData.amount}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                setFormData({ ...formData, amount: val });
-              }
-            }}
-            placeholder="123"
-            className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
-          />
-        </div>
+        {formData.type !== 'TRANSFER' && (
+          <div className="space-y-1 col-span-2 md:col-span-1">
+            <label htmlFor="trans-amount" className="text-sm font-medium">Amount</label>
+            <input
+              id="trans-amount"
+              required
+              type="text"
+              inputMode="decimal"
+              value={formData.amount}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                  setFormData({ ...formData, amount: val });
+                }
+              }}
+              placeholder="123"
+              className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+            />
+          </div>
+        )}
       </div>
+
+      {formData.type === 'TRANSFER' && (
+        <div className="grid grid-cols-3 gap-3 animate-in slide-in-from-top-1 duration-200">
+          <div className="space-y-1">
+            <label htmlFor="trans-from-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">From Amount</label>
+            <input
+              id="trans-from-amount"
+              type="text"
+              inputMode="decimal"
+              value={formData.fromAmount}
+              onChange={(e) => handleAmountChange('fromAmount', e.target.value)}
+              placeholder="0.00"
+              className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="trans-to-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">To Amount</label>
+            <input
+              id="trans-to-amount"
+              type="text"
+              inputMode="decimal"
+              value={formData.toAmount}
+              onChange={(e) => handleAmountChange('toAmount', e.target.value)}
+              placeholder="0.00"
+              className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="trans-adjustment" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Adjustment</label>
+            <input
+              id="trans-adjustment"
+              type="text"
+              inputMode="decimal"
+              value={formData.adjustment}
+              onChange={(e) => handleAmountChange('adjustment', e.target.value)}
+              placeholder="0.00"
+              className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -123,7 +255,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="trans-account" className="text-sm font-medium">Account</label>
+          <label htmlFor="trans-account" className="text-sm font-medium">
+            {formData.type === 'TRANSFER' ? 'From Account' : 'Account'}
+          </label>
           <select
             id="trans-account"
             required

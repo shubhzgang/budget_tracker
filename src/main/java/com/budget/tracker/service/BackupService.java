@@ -30,6 +30,7 @@ public class BackupService {
     private final CategoryRepository categoryRepository;
     private final LabelRepository labelRepository;
     private final TransactionRepository transactionRepository;
+    private final TransferRepository transferRepository;
     private final BackupRecordRepository backupRecordRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final EntityManager entityManager;
@@ -86,14 +87,24 @@ public class BackupService {
         // Transactions
         List<Transaction> transactions = transactionRepository.findAllByUserId(userId);
         for (Transaction transaction : transactions) {
-            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, label_id, type, amount, description, transaction_date, to_account_id, created_at) VALUES ('%s', '%s', '%s', %s, %s, '%s', %s, '%s', '%s', %s, '%s');\n",
+            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, label_id, type, amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', %s, %s, '%s', %s, '%s', '%s', '%s');\n",
                     transaction.getId(), userId, transaction.getAccount().getId(),
                     transaction.getCategory() != null ? "'" + transaction.getCategory().getId() + "'" : "NULL",
                     transaction.getLabel() != null ? "'" + transaction.getLabel().getId() + "'" : "NULL",
                     transaction.getType(), transaction.getAmount(), escapeSql(transaction.getDescription()),
                     transaction.getTransactionDate(),
-                    transaction.getToAccount() != null ? "'" + transaction.getToAccount().getId() + "'" : "NULL",
                     transaction.getCreatedAt()));
+        }
+
+        // Transfers
+        List<Transfer> transfers = transferRepository.findAllByUserId(userId);
+        for (Transfer transfer : transfers) {
+            sql.append(String.format("INSERT INTO transfers (id, user_id, from_account_id, to_account_id, category_id, label_id, from_amount, adjustment, to_amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', '%s', %s, %s, %s, %s, %s, '%s', '%s', '%s');\n",
+                    transfer.getId(), userId, transfer.getFromAccount().getId(), transfer.getToAccount().getId(),
+                    transfer.getCategory() != null ? "'" + transfer.getCategory().getId() + "'" : "NULL",
+                    transfer.getLabel() != null ? "'" + transfer.getLabel().getId() + "'" : "NULL",
+                    transfer.getFromAmount(), transfer.getAdjustment(), transfer.getToAmount(),
+                    escapeSql(transfer.getDescription()), transfer.getTransactionDate(), transfer.getCreatedAt()));
         }
 
         Files.writeString(path, sql.toString());
@@ -150,6 +161,7 @@ public class BackupService {
 
         if (content.contains("INSERT INTO")) {
             transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
+            transferRepository.findAllByUserId(userId).forEach(transferRepository::delete);
             accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
             categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
             labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
@@ -254,6 +266,7 @@ public class BackupService {
     @Transactional
     public void clearUserData(UUID userId) {
         transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
+        transferRepository.findAllByUserId(userId).forEach(transferRepository::delete);
         accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
         categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
         labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);

@@ -15,7 +15,7 @@ import java.util.UUID;
 @Table(name = "transactions")
 @Getter
 @Setter
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Transaction extends BaseEntity {
 
     @Column(nullable = false)
@@ -46,8 +46,4 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "to_account_id")
-    private Account toAccount;
 }

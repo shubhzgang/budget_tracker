@@ -46,10 +46,6 @@ public class TransactionService {
         if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Transaction amount must be greater than zero");
         }
-        TransactionType type = transaction.getType();
-        if (type == TransactionType.TRANSFER) {
-            throw new IllegalArgumentException("Use createTransfer for TRANSFER type");
-        }
 
         // Fetch and set account to ensure it's managed and belongs to user
         Account account = accountRepository.findById(transaction.getAccount().getId())
@@ -57,7 +53,7 @@ public class TransactionService {
                 .orElseThrow(() -> new RuntimeException("Account not found or access denied"));
         transaction.setAccount(account);
 
-        updateBalance(account.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
+        updateBalance(account.getId(), userId, transaction.getType(), transaction.getAmount(), BalanceAction.APPLY);
         return transactionRepository.save(transaction);
     }
 
@@ -87,29 +83,16 @@ public class TransactionService {
         TransactionType oldType = existing.getType();
         BigDecimal oldAmount = existing.getAmount();
 
-       Account toAccountForApply = transactionDetails.getToAccount() != null ? transactionDetails.getToAccount() : existing.getToAccount();
-        if (oldType == TransactionType.TRANSFER) {
-            updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
-            if (existing.getToAccount() != null) {
-                updateBalance(existing.getToAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, true);
-            }
-            updateBalance(existing.getAccount().getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, false);
-            if (toAccountForApply != null) {
-                updateBalance(toAccountForApply.getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, true);
-            }
-        } else {
-            updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT, false);
-            updateBalance(existing.getAccount().getId(), userId, oldType, transactionDetails.getAmount(), BalanceAction.APPLY, false);
-        }
+        updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT);
+        updateBalance(existing.getAccount().getId(), userId, transactionDetails.getType(), transactionDetails.getAmount(), BalanceAction.APPLY);
 
         existing.setAmount(transactionDetails.getAmount());
+        existing.setType(transactionDetails.getType());
         existing.setDescription(transactionDetails.getDescription());
         existing.setTransactionDate(transactionDetails.getTransactionDate());
         existing.setCategory(transactionDetails.getCategory());
         existing.setLabel(transactionDetails.getLabel());
-        if (transactionDetails.getToAccount() != null) {
-            existing.setToAccount(transactionDetails.getToAccount());
-        }
+
         return transactionRepository.save(existing);
     }
 
@@ -119,53 +102,11 @@ public class TransactionService {
         Transaction transaction = getTransactionById(transactionId);
         TransactionType type = transaction.getType();
 
-        if (type == TransactionType.TRANSFER) {
-            updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
-            if (transaction.getToAccount() != null) {
-                updateBalance(transaction.getToAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, true);
-            }
-        } else {
-            updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT, false);
-        }
+        updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT);
         transactionRepository.delete(transaction);
     }
 
-    @Transactional
-    public Transaction createTransfer(Transaction transaction, Account toAccount) {
-        UUID userId = getCurrentUserId();
-        transaction.setUserId(userId);
-        if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Transfer amount must be greater than zero");
-        }
-
-        TransactionType type = transaction.getType();
-        if (type != TransactionType.TRANSFER) {
-            throw new IllegalArgumentException("Transaction type must be TRANSFER for transfer");
-        }
-
-        Account fromAccount = transaction.getAccount();
-        if (fromAccount.getId().equals(toAccount.getId())) {
-            throw new IllegalArgumentException("Source and destination accounts must be different");
-        }
-
-        if (fromAccount.getUserId() == null || !fromAccount.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Source account must belong to the user");
-        }
-
-        accountRepository.findById(toAccount.getId())
-                .filter(a -> a.getUserId().equals(userId))
-                .orElseThrow(() -> new RuntimeException("Destination account not found or access denied"));
-
-        transaction.setToAccount(toAccount);
-        transactionRepository.save(transaction);
-
-        updateBalance(fromAccount.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, false);
-        updateBalance(toAccount.getId(), userId, type, transaction.getAmount(), BalanceAction.APPLY, true);
-
-        return transaction;
-    }
-
-    private void updateBalance(UUID accountId, UUID userId, TransactionType type, BigDecimal amount, BalanceAction action, boolean isDestinationAccount) {
+    private void updateBalance(UUID accountId, UUID userId, TransactionType type, BigDecimal amount, BalanceAction action) {
         Account account = accountRepository.findById(accountId)
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new RuntimeException("Account not found or access denied for userId: " + userId + " and accountId: " + accountId));
@@ -173,13 +114,8 @@ public class TransactionService {
         boolean shouldAdd;
         if (type == TransactionType.INCOME || type == TransactionType.BORROW) {
             shouldAdd = true;
-        } else if (type == TransactionType.EXPENSE || type == TransactionType.LEND) {
-            shouldAdd = false;
         } else {
-            // TRANSFER
-            // Source of TRANSFER (My Bank) subtracts cash.
-            // Dest of TRANSFER (Savings/Friend) adds balance.
-            shouldAdd = isDestinationAccount;
+            shouldAdd = false;
         }
 
         // CREDIT_CARD accounts represent debt, so logic is inverted

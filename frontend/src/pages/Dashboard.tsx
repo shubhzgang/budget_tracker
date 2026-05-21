@@ -10,6 +10,7 @@ import type { Account, AccountType, CreateAccountRequest } from '../types/accoun
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
 import type { Transaction } from '../types/transaction';
+import type { ActivityItem } from '../types/activity';
 import type { PaginatedResponse } from '../types/pagination';
 import apiClient from '../api/client';
 import { Link } from 'react-router-dom';
@@ -21,7 +22,7 @@ export const Dashboard = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [, setCategories] = useState<Category[]>([]);
   const [, setLabels] = useState<Label[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<ActivityItem[]>([]);
   const [analyticsTransactions, setAnalyticsTransactions] = useState<Transaction[]>([]);
   
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -40,7 +41,7 @@ export const Dashboard = () => {
         apiClient.get('/accounts'),
         apiClient.get('/categories'),
         apiClient.get('/labels'),
-        apiClient.get<PaginatedResponse<Transaction>>('/transactions?page=0&size=10&sort=transactionDate,desc'),
+        apiClient.get<PaginatedResponse<ActivityItem>>('/activity?page=0&size=10&sort=transactionDate,desc'),
         apiClient.get<PaginatedResponse<Transaction>>('/transactions?page=0&size=1000&sort=transactionDate,desc')
       ]);
       setAccounts(accRes.data);

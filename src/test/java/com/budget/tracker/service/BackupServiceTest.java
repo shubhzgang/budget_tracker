@@ -38,6 +38,8 @@ class BackupServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
     @Mock
+    private TransferRepository transferRepository;
+    @Mock
     private BackupRecordRepository backupRecordRepository;
     @Mock
     private UserPreferenceRepository userPreferenceRepository;
@@ -58,6 +60,7 @@ class BackupServiceTest {
                 categoryRepository,
                 labelRepository,
                 transactionRepository,
+                transferRepository,
                 backupRecordRepository,
                 userPreferenceRepository,
                 entityManager

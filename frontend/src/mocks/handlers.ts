@@ -127,12 +127,62 @@ export const handlers = [
     });
   }),
 
-  http.post(`${API_URL}/transactions/transfer`, async ({ request }) => {
+  // Mock activity
+  http.get(`${API_URL}/activity`, () => {
+    return HttpResponse.json({
+      content: [
+        {
+          id: 't1',
+          kind: 'TRANSACTION',
+          amount: 50.00,
+          type: 'EXPENSE',
+          description: 'Grocery Shopping',
+          transactionDate: new Date().toISOString(),
+          accountId: '1',
+          account: { id: '1', name: 'Main Bank' },
+          categoryId: 'c1',
+          category: { id: 'c1', name: 'Food', icon: '🍔' },
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 't2',
+          kind: 'TRANSACTION',
+          amount: 1000.00,
+          type: 'INCOME',
+          description: 'Salary',
+          transactionDate: new Date().toISOString(),
+          accountId: '1',
+          account: { id: '1', name: 'Main Bank' },
+          createdAt: new Date().toISOString()
+        }
+      ],
+      pageable: {
+        sort: { empty: false, sorted: true, unsorted: false },
+        offset: 0,
+        pageNumber: 0,
+        pageSize: 20,
+        paged: true,
+        unpaged: false
+      },
+      last: true,
+      totalPages: 1,
+      totalElements: 2,
+      size: 20,
+      number: 0,
+      sort: { empty: false, sorted: true, unsorted: false },
+      first: true,
+      numberOfElements: 2,
+      empty: false
+    });
+  }),
+
+  // Mock transfers
+  http.post(`${API_URL}/transfers`, async ({ request }) => {
     const data = await request.json() as any;
     return HttpResponse.json({
-      id: 't4',
+      id: 'tf1',
       ...data,
-      type: 'TRANSFER',
+      toAmount: (data.fromAmount || 0) + (data.adjustment || 0),
       createdAt: new Date().toISOString()
     });
   }),

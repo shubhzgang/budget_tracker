@@ -79,7 +79,8 @@ test.describe('Transaction Management', () => {
     // 3. Perform Transfer
     await page.click('button:has-text("Add Transaction")');
     await page.selectOption('select[id="trans-type"]', 'TRANSFER');
-    await page.fill('input[id="trans-amount"]', '150');
+    await page.fill('input[id="trans-from-amount"]', '150');
+    await page.fill('input[id="trans-adjustment"]', '0');
     await page.selectOption('select[id="trans-account"]', { label: 'Source Acc' });
     await page.selectOption('select[id="trans-to-account"]', { label: 'Dest Acc' });
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -119,7 +120,8 @@ test.describe('Transaction Management', () => {
     // 3. Perform Transfer (Cash -> Bank)
     await page.click('button:has-text("Add Transaction")');
     await page.selectOption('select[id="trans-type"]', 'TRANSFER');
-    await page.fill('input[id="trans-amount"]', '50');
+    await page.fill('input[id="trans-from-amount"]', '50');
+    await page.fill('input[id="trans-adjustment"]', '0');
     await page.selectOption('select[id="trans-account"]', { label: 'My Cash' });
     await page.selectOption('select[id="trans-to-account"]', { label: 'My Bank' });
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -152,7 +154,8 @@ test.describe('Transaction Management', () => {
     // 2. Perform transfer with a custom description
     await page.click('button:has-text("Add Transaction")');
     await page.selectOption('select[id="trans-type"]', 'TRANSFER');
-    await page.fill('input[id="trans-amount"]', '100');
+    await page.fill('input[id="trans-from-amount"]', '100');
+    await page.fill('input[id="trans-adjustment"]', '0');
     await page.fill('input[id="trans-desc"]', 'Emergency fund');
     await page.selectOption('select[id="trans-account"]', { label: 'Account A' });
     await page.selectOption('select[id="trans-to-account"]', { label: 'Account B' });
@@ -189,7 +192,8 @@ test.describe('Transaction Management', () => {
     // 3. Perform Transfer (Bank -> CC)
     await page.click('button:has-text("Add Transaction")');
     await page.selectOption('select[id="trans-type"]', 'TRANSFER');
-    await page.fill('input[id="trans-amount"]', '200');
+    await page.fill('input[id="trans-from-amount"]', '200');
+    await page.fill('input[id="trans-adjustment"]', '0');
     await page.selectOption('select[id="trans-account"]', { label: 'Checkings' });
     await page.selectOption('select[id="trans-to-account"]', { label: 'Visa CC' });
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -292,4 +296,54 @@ test.describe('Transaction Management', () => {
     await expect(lendingCard.getByText('-₹100.00')).toBeVisible();
     await expect(lendingCard.getByText('You owe them')).toBeVisible();
   });
+
+  test('should allow transferring with adjustment and show adjustment badge', async ({ page }) => {
+    // 1. Create Bank Account
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'My Bank');
+    await page.fill('input[id="initial-balance"]', '1000');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'My Bank' }) });
+    await expect(bankCard).toBeVisible();
+
+    // 2. Create Credit Card Account
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Visa CC');
+    await page.selectOption('select[id="account-type"]', 'CREDIT_CARD');
+    await page.fill('input[id="initial-balance"]', '500'); // ₹500 debt
+    await page.fill('input[id="credit-limit"]', '5000');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+    const ccCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Visa CC' }) });
+    await expect(ccCard).toBeVisible();
+
+    // 3. Perform Transfer with Adjustment (fromAmount=95, adjustment=5, toAmount=100)
+    await page.click('button:has-text("Add Transaction")');
+    await page.selectOption('select[id="trans-type"]', 'TRANSFER');
+    
+    // Fill fromAmount and adjustment
+    await page.fill('input[id="trans-from-amount"]', '95');
+    await page.fill('input[id="trans-adjustment"]', '5');
+    
+    // Verify auto-computation of toAmount in UI
+    const toAmountInput = page.locator('input[id="trans-to-amount"]');
+    await expect(toAmountInput).toHaveValue('100');
+
+    await page.selectOption('select[id="trans-account"]', { label: 'My Bank' });
+    await page.selectOption('select[id="trans-to-account"]', { label: 'Visa CC' });
+    
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // 4. Verify Balances
+    // Bank: 1000 - 95 = 905
+    // CC Debt: 500 - 100 = 400
+    await expect(bankCard.getByText('₹905.00')).toBeVisible();
+    await expect(ccCard.getByText('Debt: ₹400.00')).toBeVisible();
+
+    // 5. Verify Adjustment Badge in Transfer List
+    await expect(page.getByText('+₹5.00 adj')).toBeVisible();
+  });
 });
+

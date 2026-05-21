@@ -2,16 +2,17 @@ import type { Account } from './account';
 import type { Category } from './category';
 import type { Label } from './label';
 
-export type TransactionType = 'INCOME' | 'EXPENSE' | 'LEND' | 'BORROW';
-
-export interface Transaction {
+export interface Transfer {
   id: string;
-  amount: number;
-  type: TransactionType;
+  fromAmount: number;
+  toAmount: number;
+  adjustment: number;
   description?: string;
   transactionDate: string;
-  accountId: string;
-  account?: Account;
+  fromAccountId: string;
+  fromAccount?: Account;
+  toAccountId: string;
+  toAccount?: Account;
   categoryId?: string;
   category?: Category;
   labelId?: string;
@@ -19,12 +20,14 @@ export interface Transaction {
   createdAt: string;
 }
 
-export interface CreateTransactionRequest {
-  amount: number;
-  type: TransactionType;
-  description?: string;
+export interface CreateTransferRequest {
+  fromAmount?: number;
+  toAmount?: number;
+  adjustment?: number;
   transactionDate: string;
-  accountId: string;
+  fromAccountId: string;
+  toAccountId: string;
   categoryId?: string;
   labelId?: string;
+  description?: string;
 }

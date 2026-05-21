@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
 import { TransactionList } from '../components/TransactionList';
-import type { Transaction, TransactionType } from '../types/transaction';
+import type { ActivityItem, ActivityType } from '../types/activity';
 import type { PaginatedResponse } from '../types/pagination';
 import apiClient from '../api/client';
 
 export const Transactions = () => {
   const { refreshTrigger } = useUI();
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
@@ -16,7 +16,7 @@ export const Transactions = () => {
 
   const [filters, setFilters] = useState({
     search: '',
-    type: '' as TransactionType | '',
+    type: '' as ActivityType | '',
     startDate: '',
     endDate: '',
   });
@@ -36,7 +36,7 @@ export const Transactions = () => {
       if (currentFilters.startDate) params.append('startDate', `${currentFilters.startDate}T00:00:00Z`);
       if (currentFilters.endDate) params.append('endDate', `${currentFilters.endDate}T23:59:59Z`);
 
-      const res = await apiClient.get<PaginatedResponse<Transaction>>(`/transactions?${params.toString()}`);
+      const res = await apiClient.get<PaginatedResponse<ActivityItem>>(`/activity?${params.toString()}`);
       
       if (isLoadMore) {
         setTransactions(prev => [...prev, ...res.data.content]);

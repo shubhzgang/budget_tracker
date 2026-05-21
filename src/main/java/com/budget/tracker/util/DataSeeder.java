@@ -11,9 +11,11 @@ import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.CategoryRepository;
 import com.budget.tracker.repository.UserRepository;
+import com.budget.tracker.payload.request.TransferRequest;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
 import com.budget.tracker.service.TransactionService;
+import com.budget.tracker.service.TransferService;
 import com.budget.tracker.service.UserPreferenceService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,6 +41,7 @@ public class DataSeeder implements CommandLineRunner {
     private final CategoryService categoryService;
     private final LabelService labelService;
     private final TransactionService transactionService;
+    private final TransferService transferService;
     private final UserPreferenceService userPreferenceService;
 
     public DataSeeder(UserRepository userRepository,
@@ -48,6 +51,7 @@ public class DataSeeder implements CommandLineRunner {
                       CategoryService categoryService,
                       LabelService labelService,
                       TransactionService transactionService,
+                      TransferService transferService,
                       UserPreferenceService userPreferenceService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
@@ -56,6 +60,7 @@ public class DataSeeder implements CommandLineRunner {
         this.categoryService = categoryService;
         this.labelService = labelService;
         this.transactionService = transactionService;
+        this.transferService = transferService;
         this.userPreferenceService = userPreferenceService;
     }
 
@@ -118,14 +123,14 @@ public class DataSeeder implements CommandLineRunner {
             }
 
             // Transfer from Main Bank to Cash
-            Transaction transfer = new Transaction();
-            transfer.setAccount(mainBank);
-            transfer.setAmount(new BigDecimal("50.00"));
-            transfer.setType(TransactionType.TRANSFER);
-            transfer.setDescription("ATM Withdrawal");
-            transfer.setTransactionDate(OffsetDateTime.now());
-            
-            transactionService.createTransfer(transfer, cash);
+            TransferRequest transferReq = new TransferRequest();
+            transferReq.setFromAccountId(mainBank.getId());
+            transferReq.setToAccountId(cash.getId());
+            transferReq.setFromAmount(new BigDecimal("50.00"));
+            transferReq.setAdjustment(new BigDecimal("5.00")); // showcases adjustment feature
+            transferReq.setDescription("ATM Withdrawal");
+            transferReq.setTransactionDate(OffsetDateTime.now());
+            transferService.createTransfer(transferReq);
 
             System.out.println("Demo data seeded successfully.");
         } finally {

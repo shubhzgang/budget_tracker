@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TransactionList } from './TransactionList';
-import type { Transaction } from '../types/transaction';
+import type { ActivityItem } from '../types/activity';
 
 // Mock usePreferences
 vi.mock('../context/PreferenceContext', () => ({
@@ -14,16 +14,15 @@ vi.mock('../context/PreferenceContext', () => ({
 }));
 
 describe('TransactionList', () => {
-  const mockTransactions: Transaction[] = [
+  const mockTransactions: ActivityItem[] = [
     {
       id: 't1',
+      kind: 'TRANSACTION',
       amount: 50,
       type: 'EXPENSE',
       description: 'Groceries',
       transactionDate: '2026-05-01T00:00:00Z',
-      accountId: '1',
       account: { id: '1', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
-      categoryId: 'c1',
       category: { id: 'c1', name: 'Food', icon: '🍔', isDefault: true, createdAt: '' },
       createdAt: ''
     }
@@ -44,15 +43,14 @@ describe('TransactionList', () => {
   });
 
   it('renders transfer with description and arrow visualization', () => {
-    const transferTransaction: Transaction = {
+    const transferTransaction: ActivityItem = {
       id: 't-transfer',
-      amount: 200,
+      kind: 'TRANSFER',
       type: 'TRANSFER',
+      fromAmount: 200,
       description: 'Monthly savings',
       transactionDate: '2026-05-15T00:00:00Z',
-      accountId: '1',
       account: { id: '1', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
-      toAccountId: '2',
       toAccount: { id: '2', name: 'Savings', balance: 0, type: 'BANK', createdAt: '' },
       createdAt: ''
     };
@@ -64,14 +62,13 @@ describe('TransactionList', () => {
   });
 
   it('renders transfer without description as "Transfer"', () => {
-    const transferTransaction: Transaction = {
+    const transferTransaction: ActivityItem = {
       id: 't-transfer-no-desc',
-      amount: 100,
+      kind: 'TRANSFER',
       type: 'TRANSFER',
+      fromAmount: 100,
       transactionDate: '2026-05-15T00:00:00Z',
-      accountId: '1',
       account: { id: '1', name: 'Cash', balance: 0, type: 'CASH', createdAt: '' },
-      toAccountId: '2',
       toAccount: { id: '2', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
       createdAt: ''
     };
@@ -86,5 +83,26 @@ describe('TransactionList', () => {
     expect(screen.getByText('Main Bank')).toBeInTheDocument();
     // Should not have arrow for non-transfer types
     expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+  });
+
+  it('displays adjustment badge when adjustment > 0', () => {
+    const transferWithAdjustment: ActivityItem = {
+      id: 't-adj',
+      kind: 'TRANSFER',
+      type: 'TRANSFER',
+      fromAmount: 95,
+      toAmount: 100,
+      adjustment: 5,
+      description: 'CC payment',
+      transactionDate: '2026-05-15T00:00:00Z',
+      account: { id: '1', name: 'Main Bank', balance: 0, type: 'BANK', createdAt: '' },
+      toAccount: { id: '2', name: 'Visa CC', balance: 0, type: 'CREDIT_CARD', createdAt: '' },
+      createdAt: ''
+    };
+    render(<TransactionList transactions={[transferWithAdjustment]} />);
+
+    expect(screen.getByText('CC payment')).toBeInTheDocument();
+    // Adjustment badge should show "+₹5.00 adj"
+    expect(screen.getByText('+₹5.00 adj')).toBeInTheDocument();
   });
 });

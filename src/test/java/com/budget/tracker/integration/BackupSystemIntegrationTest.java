@@ -11,6 +11,7 @@ import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
 import com.budget.tracker.service.TransactionService;
+import com.budget.tracker.service.TransferService;
 import com.budget.tracker.service.UserPreferenceService;
 import com.budget.tracker.util.DataSeeder;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,6 +71,9 @@ public class BackupSystemIntegrationTest {
     private TransactionService transactionService;
 
     @Autowired
+    private TransferService transferService;
+
+    @Autowired
     private UserPreferenceService userPreferenceService;
 
     private static final UUID DEMO_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -107,6 +111,7 @@ public class BackupSystemIntegrationTest {
                 categoryService,
                 labelService,
                 transactionService,
+                transferService,
                 userPreferenceService
         );
         seeder.run();
@@ -119,12 +124,12 @@ public class BackupSystemIntegrationTest {
         assertTrue(accountsBefore.getResponse().getContentAsString().contains("Main Bank"));
         assertTrue(accountsBefore.getResponse().getContentAsString().contains("Bob (Lend)"));
 
-        MvcResult transactionsBefore = mockMvc.perform(get("/api/v1/transactions")
+        MvcResult activityBefore = mockMvc.perform(get("/api/v1/activity")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertTrue(transactionsBefore.getResponse().getContentAsString().contains("Lunch"));
-        assertTrue(transactionsBefore.getResponse().getContentAsString().contains("ATM Withdrawal"));
+        assertTrue(activityBefore.getResponse().getContentAsString().contains("Lunch"));
+        assertTrue(activityBefore.getResponse().getContentAsString().contains("ATM Withdrawal"));
 
         // 2. Export to SQL
         MvcResult exportResult = mockMvc.perform(post("/api/v1/backups/export")
@@ -161,7 +166,7 @@ public class BackupSystemIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(result -> assertEquals("[]", result.getResponse().getContentAsString()));
 
-        mockMvc.perform(get("/api/v1/transactions")
+        mockMvc.perform(get("/api/v1/activity")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertTrue(result.getResponse().getContentAsString().contains("\"content\":[]")));
@@ -181,12 +186,12 @@ public class BackupSystemIntegrationTest {
         assertTrue(accountsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Main Bank"));
         assertTrue(accountsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Bob (Lend)"));
 
-        MvcResult transactionsRestored = mockMvc.perform(get("/api/v1/transactions")
+        MvcResult activityRestored = mockMvc.perform(get("/api/v1/activity")
                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertTrue(transactionsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Lunch"));
-        assertTrue(transactionsRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("ATM Withdrawal"));
+        assertTrue(activityRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("Lunch"));
+        assertTrue(activityRestored.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("ATM Withdrawal"));
         
         // Check preferences (DataSeeder sets currency to ₹)
         MvcResult prefsRestored = mockMvc.perform(get("/api/v1/preferences")

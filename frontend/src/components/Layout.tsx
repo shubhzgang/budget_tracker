@@ -9,7 +9,6 @@ import apiClient from '../api/client';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
-import type { CreateTransactionRequest } from '../types/transaction';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -41,19 +40,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     }
   }, [user, refreshTrigger]);
 
-  const handleCreateTransaction = async (data: CreateTransactionRequest) => {
+  const handleCreateTransaction = async (data: any) => {
     setIsSubmitting(true);
     try {
       if (data.type === 'TRANSFER') {
         const transferPayload = {
-          fromAccountId: data.accountId,
+          fromAccountId: data.fromAccountId,
           toAccountId: data.toAccountId,
-          amount: data.amount,
+          fromAmount: data.fromAmount,
+          toAmount: data.toAmount,
+          adjustment: data.adjustment,
           description: data.description || '',
           transactionDate: data.transactionDate,
-          categoryId: data.categoryId
+          categoryId: data.categoryId || null,
+          labelId: data.labelId || null
         };
-        await apiClient.post('/transactions/transfer', transferPayload);
+        await apiClient.post('/transfers', transferPayload);
       } else {
         const transactionPayload = {
           amount: data.amount,

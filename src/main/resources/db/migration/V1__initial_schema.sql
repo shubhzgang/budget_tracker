@@ -3,7 +3,7 @@
 
 -- Enums
 CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK', 'FRIEND_LENDING');
-CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER', 'LEND', 'BORROW');
+CREATE TYPE transaction_type AS ENUM ('INCOME', 'EXPENSE', 'LEND', 'BORROW');
 
 -- Users Table
 CREATE TABLE users (
@@ -55,7 +55,22 @@ CREATE TABLE transactions (
     amount DECIMAL(19, 4) NOT NULL,
     description TEXT,
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    to_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- Transfers Table
+CREATE TABLE transfers (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    from_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    to_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    label_id UUID REFERENCES labels(id) ON DELETE SET NULL,
+    from_amount DECIMAL(19, 4) NOT NULL,
+    adjustment DECIMAL(19, 4) NOT NULL DEFAULT 0,
+    to_amount DECIMAL(19, 4) NOT NULL,
+    description TEXT,
+    transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -87,13 +102,54 @@ CREATE TABLE backup_records (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
+-- Activity View
+CREATE VIEW activity_view AS
+SELECT
+    id,
+    'TRANSACTION' AS kind,
+    user_id,
+    account_id,
+    NULL::uuid AS to_account_id,
+    category_id,
+    label_id,
+    amount,
+    type::text AS type,
+    NULL::decimal(19,4) AS from_amount,
+    NULL::decimal(19,4) AS to_amount,
+    NULL::decimal(19,4) AS adjustment,
+    description,
+    transaction_date,
+    created_at
+FROM transactions
+UNION ALL
+SELECT
+    id,
+    'TRANSFER' AS kind,
+    user_id,
+    from_account_id AS account_id,
+    to_account_id,
+    category_id,
+    label_id,
+    NULL::decimal(19,4) AS amount,
+    'TRANSFER' AS type,
+    from_amount,
+    to_amount,
+    adjustment,
+    description,
+    transaction_date,
+    created_at
+FROM transfers;
+
 -- Indexes for performance
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX idx_labels_user_id ON labels(user_id);
 CREATE INDEX idx_categories_user_id ON categories(user_id);
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_account_id ON transactions(account_id);
-CREATE INDEX idx_transactions_to_account_id ON transactions(to_account_id);
 CREATE INDEX idx_transactions_date ON transactions(transaction_date);
+CREATE INDEX idx_transfers_user_id ON transfers(user_id);
+CREATE INDEX idx_transfers_from_account_id ON transfers(from_account_id);
+CREATE INDEX idx_transfers_to_account_id ON transfers(to_account_id);
+CREATE INDEX idx_transfers_date ON transfers(transaction_date);
 CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
 CREATE INDEX idx_backup_records_user_id ON backup_records(user_id);

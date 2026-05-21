@@ -4,7 +4,6 @@ import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
-import com.budget.tracker.payload.request.TransferRequest;
 import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.AccountService;
 import com.budget.tracker.service.CategoryService;
@@ -96,38 +95,6 @@ public class TransactionControllerTest {
                 .content(objectMapper.writeValueAsString(transaction)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.amount").value(50.00));
-    }
-
-    @Test
-    void shouldCreateTransfer() throws Exception {
-        UUID fromId = UUID.randomUUID();
-        UUID toId = UUID.randomUUID();
-        TransferRequest request = new TransferRequest();
-        request.setFromAccountId(fromId);
-        request.setToAccountId(toId);
-        request.setAmount(new BigDecimal("100.00"));
-        request.setDescription("Transfer to savings");
-        request.setTransactionDate(OffsetDateTime.now());
-
-        Account fromAccount = new Account();
-        fromAccount.setId(fromId);
-        Account toAccount = new Account();
-        toAccount.setId(toId);
-
-        Transaction source = new Transaction();
-        source.setId(UUID.randomUUID());
-        source.setAmount(new BigDecimal("100.00"));
-
-        when(accountService.getAccountById(fromId)).thenReturn(fromAccount);
-        when(accountService.getAccountById(toId)).thenReturn(toAccount);
-        when(transactionService.createTransfer(any(Transaction.class), eq(toAccount))).thenReturn(source);
-
-        mockMvc.perform(post("/api/v1/transactions/transfer")
-                .with(user(userDetails))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.amount").value(100.00));
     }
 
     @Test

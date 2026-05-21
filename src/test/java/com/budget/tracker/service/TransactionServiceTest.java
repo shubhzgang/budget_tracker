@@ -192,13 +192,7 @@ class TransactionServiceTest {
         ));
     }
 
-    @Test
-    void createTransaction_transferType_shouldThrow() {
-        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        tx.setAmount(new BigDecimal("100"));
 
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(tx));
-    }
 
     @Test
     void createTransaction_zeroAmount_shouldThrow() {
@@ -257,33 +251,7 @@ class TransactionServiceTest {
         ));
     }
 
-    @Test
-    void updateTransaction_transferType_shouldUpdateBothBalances() {
-        Transaction existing = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        existing.setId(transactionId);
-        existing.setAmount(new BigDecimal("100"));
-        existing.setToAccount(destAccount);
 
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
-        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
-        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Transaction details = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        details.setAmount(new BigDecimal("200"));
-        details.setToAccount(destAccount);
-
-        transactionService.updateTransaction(transactionId, details);
-
-        // Source: 1000. Revert sub 100 -> 1100. Apply sub 200 -> 900.
-        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0
-        ));
-        // Dest: 500. Revert add 100 -> 400. Apply add 200 -> 600.
-        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("600")) == 0
-        ));
-    }
 
     // -- deleteTransaction --
 
@@ -305,72 +273,7 @@ class TransactionServiceTest {
         verify(transactionRepository).delete(tx);
     }
 
-    @Test
-    void deleteTransaction_transfer_shouldReverseBothBalances() {
-        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        tx.setId(transactionId);
-        tx.setAmount(new BigDecimal("100"));
-        tx.setToAccount(destAccount);
 
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
-        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
-
-        transactionService.deleteTransaction(transactionId);
-
-        // Source: 1000. Revert sub 100 -> add 100 -> 1100.
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("1100")) == 0
-        ));
-        // Dest: 500. Revert add 100 -> sub 100 -> 400.
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("400")) == 0
-        ));
-        verify(transactionRepository).delete(tx);
-    }
-
-    // -- createTransfer --
-
-    @Test
-    void createTransfer_shouldCreatePairedTransactions() {
-        Transaction sourceTx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        sourceTx.setAmount(new BigDecimal("100"));
-        sourceTx.setUserId(userId);
-
-        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
-        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Transaction result = transactionService.createTransfer(sourceTx, destAccount);
-
-        assertNotNull(result);
-        assertEquals(destAccount, result.getToAccount());
-        verify(transactionRepository, times(1)).save(any(Transaction.class));
-        // Source: 1000 - 100 = 900.
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("900")) == 0
-        ));
-        // Dest: 500 + 100 = 600.
-        verify(accountRepository).save(argThat(acct ->
-                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("600")) == 0
-        ));
-    }
-
-    @Test
-    void createTransfer_zeroAmount_shouldThrow() {
-        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        tx.setAmount(BigDecimal.ZERO);
-
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(tx, destAccount));
-    }
-
-    @Test
-    void createTransfer_negativeAmount_shouldThrow() {
-        Transaction tx = buildTransaction(TransactionType.TRANSFER, sourceAccount);
-        tx.setAmount(new BigDecimal("-50"));
-
-        assertThrows(IllegalArgumentException.class, () -> transactionService.createTransfer(tx, destAccount));
-    }
 
     // -- list methods --
 
