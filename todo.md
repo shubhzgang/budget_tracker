@@ -93,9 +93,13 @@ This file tracks the progress of the Budget Tracker project against the original
     - [ ] Implement toast notifications for successful actions (e.g., "Account created", "Transaction saved").
 
 ### 🐛 Pending Bug Fixes
-- [ ] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description).
+- [x] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description). Fixed by unified `activity_view` — searches across both tables.
 - [x] **SQL Restore**: Backup failed to restore after "Delete All Data" operation was performed. (Fixed: improved SQL split logic and added UTF-8 support in `BackupService`).
 - [x] **"Transfer to undefined" in UI**: Fixed. Added `@JsonIgnoreProperties` to `Transaction.java` and `LEFT JOIN FETCH` to all repository queries. Added `TransactionSerializationTest` with `open-in-view=false` to prevent regression.
+
+### 🏗️ Completed Refactors
+
+- [x] **Transfer / Transaction Split**: Separated transfers into a dedicated `transfers` table with `fromAmount`, `toAmount`, and `adjustment` fields. Removed `toAccount` from `Transaction` entity and `TRANSFER` from `TransactionType` enum. Created `Transfer` entity, dedicated `TransferController`/`TransferService`, and `activity_view` (PostgreSQL `UNION ALL` view) for unified listing. Frontend updated with three-field transfer form (any two fields → third auto-computed), `/transfers` API routing, and `TransactionList` consumes `ActivityItem` type. See `transfer-plan.md` for full details.
 
 ### 🚀 Future Enhancements
 - [ ] **In-Place Restore**: Ability to restore directly from the server-side backup history in the UI without downloading/uploading.

@@ -345,5 +345,49 @@ test.describe('Transaction Management', () => {
     // 5. Verify Adjustment Badge in Transfer List
     await expect(page.getByText('+₹5.00 adj')).toBeVisible();
   });
+
+  test('should find transfer by description in the search bar', async ({ page }) => {
+    // 1. Create two accounts
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Search Bank');
+    await page.fill('input[id="initial-balance"]', '1000');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+
+    await page.click('button:has-text("Add Account")');
+    await page.fill('input[id="account-name"]', 'Search Cash');
+    await page.selectOption('select[id="account-type"]', 'CASH');
+    await page.fill('input[id="initial-balance"]', '0');
+    await page.click('button[type="submit"]:has-text("Create Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+
+    // 2. Create an expense (should NOT match the search term)
+    await page.click('button:has-text("Add Transaction")');
+    await page.fill('input[id="trans-amount"]', '30');
+    await page.fill('input[id="trans-desc"]', 'Groceries');
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // 3. Create a transfer with a unique description
+    await page.click('button:has-text("Add Transaction")');
+    await page.selectOption('select[id="trans-type"]', 'TRANSFER');
+    await page.fill('input[id="trans-from-amount"]', '50');
+    await page.fill('input[id="trans-adjustment"]', '0');
+    await page.fill('input[id="trans-desc"]', 'Payroll deposit');
+    await page.selectOption('select[id="trans-account"]', { label: 'Search Bank' });
+    await page.selectOption('select[id="trans-to-account"]', { label: 'Search Cash' });
+    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+
+    // 4. Navigate to Transactions page where the search bar lives
+    await page.click('text=Transactions');
+    await expect(page.getByText('Payroll deposit')).toBeVisible();
+    await expect(page.getByText('Groceries')).toBeVisible();
+
+    // 5. Search for the transfer description — only the transfer should appear
+    await page.fill('input[placeholder*="Description"]', 'Payroll deposit');
+    await expect(page.getByText('Payroll deposit')).toBeVisible();
+    await expect(page.getByText('Groceries')).not.toBeVisible();
+  });
 });
 

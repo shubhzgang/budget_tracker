@@ -9,7 +9,7 @@
 * **Build Tool:** Gradle
 
 ## Architecture Notes for Multi-User Extensibility
-* Even though there is only one user initially, **all** domain entities (`Account`, `Category`, `Transaction`, `Label`) MUST include a `user_id` foreign key.
+* Even though there is only one user initially, **all** domain entities (`Account`, `Category`, `Transaction`, `Transfer`, `Label`) MUST include a `user_id` foreign key.
 * All backend repository queries MUST scope data retrieval by the authenticated user's ID (e.g., `findByUserIdAndAccountId(...)`).
 * Implement Spring Security with JWT from the start to establish the `UserPrincipal` context.
 * **Testing:** Ensure that at each step, we keep adding unit tests, integration tests, or end-to-end tests and make sure that previous tests also pass with each feature implementation.
@@ -20,7 +20,7 @@
 
 ### 1. Enums
 * `AccountType`: `CREDIT_CARD`, `CASH`, `BANK`, `FRIEND_LENDING`
-* `TransactionType`: `INCOME`, `EXPENSE`, `TRANSFER`, `LEND`, `BORROW`
+* `TransactionType`: `INCOME`, `EXPENSE`, `LEND`, `BORROW` (TRANSFER moved to dedicated transfers table — see Phase 1b)
 
 ### 2. Core Tables (PostgreSQL)
 * **`users`**: `id` (UUIDv7), `email`, `password_hash`, `created_at`
@@ -35,7 +35,7 @@
     * `amount` (Decimal)
     * `description` (Text)
     * `transaction_date` (Timestamp)
-    * `to_account_id` (UUID - Reference to the destination account for transfers)
+    * (removed `to_account_id` — moved to `transfers` table via Phase 1b)
 
 *Note on PostgreSQL 13+ vs UUIDv7:* While PostgreSQL supports standard UUIDs natively, UUIDv7 (time-ordered) isn't a built-in function until potentially Postgres 17+. We will use a library like `uuid-creator` in Java or a custom Postgres extension/function if we want to generate them at the DB level. For simplicity, we'll generate them in the application layer (Spring Boot).
 
@@ -45,7 +45,18 @@
 
 ---
 
-## Phase 2: Backend Development (Spring Boot)
+## Phase 1b: Transfer / Transaction Split [DONE]
+
+See `transfer-plan.md` for the full design document. Summary of what was implemented:
+
+- **New `transfers` table** — separate from `transactions` with `fromAmount`, `adjustment`, and `toAmount` (computed as `fromAmount + adjustment`) fields. Supports real-world scenarios like paying a ₹100 bill with ₹95 from bank (₹5 adjustment/savings).
+- **`Transfer` entity** — dedicated JPA entity with `fromAccount`, `toAccount`, `category`, `label`, and the three amount fields.
+- **Cleaned up `Transaction`** — removed `toAccount` field and `TRANSFER` from `TransactionType` enum. Transactions are now strictly INCOME, EXPENSE, LEND, BORROW.
+- **`activity_view`** — PostgreSQL `UNION ALL` view that merges transactions and transfers into a single shape. Backed by `ActivityItem` read-only JPA entity, `ActivityRepository`, `ActivityService`, and `GET /api/v1/activity` endpoint.
+- **`TransferService` / `TransferController`** — full CRUD with balance adjustment (source debited `fromAmount`, destination credited `toAmount`), user-scoped queries, and search.
+- **Frontend three-field transfer form** — `From Amount`, `To Amount`, `Adjustment` fields; any two populated → third auto-computed. Routes to `POST /transfers` endpoint.
+- **Unified activity listing** — `Transactions` page and `Dashboard` fetch from `GET /api/v1/activity`. `TransactionList` component consumes `ActivityItem` type and displays transfer details (account arrow, adjustment badge).
+- **Tests** — `TransferIntegrationTest`, `ActivityIntegrationTest`, updated E2E transfer tests with adjustment verification, and E2E test for searching transfers by description.
 
 ### Step 1: Base Configuration
 * Initialize Spring Boot project with Data JPA, PostgreSQL, Security, Web, and Validation.
@@ -174,6 +185,7 @@
 
     ### 5. Reported Bugs
     *   **Bug 1: Transaction Search (Transfer Type):** Search on transactions page is not working when the transaction type is `TRANSFER`. Searching for a word in the description works for `EXPENSE` type but fails for `TRANSFER`.
+        *   **Status:** FIXED. The unified `activity_view` queries both `transactions` and `transfers` tables, so description search works for all types. E2E test added in `e2e/tests/transactions.spec.ts` (`should find transfer by description in the search bar`).
     *   **Bug 2: SQL Restore Failure:** Restoring from a SQL backup file failed after performing "Delete All Data" and verifying that data was deleted.
 
     ### 6. Future Enhancements
