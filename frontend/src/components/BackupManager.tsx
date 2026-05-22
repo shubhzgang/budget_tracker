@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { useToast } from '../context/ToastContext';
 
 interface BackupRecord {
   id: string;
@@ -11,11 +12,11 @@ interface BackupRecord {
 }
 
 export const BackupManager: React.FC = () => {
+  const { addToast } = useToast();
   const [history, setHistory] = useState<BackupRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -34,13 +35,12 @@ export const BackupManager: React.FC = () => {
 
   const handleExport = async (format: 'SQL' | 'CSV') => {
     setIsExporting(true);
-    setMessage(null);
     try {
       await apiClient.post(`/backups/export?format=${format}`);
-      setMessage({ type: 'success', text: `Manual ${format} export triggered successfully.` });
+      addToast(`${format} export triggered successfully`, 'success');
       fetchHistory();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to trigger export.' });
+      addToast('Failed to trigger export.', 'error');
     } finally {
       setIsExporting(false);
     }
@@ -54,7 +54,6 @@ export const BackupManager: React.FC = () => {
     if (!confirmRestore) return;
 
     setIsImporting(true);
-    setMessage(null);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -62,11 +61,11 @@ export const BackupManager: React.FC = () => {
       await apiClient.post('/backups/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setMessage({ type: 'success', text: 'Data restored successfully. Please refresh the page.' });
+      addToast('Data restored successfully. Please refresh the page.', 'success');
       // Reset the file input
       e.target.value = '';
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to restore data.' });
+      addToast('Failed to restore data.', 'error');
     } finally {
       setIsImporting(false);
     }
@@ -94,13 +93,12 @@ export const BackupManager: React.FC = () => {
     if (!confirmDelete) return;
 
     setIsLoading(true);
-    setMessage(null);
     try {
       await apiClient.delete('/backups/clear');
-      setMessage({ type: 'success', text: 'All data has been deleted.' });
+      addToast('All data has been deleted.', 'success');
       fetchHistory();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to delete data.' });
+      addToast('Failed to delete data.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -121,12 +119,6 @@ export const BackupManager: React.FC = () => {
         <p className="text-sm text-muted-foreground mb-6">
           Export your data for backup or restore it from a previous file.
         </p>
-
-        {message && (
-          <div className={`p-4 rounded-md mb-6 ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {message.text}
-          </div>
-        )}
 
         <div className="flex flex-wrap gap-4 mb-8">
           <button

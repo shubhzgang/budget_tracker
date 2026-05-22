@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../api/client';
+import { useToast } from '../context/ToastContext';
 import type { Label, CreateLabelRequest } from '../types/label';
 
 export const LabelManager: React.FC = () => {
+  const { addToast } = useToast();
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,7 +32,9 @@ export const LabelManager: React.FC = () => {
       await apiClient.post('/labels', { name } as CreateLabelRequest);
       setName('');
       await fetchLabels();
+      addToast('Label added successfully', 'success');
     } catch (error) {
+      addToast('Failed to add label', 'error');
       console.error('Failed to create label', error);
     } finally {
       setIsSubmitting(false);
@@ -42,7 +46,9 @@ export const LabelManager: React.FC = () => {
     try {
       await apiClient.delete(`/labels/${id}`);
       await fetchLabels();
+      addToast('Label deleted', 'success');
     } catch (error) {
+      addToast('Failed to delete label', 'error');
       console.error('Failed to delete label', error);
     }
   };

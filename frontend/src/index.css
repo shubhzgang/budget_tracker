@@ -26,6 +26,35 @@
 
 @layer base {
   :root {
+    --toast-success: #16a34a;
+    --toast-success-fg: #ffffff;
+    --toast-error: #dc2626;
+    --toast-error-fg: #ffffff;
+    --toast-info: #2563eb;
+    --toast-info-fg: #ffffff;
+  }
+
+  .dark {
+    --toast-success: #15803d;
+    --toast-success-fg: #f0fdf4;
+    --toast-error: #b91c1c;
+    --toast-error-fg: #fef2f2;
+    --toast-info: #1d4ed8;
+    --toast-info-fg: #eff6ff;
+  }
+
+  .oled {
+    --toast-success: #15803d;
+    --toast-success-fg: #f0fdf4;
+    --toast-error: #b91c1c;
+    --toast-error-fg: #fef2f2;
+    --toast-info: #1d4ed8;
+    --toast-info-fg: #eff6ff;
+  }
+}
+
+@layer base {
+  :root {
     --background: #ffffff;
     --foreground: #0f172a;
     --card: #ffffff;

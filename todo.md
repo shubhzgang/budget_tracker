@@ -89,8 +89,11 @@ This file tracks the progress of the Budget Tracker project against the original
     - [x] Add `currencySymbol` to `UserPreference` (default ₹).
     - [x] Update `PreferenceManager` UI to allow choosing symbol.
     - [x] Update formatting across the app to use preferred symbol.
-- [ ] **Toast Notifications**:
-    - [ ] Implement toast notifications for successful actions (e.g., "Account created", "Transaction saved").
+- [x] **Toast Notifications**:
+    - [x] Implemented ToastContext + Toast + Toaster components.
+    - [x] Toasts shown on transaction/transfer create, account CRUD, category create/delete, label create/delete, preferences save, backup export/import/delete.
+    - [x] Auto-dismiss after 3 seconds (configurable per toast).
+    - [x] Support for success, error, and info types with distinct styling.
 
 ### 🐛 Pending Bug Fixes
 - [x] **Transaction Search**: Search on transactions page not working for `TRANSFER` type transactions (searching by description). Fixed by unified `activity_view` — searches across both tables.

@@ -1,7 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PreferenceManager } from './PreferenceManager';
+import { ToastProvider } from '../context/ToastContext';
 import apiClient from '../api/client';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ToastProvider>{children}</ToastProvider>
+);
 
 vi.mock('../api/client', () => ({
   default: {
@@ -41,7 +46,7 @@ describe('PreferenceManager', () => {
   });
 
   it('renders with existing preferences', async () => {
-    render(<PreferenceManager />);
+    render(<PreferenceManager />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Default Account/i)).toHaveValue('a1');
@@ -54,7 +59,7 @@ describe('PreferenceManager', () => {
   });
 
   it('calls updatePreferences on submit', async () => {
-    render(<PreferenceManager />);
+    render(<PreferenceManager />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Default Type/i)).toHaveValue('EXPENSE');
@@ -63,7 +68,7 @@ describe('PreferenceManager', () => {
     fireEvent.change(screen.getByLabelText(/Default Type/i), { target: { value: 'INCOME' } });
     fireEvent.change(screen.getByLabelText(/Currency Symbol/i), { target: { value: '$' } });
     fireEvent.click(screen.getByLabelText(/Enable Automatic Backups/i)); // Toggle to false
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Save Preferences/i }));
 
     expect(mockUpdatePreferences).toHaveBeenCalledWith(expect.objectContaining({

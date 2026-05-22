@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePreferences } from '../context/PreferenceContext';
+import { useToast } from '../context/ToastContext';
 import apiClient from '../api/client';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
@@ -8,6 +9,7 @@ import type { TransactionType } from '../types/transaction';
 
 export const PreferenceManager: React.FC = () => {
   const { preferences, updatePreferences, isLoading: isSaving } = usePreferences();
+  const { addToast } = useToast();
   
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -72,6 +74,7 @@ export const PreferenceManager: React.FC = () => {
       autoBackupFrequency: formData.autoBackupFrequency,
       autoBackupFormat: formData.autoBackupFormat
     });
+    addToast('Preferences saved successfully', 'success');
   };
 
   if (isLoadingData) {

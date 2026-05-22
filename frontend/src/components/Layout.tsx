@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
+import { useToast } from '../context/ToastContext';
 import { ThemeToggle } from './ThemeToggle';
 import { Modal } from './Modal';
 import { TransactionForm } from './TransactionForm';
@@ -13,6 +14,7 @@ import type { Label } from '../types/label';
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const { isTransactionModalOpen, openTransactionModal, closeTransactionModal, refreshTrigger, triggerRefresh } = useUI();
+  const { addToast } = useToast();
   const location = useLocation();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -56,6 +58,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           labelId: data.labelId || null
         };
         await apiClient.post('/transfers', transferPayload);
+        addToast('Transfer created successfully', 'success');
       } else {
         const transactionPayload = {
           amount: data.amount,
@@ -67,10 +70,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           label: data.labelId ? { id: data.labelId } : null
         };
         await apiClient.post('/transactions', transactionPayload);
+        addToast('Transaction saved successfully', 'success');
       }
       closeTransactionModal();
       triggerRefresh();
     } catch (error) {
+      addToast('Failed to save. Please try again.', 'error');
       console.error('Failed to create transaction', error);
     } finally {
       setIsSubmitting(false);

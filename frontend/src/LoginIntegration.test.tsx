@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
+import { ToastProvider } from './context/ToastContext';
 import { AppRoutes } from './App';
 
 describe('Login Integration', () => {
@@ -13,11 +14,13 @@ describe('Login Integration', () => {
       <ThemeProvider>
         <AuthProvider>
           <PreferenceProvider>
-            <UIProvider>
-              <MemoryRouter initialEntries={['/login']}>
-                <AppRoutes />
-              </MemoryRouter>
-            </UIProvider>
+            <ToastProvider>
+              <UIProvider>
+                <MemoryRouter initialEntries={['/login']}>
+                  <AppRoutes />
+                </MemoryRouter>
+              </UIProvider>
+            </ToastProvider>
           </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>
@@ -49,11 +52,13 @@ describe('Login Integration', () => {
       <ThemeProvider>
         <AuthProvider>
           <PreferenceProvider>
-            <UIProvider>
-              <MemoryRouter initialEntries={['/login']}>
-                <AppRoutes />
-              </MemoryRouter>
-            </UIProvider>
+            <ToastProvider>
+              <UIProvider>
+                <MemoryRouter initialEntries={['/login']}>
+                  <AppRoutes />
+                </MemoryRouter>
+              </UIProvider>
+            </ToastProvider>
           </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -3,8 +3,10 @@ import { AuthProvider } from './context/AuthContext';
 import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
+import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+import { Toaster } from './components/Toaster';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
@@ -57,11 +59,14 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <PreferenceProvider>
-          <UIProvider>
-            <Router>
-              <AppRoutes />
-            </Router>
-          </UIProvider>
+          <ToastProvider>
+            <UIProvider>
+              <Router>
+                <AppRoutes />
+              </Router>
+            </UIProvider>
+            <Toaster />
+          </ToastProvider>
         </PreferenceProvider>
       </AuthProvider>
     </ThemeProvider>

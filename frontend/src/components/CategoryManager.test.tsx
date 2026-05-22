@@ -2,13 +2,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { CategoryManager } from './CategoryManager';
 import { ThemeProvider } from '../context/ThemeContext';
+import { ToastProvider } from '../context/ToastContext';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider>
+    <ToastProvider>{children}</ToastProvider>
+  </ThemeProvider>
+);
 
 describe('CategoryManager', () => {
   it('renders existing categories and allows adding new one', async () => {
     render(
-      <ThemeProvider>
-        <CategoryManager />
-      </ThemeProvider>
+      <CategoryManager />,
+      { wrapper }
     );
 
     // Should show mocked categories from handlers.ts (assuming defaults are there)
@@ -31,11 +37,10 @@ describe('CategoryManager', () => {
 
   it('allows deleting a custom category', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true);
-    
+
     render(
-      <ThemeProvider>
-        <CategoryManager />
-      </ThemeProvider>
+      <CategoryManager />,
+      { wrapper }
     );
 
     // Wait for categories to load
@@ -48,7 +53,7 @@ describe('CategoryManager', () => {
     fireEvent.click(deleteButton);
 
     expect(confirmSpy).toHaveBeenCalled();
-    
+
     confirmSpy.mockRestore();
   });
 });

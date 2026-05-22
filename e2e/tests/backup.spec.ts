@@ -65,7 +65,7 @@ test.describe('Backup and Restore', () => {
     // 2. Export SQL
     await navigateToBackup(page);
     await page.click('button:has-text("Export SQL (Full)")');
-    await expect(page.getByText('Manual SQL export triggered successfully.')).toBeVisible();
+    await expect(page.getByText(/SQL export triggered successfully/)).toBeVisible();
 
     // 3. Download
     const downloadPromise = page.waitForEvent('download');
@@ -115,7 +115,7 @@ test.describe('Backup and Restore', () => {
     // 2. Export CSV
     await navigateToBackup(page);
     await page.click('button:has-text("Export CSV (Transactions)")');
-    await expect(page.getByText('Manual CSV export triggered successfully.')).toBeVisible();
+    await expect(page.getByText(/CSV export triggered successfully/)).toBeVisible();
 
     // 3. Download
     const downloadPromise = page.waitForEvent('download');
@@ -149,11 +149,11 @@ test.describe('Backup and Restore', () => {
     
     // SQL Export
     await page.click('button:has-text("Export SQL (Full)")');
-    await expect(page.getByText('Manual SQL export triggered successfully.')).toBeVisible();
-    
+    await expect(page.getByText(/SQL export triggered successfully/)).toBeVisible();
+
     // CSV Export
     await page.click('button:has-text("Export CSV (Transactions)")');
-    await expect(page.getByText('Manual CSV export triggered successfully.')).toBeVisible();
+    await expect(page.getByText(/CSV export triggered successfully/)).toBeVisible();
     
     // Check history table (Header + 2 rows)
     const rows = page.locator('table tbody tr');

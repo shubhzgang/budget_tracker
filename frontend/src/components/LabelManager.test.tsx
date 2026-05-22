@@ -2,13 +2,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { LabelManager } from './LabelManager';
 import { ThemeProvider } from '../context/ThemeContext';
+import { ToastProvider } from '../context/ToastContext';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider>
+    <ToastProvider>{children}</ToastProvider>
+  </ThemeProvider>
+);
 
 describe('LabelManager', () => {
   it('renders existing labels and allows adding new one', async () => {
     render(
-      <ThemeProvider>
-        <LabelManager />
-      </ThemeProvider>
+      <LabelManager />,
+      { wrapper }
     );
 
     await waitFor(() => {
@@ -28,11 +34,10 @@ describe('LabelManager', () => {
 
   it('allows deleting a custom label', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true);
-    
+
     render(
-      <ThemeProvider>
-        <LabelManager />
-      </ThemeProvider>
+      <LabelManager />,
+      { wrapper }
     );
 
     await waitFor(() => {
@@ -43,7 +48,7 @@ describe('LabelManager', () => {
     fireEvent.click(deleteButton);
 
     expect(confirmSpy).toHaveBeenCalled();
-    
+
     confirmSpy.mockRestore();
   });
 });

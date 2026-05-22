@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../api/client';
+import { useToast } from '../context/ToastContext';
 import type { Category, CreateCategoryRequest } from '../types/category';
 
 const AVAILABLE_ICONS = [
@@ -7,6 +8,7 @@ const AVAILABLE_ICONS = [
 ];
 
 export const CategoryManager: React.FC = () => {
+  const { addToast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +39,9 @@ export const CategoryManager: React.FC = () => {
       await apiClient.post('/categories', formData);
       setFormData({ name: '', icon: AVAILABLE_ICONS[0] });
       await fetchCategories();
+      addToast('Category added successfully', 'success');
     } catch (error) {
+      addToast('Failed to add category', 'error');
       console.error('Failed to create category', error);
     } finally {
       setIsSubmitting(false);
@@ -49,7 +53,9 @@ export const CategoryManager: React.FC = () => {
     try {
       await apiClient.delete(`/categories/${id}`);
       await fetchCategories();
+      addToast('Category deleted', 'success');
     } catch (error) {
+      addToast('Failed to delete category', 'error');
       console.error('Failed to delete category', error);
     }
   };
