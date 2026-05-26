@@ -1,12 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
+import { useToast } from '../context/ToastContext';
 import { TransactionList } from '../components/TransactionList';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { ActivityItem, ActivityType } from '../types/activity';
 import type { PaginatedResponse } from '../types/pagination';
 import apiClient from '../api/client';
 
 export const Transactions = () => {
-  const { refreshTrigger } = useUI();
+  const { refreshTrigger, triggerRefresh } = useUI();
+  const { addToast } = useToast();
 
   const [transactions, setTransactions] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,6 +23,9 @@ export const Transactions = () => {
     startDate: '',
     endDate: '',
   });
+
+  const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchTransactions = useCallback(async (pageNum: number, currentFilters: typeof filters, isLoadMore = false) => {
     if (isLoadMore) setLoadingMore(true);
@@ -66,6 +72,30 @@ export const Transactions = () => {
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleDeleteClick = (item: ActivityItem) => {
+    setItemToDelete(item);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      const endpoint = itemToDelete.kind === 'TRANSFER'
+        ? `/transfers/${itemToDelete.id}`
+        : `/transactions/${itemToDelete.id}`;
+      await apiClient.delete(endpoint);
+      setTransactions(prev => prev.filter(t => t.id !== itemToDelete.id));
+      addToast('Transaction deleted successfully', 'success');
+      triggerRefresh();
+    } catch (error) {
+      console.error('Failed to delete transaction', error);
+      addToast('Failed to delete transaction. Please try again.', 'error');
+    } finally {
+      setIsDeleting(false);
+      setItemToDelete(null);
+    }
   };
 
   return (
@@ -123,7 +153,11 @@ export const Transactions = () => {
 
       {/* Transactions List */}
       <section className="space-y-6">
-        <TransactionList transactions={transactions} loading={loading && page === 0} />
+        <TransactionList
+          transactions={transactions}
+          loading={loading && page === 0}
+          onDelete={handleDeleteClick}
+        />
         
         {hasMore && (
           <div className="flex justify-center pt-4">
@@ -141,6 +175,17 @@ export const Transactions = () => {
           <p className="text-center text-sm text-muted-foreground">No more transactions to show.</p>
         )}
       </section>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete "${itemToDelete?.description || 'this transaction'}"? This will also revert the account balance. This action cannot be undone.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

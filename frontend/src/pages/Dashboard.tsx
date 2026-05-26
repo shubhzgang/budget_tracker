@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
+import { useToast } from '../context/ToastContext';
 import { usePreferences } from '../context/PreferenceContext';
 import { BalanceCard } from '../components/BalanceCard';
 import { Modal } from '../components/Modal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { AccountForm } from '../components/AccountForm';
 import { TransactionList } from '../components/TransactionList';
 import { Analytics } from '../components/Analytics';
@@ -17,6 +19,7 @@ import { Link } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { refreshTrigger, triggerRefresh } = useUI();
+  const { addToast } = useToast();
   const { preferences } = usePreferences();
   
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -31,6 +34,9 @@ export const Dashboard = () => {
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoadingAccounts(true);
@@ -72,6 +78,30 @@ export const Dashboard = () => {
       console.error('Failed to create account', error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (item: ActivityItem) => {
+    setItemToDelete(item);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      const endpoint = itemToDelete.kind === 'TRANSFER'
+        ? `/transfers/${itemToDelete.id}`
+        : `/transactions/${itemToDelete.id}`;
+      await apiClient.delete(endpoint);
+      setTransactions(prev => prev.filter(t => t.id !== itemToDelete.id));
+      addToast('Transaction deleted successfully', 'success');
+      triggerRefresh();
+    } catch (error) {
+      console.error('Failed to delete transaction', error);
+      addToast('Failed to delete transaction. Please try again.', 'error');
+    } finally {
+      setIsDeleting(false);
+      setItemToDelete(null);
     }
   };
 
@@ -181,7 +211,7 @@ export const Dashboard = () => {
             View All
           </Link>
         </div>
-        <TransactionList transactions={transactions} loading={loadingTransactions} />
+        <TransactionList transactions={transactions} loading={loadingTransactions} onDelete={handleDeleteClick} />
       </section>
 
       {/* Account Modal */}
@@ -196,6 +226,17 @@ export const Dashboard = () => {
           isLoading={isSubmitting}
         />
       </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete "${itemToDelete?.description || 'this transaction'}"? This will also revert the account balance. This action cannot be undone.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

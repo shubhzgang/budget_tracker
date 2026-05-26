@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TransactionList } from './TransactionList';
 import type { ActivityItem } from '../types/activity';
@@ -104,5 +104,22 @@ describe('TransactionList', () => {
     expect(screen.getByText('CC payment')).toBeInTheDocument();
     // Adjustment badge should show "+₹5.00 adj"
     expect(screen.getByText('+₹5.00 adj')).toBeInTheDocument();
+  });
+
+  it('does not render delete button when onDelete is not provided', () => {
+    render(<TransactionList transactions={mockTransactions} />);
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
+  });
+
+  it('renders delete button and fires onDelete when clicked', () => {
+    const onDelete = vi.fn();
+    render(<TransactionList transactions={mockTransactions} onDelete={onDelete} />);
+
+    const deleteButton = screen.getByTitle('Delete');
+    expect(deleteButton).toBeInTheDocument();
+
+    fireEvent.click(deleteButton);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith(mockTransactions[0]);
   });
 });

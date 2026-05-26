@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PreferenceProvider } from './context/PreferenceContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
+import { ToastProvider } from './context/ToastContext';
 import { Dashboard } from './pages/Dashboard';
 
 describe('Dashboard Integration', () => {
@@ -17,11 +18,13 @@ describe('Dashboard Integration', () => {
       <ThemeProvider>
         <AuthProvider>
           <PreferenceProvider>
-            <UIProvider>
-              <MemoryRouter>
-                <Dashboard />
-              </MemoryRouter>
-            </UIProvider>
+            <ToastProvider>
+              <UIProvider>
+                <MemoryRouter>
+                  <Dashboard />
+                </MemoryRouter>
+              </UIProvider>
+            </ToastProvider>
           </PreferenceProvider>
         </AuthProvider>
       </ThemeProvider>
