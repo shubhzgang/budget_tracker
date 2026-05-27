@@ -29,9 +29,9 @@ public class ActivityService {
         return userId;
     }
 
-    public Page<ActivityResponse> getActivity(String searchTerm, String type, OffsetDateTime startDate, OffsetDateTime endDate, Pageable pageable) {
+    public Page<ActivityResponse> getActivity(String searchTerm, String type, UUID accountId, OffsetDateTime startDate, OffsetDateTime endDate, Pageable pageable) {
         UUID userId = getCurrentUserId();
-        Page<ActivityItem> items = activityRepository.searchActivity(userId, searchTerm, type, startDate, endDate, pageable);
+        Page<ActivityItem> items = activityRepository.searchActivity(userId, searchTerm, type, accountId, startDate, endDate, pageable);
         return items.map(this::mapToResponse);
     }
 

@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,7 +78,7 @@ public class ActivityControllerTest {
         act2.setAdjustment(new BigDecimal("10.00"));
         act2.setDescription("CC Payment");
 
-        when(activityService.getActivity(any(), any(), any(), any(), any()))
+        when(activityService.getActivity(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(act1, act2)));
 
         mockMvc.perform(get("/api/v1/activity")
@@ -86,5 +88,28 @@ public class ActivityControllerTest {
                 .andExpect(jsonPath("$.content[0].description").value("Dinner"))
                 .andExpect(jsonPath("$.content[1].kind").value("TRANSFER"))
                 .andExpect(jsonPath("$.content[1].adjustment").value(10.00));
+    }
+
+    @Test
+    void shouldFilterByAccountId() throws Exception {
+        UUID accountId = UUID.randomUUID();
+
+        ActivityResponse act = new ActivityResponse();
+        act.setId(UUID.randomUUID());
+        act.setKind("TRANSACTION");
+        act.setType("EXPENSE");
+        act.setAmount(new BigDecimal("75.00"));
+        act.setDescription("Groceries");
+
+        when(activityService.getActivity(any(), any(), eq(accountId), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(act)));
+
+        mockMvc.perform(get("/api/v1/activity")
+                .param("accountId", accountId.toString())
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].description").value("Groceries"));
+
+        verify(activityService).getActivity(any(), any(), eq(accountId), any(), any(), any());
     }
 }

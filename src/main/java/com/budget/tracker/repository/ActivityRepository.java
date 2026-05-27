@@ -26,6 +26,7 @@ public interface ActivityRepository extends JpaRepository<ActivityItem, UUID> {
             "OR LOWER(a.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
             "OR LOWER(a.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
             "AND (cast(:type as string) IS NULL OR a.type = :type) " +
+            "AND (cast(:accountId as string) IS NULL OR a.account.id = :accountId OR a.toAccount.id = :accountId) " +
             "AND (cast(:startDate as string) IS NULL OR a.transactionDate >= :startDate) " +
             "AND (cast(:endDate as string) IS NULL OR a.transactionDate <= :endDate)",
             countQuery = "SELECT count(a) FROM ActivityItem a WHERE a.userId = :userId " +
@@ -34,12 +35,14 @@ public interface ActivityRepository extends JpaRepository<ActivityItem, UUID> {
             "OR LOWER(a.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
             "OR LOWER(a.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
             "AND (cast(:type as string) IS NULL OR a.type = :type) " +
+            "AND (cast(:accountId as string) IS NULL OR a.account.id = :accountId OR a.toAccount.id = :accountId) " +
             "AND (cast(:startDate as string) IS NULL OR a.transactionDate >= :startDate) " +
             "AND (cast(:endDate as string) IS NULL OR a.transactionDate <= :endDate)")
     Page<ActivityItem> searchActivity(
             @Param("userId") UUID userId,
             @Param("searchTerm") String searchTerm,
             @Param("type") String type,
+            @Param("accountId") UUID accountId,
             @Param("startDate") OffsetDateTime startDate,
             @Param("endDate") OffsetDateTime endDate,
             Pageable pageable);

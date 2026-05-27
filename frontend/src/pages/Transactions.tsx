@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { TransactionList } from '../components/TransactionList';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { ActivityItem, ActivityType } from '../types/activity';
+import type { Account } from '../types/account';
 import type { PaginatedResponse } from '../types/pagination';
 import apiClient from '../api/client';
 
@@ -16,10 +17,12 @@ export const Transactions = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   const [filters, setFilters] = useState({
     search: '',
     type: '' as ActivityType | '',
+    accountId: '',
     startDate: '',
     endDate: '',
   });
@@ -39,6 +42,7 @@ export const Transactions = () => {
 
       if (currentFilters.search) params.append('search', currentFilters.search);
       if (currentFilters.type) params.append('type', currentFilters.type);
+      if (currentFilters.accountId) params.append('accountId', currentFilters.accountId);
       if (currentFilters.startDate) params.append('startDate', `${currentFilters.startDate}T00:00:00Z`);
       if (currentFilters.endDate) params.append('endDate', `${currentFilters.endDate}T23:59:59Z`);
 
@@ -63,6 +67,10 @@ export const Transactions = () => {
     setPage(0);
     fetchTransactions(0, filters);
   }, [filters, fetchTransactions, refreshTrigger]);
+
+  useEffect(() => {
+    apiClient.get<Account[]>('/accounts').then(res => setAccounts(res.data)).catch(() => {});
+  }, [refreshTrigger]);
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
@@ -104,7 +112,7 @@ export const Transactions = () => {
       
       {/* Filters */}
       <section className="bg-card p-4 rounded-xl border border-border space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-1">
             <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Search</label>
             <input
@@ -118,6 +126,7 @@ export const Transactions = () => {
           <div className="space-y-1">
             <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Type</label>
             <select
+              id="type-filter"
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
               className="w-full bg-background border border-input p-2 rounded-md text-sm outline-none focus:ring-2 focus:ring-ring transition-all"
@@ -128,6 +137,20 @@ export const Transactions = () => {
               <option value="TRANSFER">Transfer</option>
               <option value="LEND">Lend</option>
               <option value="BORROW">Borrow</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Account</label>
+            <select
+              id="account-filter"
+              value={filters.accountId}
+              onChange={(e) => handleFilterChange('accountId', e.target.value)}
+              className="w-full bg-background border border-input p-2 rounded-md text-sm outline-none focus:ring-2 focus:ring-ring transition-all"
+            >
+              <option value="">All Accounts</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name}</option>
+              ))}
             </select>
           </div>
           <div className="space-y-1">
