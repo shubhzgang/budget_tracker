@@ -277,4 +277,102 @@ describe('TransactionForm', () => {
     fireEvent.change(fromInput, { target: { value: '123.45a' } });
     expect(fromInput.value).toBe('123.45');
   });
+
+  it('initializes form with initialData for a standard transaction', () => {
+    const initialTransaction: any = {
+      id: 't-1',
+      kind: 'TRANSACTION',
+      type: 'EXPENSE',
+      amount: 150,
+      description: 'Groceries edit',
+      transactionDate: '2026-05-20T00:00:00Z',
+      account: { id: '1', name: 'Bank 1' },
+      category: { id: 'c1', name: 'Food', icon: '🍔' },
+      label: { id: 'l1', name: 'Personal' }
+    };
+
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        initialData={initialTransaction}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText(/Amount/i)).toHaveValue('150');
+    expect(screen.getByLabelText(/Description/i)).toHaveValue('Groceries edit');
+    expect(screen.getByLabelText(/Type/i)).toHaveValue('EXPENSE');
+    expect(screen.getByLabelText(/Category/i)).toHaveValue('c1');
+    expect(screen.getByLabelText(/Label/i)).toHaveValue('l1');
+    expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
+  });
+
+  it('initializes form with initialData for a transfer', () => {
+    const initialTransfer: any = {
+      id: 'tr-1',
+      kind: 'TRANSFER',
+      type: 'TRANSFER',
+      fromAmount: 95,
+      toAmount: 100,
+      adjustment: 5,
+      description: 'Transfer edit',
+      transactionDate: '2026-05-21T00:00:00Z',
+      account: { id: '1', name: 'Bank 1' },
+      toAccount: { id: '2', name: 'Bank 2' },
+      category: { id: 'c1', name: 'Food' }
+    };
+
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        initialData={initialTransfer}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText(/From Amount/i)).toHaveValue('95');
+    expect(screen.getByLabelText(/To Amount/i)).toHaveValue('100');
+    expect(screen.getByLabelText(/Adjustment/i)).toHaveValue('5');
+    expect(screen.getByLabelText(/Description/i)).toHaveValue('Transfer edit');
+    expect(screen.getByLabelText(/Type/i)).toHaveValue('TRANSFER');
+    expect(screen.getByLabelText(/Type/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
+  });
+
+  it('hides TRANSFER type option for standard transaction edit mode', () => {
+    const initialTransaction: any = {
+      id: 't-1',
+      kind: 'TRANSACTION',
+      type: 'EXPENSE',
+      amount: 150,
+      description: 'Groceries edit',
+      transactionDate: '2026-05-20T00:00:00Z',
+      account: { id: '1', name: 'Bank 1' }
+    };
+
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        initialData={initialTransaction}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const typeSelect = screen.getByLabelText(/Type/i);
+    expect(typeSelect).toHaveValue('EXPENSE');
+    expect(typeSelect).not.toBeDisabled();
+
+    // The option TRANSFER should not be present in the select options
+    const transferOption = screen.queryByRole('option', { name: 'Transfer' });
+    expect(transferOption).not.toBeInTheDocument();
+  });
 });

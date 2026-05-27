@@ -117,8 +117,8 @@ This file tracks the progress of the Budget Tracker project against the original
   wallet account which can then be used for spending. How do I go about tracking this spend?     
   On the UI, show all three fields like from amount, to amount and discount. Have a check        
   whether from amount is present and either of to amount and discount are present. DB can have only from amount and discount fields, to amount can be calculated on the fly. no need for migration script since this is not deployed. transfer can happen between any kind of accounts. use same UI for transaction and transfer adding, change based on the type selected. For cashback, manual transfer creation is fine.
-- [ ] Edit accounts
-- [ ] Edit transactions
+- [x] Edit accounts
+- [x] Edit transactions
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
 - [ ] **Configuration**: Configure CORS policies in Spring Boot and environment variables.

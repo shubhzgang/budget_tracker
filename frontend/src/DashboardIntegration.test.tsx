@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -51,5 +51,87 @@ describe('Dashboard Integration', () => {
     // Should show recent transactions
     expect(screen.getByText('Grocery Shopping')).toBeInTheDocument();
     expect(screen.getByText('Salary')).toBeInTheDocument();
+  });
+
+  it('allows opening the edit account modal and saving changes', async () => {
+    localStorage.setItem('token', 'mock-token');
+    localStorage.setItem('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
+
+    render(
+      <ThemeProvider>
+        <AuthProvider>
+          <PreferenceProvider>
+            <ToastProvider>
+              <UIProvider>
+                <MemoryRouter>
+                  <Dashboard />
+                </MemoryRouter>
+              </UIProvider>
+            </ToastProvider>
+          </PreferenceProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Main Bank')[0]).toBeInTheDocument();
+    });
+
+    const editBtn = screen.getByRole('button', { name: /Edit Main Bank/i });
+    fireEvent.click(editBtn);
+
+    expect(screen.getByRole('heading', { name: /Edit Account/i })).toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText(/Account Name/i) as HTMLInputElement;
+    expect(nameInput.value).toBe('Main Bank');
+
+    fireEvent.change(nameInput, { target: { value: 'Main Bank Edited' } });
+    const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Edit Account/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows opening the edit transaction modal and saving changes', async () => {
+    localStorage.setItem('token', 'mock-token');
+    localStorage.setItem('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
+
+    render(
+      <ThemeProvider>
+        <AuthProvider>
+          <PreferenceProvider>
+            <ToastProvider>
+              <UIProvider>
+                <MemoryRouter>
+                  <Dashboard />
+                </MemoryRouter>
+              </UIProvider>
+            </ToastProvider>
+          </PreferenceProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Shopping')).toBeInTheDocument();
+    });
+
+    const editBtn = screen.getByRole('button', { name: /Edit Grocery Shopping/i });
+    fireEvent.click(editBtn);
+
+    expect(screen.getByRole('heading', { name: /Edit Transaction/i })).toBeInTheDocument();
+
+    const amountInput = screen.getByLabelText(/Amount/i) as HTMLInputElement;
+    expect(amountInput.value).toBe('50');
+
+    fireEvent.change(amountInput, { target: { value: '60' } });
+    const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Edit Transaction/i })).not.toBeInTheDocument();
+    });
   });
 });

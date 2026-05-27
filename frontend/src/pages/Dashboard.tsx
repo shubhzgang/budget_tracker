@@ -6,6 +6,7 @@ import { BalanceCard } from '../components/BalanceCard';
 import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { AccountForm } from '../components/AccountForm';
+import { TransactionForm } from '../components/TransactionForm';
 import { TransactionList } from '../components/TransactionList';
 import { Analytics } from '../components/Analytics';
 import type { Account, AccountType, CreateAccountRequest } from '../types/account';
@@ -23,8 +24,8 @@ export const Dashboard = () => {
   const { preferences } = usePreferences();
   
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [, setCategories] = useState<Category[]>([]);
-  const [, setLabels] = useState<Label[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [transactions, setTransactions] = useState<ActivityItem[]>([]);
   const [analyticsTransactions, setAnalyticsTransactions] = useState<Transaction[]>([]);
   
@@ -34,6 +35,10 @@ export const Dashboard = () => {
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
+  const [transactionToEdit, setTransactionToEdit] = useState<ActivityItem | null>(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -68,14 +73,52 @@ export const Dashboard = () => {
     fetchData();
   }, [fetchData, refreshTrigger]);
 
-  const handleCreateAccount = async (data: CreateAccountRequest) => {
+  const handleSaveAccount = async (data: CreateAccountRequest) => {
     setIsSubmitting(true);
     try {
-      await apiClient.post('/accounts', data);
+      if (accountToEdit) {
+        await apiClient.put(`/accounts/${accountToEdit.id}`, data);
+        addToast('Account updated successfully', 'success');
+      } else {
+        await apiClient.post('/accounts', data);
+        addToast('Account created successfully', 'success');
+      }
       triggerRefresh();
       setIsAccountModalOpen(false);
+      setAccountToEdit(null);
     } catch (error) {
-      console.error('Failed to create account', error);
+      console.error('Failed to save account', error);
+      addToast('Failed to save account. Please try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAccountEditClick = (account: Account) => {
+    setAccountToEdit(account);
+    setIsAccountModalOpen(true);
+  };
+
+  const handleTransactionEditClick = (item: ActivityItem) => {
+    setTransactionToEdit(item);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleSaveTransaction = async (data: any) => {
+    if (!transactionToEdit) return;
+    setIsSubmitting(true);
+    try {
+      const endpoint = transactionToEdit.kind === 'TRANSFER'
+        ? `/transfers/${transactionToEdit.id}`
+        : `/transactions/${transactionToEdit.id}`;
+      await apiClient.put(endpoint, data);
+      addToast('Transaction updated successfully', 'success');
+      triggerRefresh();
+      setIsTransactionModalOpen(false);
+      setTransactionToEdit(null);
+    } catch (error) {
+      console.error('Failed to update transaction', error);
+      addToast('Failed to update transaction. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,7 +228,7 @@ export const Dashboard = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {accs.map(account => (
-                    <BalanceCard key={account.id} account={account} />
+                    <BalanceCard key={account.id} account={account} onEdit={handleAccountEditClick} />
                   ))}
                 </div>
               </div>
@@ -211,20 +254,57 @@ export const Dashboard = () => {
             View All
           </Link>
         </div>
-        <TransactionList transactions={transactions} loading={loadingTransactions} onDelete={handleDeleteClick} />
+        <TransactionList 
+          transactions={transactions} 
+          loading={loadingTransactions} 
+          onEdit={handleTransactionEditClick}
+          onDelete={handleDeleteClick} 
+        />
       </section>
 
       {/* Account Modal */}
       <Modal
         isOpen={isAccountModalOpen}
-        onClose={() => setIsAccountModalOpen(false)}
-        title="Create New Account"
+        onClose={() => {
+          setIsAccountModalOpen(false);
+          setAccountToEdit(null);
+        }}
+        title={accountToEdit ? "Edit Account" : "Create New Account"}
       >
         <AccountForm
-          onSubmit={handleCreateAccount}
-          onCancel={() => setIsAccountModalOpen(false)}
+          initialData={accountToEdit || undefined}
+          onSubmit={handleSaveAccount}
+          onCancel={() => {
+            setIsAccountModalOpen(false);
+            setAccountToEdit(null);
+          }}
           isLoading={isSubmitting}
         />
+      </Modal>
+
+      {/* Transaction Edit Modal */}
+      <Modal
+        isOpen={isTransactionModalOpen}
+        onClose={() => {
+          setIsTransactionModalOpen(false);
+          setTransactionToEdit(null);
+        }}
+        title="Edit Transaction"
+      >
+        {transactionToEdit && (
+          <TransactionForm
+            accounts={accounts}
+            categories={categories}
+            labels={labels}
+            initialData={transactionToEdit}
+            onSubmit={handleSaveTransaction}
+            onCancel={() => {
+              setIsTransactionModalOpen(false);
+              setTransactionToEdit(null);
+            }}
+            isLoading={isSubmitting}
+          />
+        )}
       </Modal>
 
       {/* Delete Confirmation */}

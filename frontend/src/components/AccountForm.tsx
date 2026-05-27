@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
-import type { AccountType, CreateAccountRequest } from '../types/account';
+import type { Account, AccountType, CreateAccountRequest } from '../types/account';
 
 interface AccountFormProps {
+  initialData?: Account;
   onSubmit: (data: CreateAccountRequest) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
-export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, isLoading }) => {
+export const AccountForm: React.FC<AccountFormProps> = ({ initialData, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState<{
     name: string;
     type: AccountType;
     balance: string;
     creditLimit: string;
   }>({
-    name: '',
-    type: 'BANK',
-    balance: '',
-    creditLimit: '',
+    name: initialData?.name || '',
+    type: initialData?.type || 'BANK',
+    balance: initialData ? (initialData.initialBalance !== undefined ? initialData.initialBalance.toString() : initialData.balance.toString()) : '',
+    creditLimit: initialData?.creditLimit?.toString() || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,6 +29,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, is
     
     const payload: CreateAccountRequest = {
       ...formData,
+      initialBalance: isNaN(balanceNum) ? 0 : balanceNum,
       balance: isNaN(balanceNum) ? 0 : balanceNum,
       creditLimit: isNaN(creditLimitNum as number) ? undefined : creditLimitNum,
     };
@@ -118,7 +120,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ onSubmit, onCancel, is
           disabled={isLoading}
           className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {isLoading ? 'Creating...' : 'Create Account'}
+          {isLoading ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Account')}
         </button>
       </div>
     </form>

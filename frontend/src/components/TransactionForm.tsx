@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePreferences } from '../context/PreferenceContext';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
+import type { ActivityItem } from '../types/activity';
 
 interface TransactionFormProps {
   accounts: Account[];
   categories: Category[];
   labels: Label[];
+  initialData?: ActivityItem;
   onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
@@ -17,13 +19,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   accounts,
   categories,
   labels,
+  initialData,
   onSubmit,
   onCancel,
   isLoading
 }) => {
   const { preferences } = usePreferences();
 
+  const isEditMode = !!initialData;
+
   const [formData, setFormData] = useState(() => {
+    if (initialData) {
+      return {
+        amount: initialData.amount != null ? initialData.amount.toString() : '',
+        fromAmount: initialData.fromAmount != null ? initialData.fromAmount.toString() : '',
+        toAmount: initialData.toAmount != null ? initialData.toAmount.toString() : '',
+        adjustment: initialData.adjustment != null ? initialData.adjustment.toString() : '',
+        type: initialData.type,
+        transactionDate: initialData.transactionDate ? initialData.transactionDate.split('T')[0] : new Date().toISOString().split('T')[0],
+        accountId: initialData.account?.id || '',
+        toAccountId: initialData.toAccount?.id || '',
+        categoryId: initialData.category?.id || '',
+        labelId: initialData.label?.id || '',
+        description: initialData.description || ''
+      };
+    }
+
     // 1. Initial fallbacks
     const initialType = preferences?.defaultTransactionType || 'EXPENSE';
     const initialAccount = preferences?.defaultAccountId || accounts[0]?.id || '';
@@ -50,7 +71,27 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     };
   });
 
-  const [lastEdited, setLastEdited] = useState<('fromAmount' | 'toAmount' | 'adjustment')[]>([]);
+  const [lastEdited, setLastEdited] = useState<('fromAmount' | 'toAmount' | 'adjustment')[]>(() => {
+    if (initialData?.type === 'TRANSFER' || initialData?.kind === 'TRANSFER') {
+      const fields: ('fromAmount' | 'toAmount' | 'adjustment')[] = [];
+      if (initialData.fromAmount != null) fields.push('fromAmount');
+      if (initialData.adjustment != null) fields.push('adjustment');
+      if (initialData.toAmount != null && fields.length < 2) fields.push('toAmount');
+      return fields;
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (!formData.accountId && accounts.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        accountId: preferences?.defaultAccountId && accounts.some(a => a.id === preferences.defaultAccountId)
+          ? preferences.defaultAccountId
+          : accounts[0].id
+      }));
+    }
+  }, [accounts, preferences, formData.accountId]);
 
   const handleAmountChange = (field: 'fromAmount' | 'toAmount' | 'adjustment', value: string) => {
     if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
@@ -168,13 +209,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <label htmlFor="trans-type" className="text-sm font-medium">Type</label>
           <select
             id="trans-type"
+            disabled={isEditMode && (initialData?.kind === 'TRANSFER' || initialData?.type === 'TRANSFER')}
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-            className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+            className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none disabled:opacity-50"
           >
             <option value="EXPENSE">Expense</option>
             <option value="INCOME">Income</option>
-            <option value="TRANSFER">Transfer</option>
+            {(!isEditMode || initialData?.kind === 'TRANSFER' || initialData?.type === 'TRANSFER') && (
+              <option value="TRANSFER">Transfer</option>
+            )}
             <option value="LEND">Lend</option>
             <option value="BORROW">Borrow</option>
           </select>
@@ -346,7 +390,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           disabled={isLoading}
           className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {isLoading ? 'Saving...' : 'Add Transaction'}
+          {isLoading ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add Transaction')}
         </button>
       </div>
     </form>

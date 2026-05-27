@@ -206,4 +206,31 @@ export const handlers = [
       ...data
     });
   }),
+
+  // Mock updating accounts
+  http.put(`${API_URL}/accounts/:id`, async ({ params, request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      id: params.id,
+      ...data
+    });
+  }),
+
+  // Mock updating transactions
+  http.put(`${API_URL}/transactions/:id`, async ({ params, request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      id: params.id,
+      ...data
+    });
+  }),
+
+  // Mock updating transfers
+  http.put(`${API_URL}/transfers/:id`, async ({ params, request }) => {
+    const data = await request.json() as any;
+    return HttpResponse.json({
+      id: params.id,
+      ...data
+    });
+  }),
 ];

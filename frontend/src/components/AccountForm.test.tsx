@@ -29,6 +29,7 @@ describe('AccountForm', () => {
     expect(handleSubmit).toHaveBeenCalledWith({
       name: 'My Bank',
       type: 'BANK',
+      initialBalance: 500,
       balance: 500,
       creditLimit: undefined,
     });

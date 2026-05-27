@@ -5,6 +5,7 @@ export interface Account {
   name: string;
   type: AccountType;
   balance: number;
+  initialBalance?: number;
   creditLimit?: number;
   createdAt: string;
 }
@@ -12,6 +13,7 @@ export interface Account {
 export interface CreateAccountRequest {
   name: string;
   type: AccountType;
-  balance: number;
+  initialBalance: number;
+  balance?: number;
   creditLimit?: number;
 }

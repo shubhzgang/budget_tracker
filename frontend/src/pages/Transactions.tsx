@@ -3,8 +3,12 @@ import { useUI } from '../context/UIContext';
 import { useToast } from '../context/ToastContext';
 import { TransactionList } from '../components/TransactionList';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Modal } from '../components/Modal';
+import { TransactionForm } from '../components/TransactionForm';
 import type { ActivityItem, ActivityType } from '../types/activity';
 import type { Account } from '../types/account';
+import type { Category } from '../types/category';
+import type { Label } from '../types/label';
 import type { PaginatedResponse } from '../types/pagination';
 import apiClient from '../api/client';
 
@@ -18,6 +22,12 @@ export const Transactions = () => {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
+
+  const [transactionToEdit, setTransactionToEdit] = useState<ActivityItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -69,7 +79,15 @@ export const Transactions = () => {
   }, [filters, fetchTransactions, refreshTrigger]);
 
   useEffect(() => {
-    apiClient.get<Account[]>('/accounts').then(res => setAccounts(res.data)).catch(() => {});
+    Promise.all([
+      apiClient.get<Account[]>('/accounts'),
+      apiClient.get<Category[]>('/categories'),
+      apiClient.get<Label[]>('/labels')
+    ]).then(([accRes, catRes, lblRes]) => {
+      setAccounts(accRes.data);
+      setCategories(catRes.data);
+      setLabels(lblRes.data);
+    }).catch(() => {});
   }, [refreshTrigger]);
 
   const handleLoadMore = () => {
@@ -80,6 +98,31 @@ export const Transactions = () => {
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleEditClick = (item: ActivityItem) => {
+    setTransactionToEdit(item);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveTransaction = async (data: any) => {
+    if (!transactionToEdit) return;
+    setIsSaving(true);
+    try {
+      const endpoint = transactionToEdit.kind === 'TRANSFER'
+        ? `/transfers/${transactionToEdit.id}`
+        : `/transactions/${transactionToEdit.id}`;
+      await apiClient.put(endpoint, data);
+      addToast('Transaction updated successfully', 'success');
+      triggerRefresh();
+      setIsEditModalOpen(false);
+      setTransactionToEdit(null);
+    } catch (error) {
+      console.error('Failed to update transaction', error);
+      addToast('Failed to update transaction. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClick = (item: ActivityItem) => {
@@ -179,6 +222,7 @@ export const Transactions = () => {
         <TransactionList
           transactions={transactions}
           loading={loading && page === 0}
+          onEdit={handleEditClick}
           onDelete={handleDeleteClick}
         />
         
@@ -198,6 +242,31 @@ export const Transactions = () => {
           <p className="text-center text-sm text-muted-foreground">No more transactions to show.</p>
         )}
       </section>
+
+      {/* Transaction Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setTransactionToEdit(null);
+        }}
+        title="Edit Transaction"
+      >
+        {transactionToEdit && (
+          <TransactionForm
+            accounts={accounts}
+            categories={categories}
+            labels={labels}
+            initialData={transactionToEdit}
+            onSubmit={handleSaveTransaction}
+            onCancel={() => {
+              setIsEditModalOpen(false);
+              setTransactionToEdit(null);
+            }}
+            isLoading={isSaving}
+          />
+        )}
+      </Modal>
 
       {/* Delete Confirmation */}
       <ConfirmDialog
