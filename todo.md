@@ -121,7 +121,7 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] Edit transactions
 ### Finalization & Deployment (Phase 4)
 - [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
-- [ ] **Configuration**: Configure CORS policies in Spring Boot and environment variables.
+- [x] **Configuration**: Configure CORS policies in Spring Boot (configurable via `app.cors.allowed-origins`, off by default).
 - [x] **Dockerization**:
     - [x] Create multi-stage `Dockerfile` for Backend.
     - [x] Create multi-stage `Dockerfile` for Frontend.
