@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -31,7 +32,7 @@ public class TransferRequest {
 
     private UUID categoryId;
 
-    private UUID labelId;
+    private List<UUID> labelIds;
 
     public boolean isValid() {
         int count = 0;

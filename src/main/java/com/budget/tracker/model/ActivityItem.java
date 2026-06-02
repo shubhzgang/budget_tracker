@@ -42,9 +42,8 @@ public class ActivityItem {
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "label_id")
-    private Label label;
+    @Transient
+    private java.util.Set<Label> labels = new java.util.HashSet<>();
 
     private BigDecimal amount;
 

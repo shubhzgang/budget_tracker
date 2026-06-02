@@ -15,22 +15,18 @@ import java.util.UUID;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
-        @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label WHERE t.userId = :userId")
+        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels WHERE t.userId = :userId")
         List<Transaction> findAllByUserId(@Param("userId") UUID userId);
 
-        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label "
-                        +
-                        "WHERE t.account.id = :accountId "
-                        +
+        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels " +
+                        "WHERE t.account.id = :accountId " +
                         "AND t.userId = :userId")
         List<Transaction> findAccountTransactions(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
 
-        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label WHERE t.userId = :userId "
-                        +
-                        "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) "
-                        +
+        @Query("SELECT DISTINCT t FROM Transaction t LEFT JOIN FETCH t.account LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels WHERE t.userId = :userId " +
+                        "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
                         "OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-                        "OR LOWER(t.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+                        "OR EXISTS (SELECT 1 FROM t.labels lbl WHERE LOWER(lbl.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))) " +
                         "AND (cast(:type as string) IS NULL OR t.type = :type) " +
                         "AND (cast(:startDate as string) IS NULL OR t.transactionDate >= :startDate) " +
                         "AND (cast(:endDate as string) IS NULL OR t.transactionDate <= :endDate)")

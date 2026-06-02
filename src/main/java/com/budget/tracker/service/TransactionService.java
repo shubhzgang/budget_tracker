@@ -91,7 +91,7 @@ public class TransactionService {
         existing.setDescription(transactionDetails.getDescription());
         existing.setTransactionDate(transactionDetails.getTransactionDate());
         existing.setCategory(transactionDetails.getCategory());
-        existing.setLabel(transactionDetails.getLabel());
+        existing.setLabels(transactionDetails.getLabels());
 
         return transactionRepository.save(existing);
     }

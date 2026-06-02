@@ -28,6 +28,7 @@ public class LabelService {
     }
 
     public Label createLabel(Label label) {
+        validateLabelName(label.getName());
         label.setUserId(getCurrentUserId());
         return labelRepository.save(label);
     }
@@ -44,6 +45,7 @@ public class LabelService {
     }
 
     public Label updateLabel(UUID labelId, Label labelDetails) {
+        validateLabelName(labelDetails.getName());
         Label label = getLabelById(labelId);
         label.setName(labelDetails.getName());
         return labelRepository.save(label);
@@ -52,6 +54,12 @@ public class LabelService {
     public void deleteLabel(UUID labelId) {
         Label label = getLabelById(labelId);
         labelRepository.delete(label);
+    }
+
+    private void validateLabelName(String name) {
+        if (name != null && name.contains("|")) {
+            throw new IllegalArgumentException("Label name cannot contain the pipe character '|'");
+        }
     }
 
     public void initializeDefaultLabels(UUID userId) {

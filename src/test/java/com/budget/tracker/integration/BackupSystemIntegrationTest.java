@@ -6,6 +6,7 @@ package com.budget.tracker.integration;
 import com.budget.tracker.model.BackupRecord;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.CategoryRepository;
+import com.budget.tracker.repository.LabelRepository;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.CategoryService;
@@ -59,6 +60,9 @@ public class BackupSystemIntegrationTest {
     private CategoryRepository categoryRepository;
 
     @Autowired
+    private LabelRepository labelRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -107,6 +111,7 @@ public class BackupSystemIntegrationTest {
                 userRepository,
                 accountRepository,
                 categoryRepository,
+                labelRepository,
                 passwordEncoder,
                 categoryService,
                 labelService,

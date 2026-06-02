@@ -4,12 +4,14 @@ import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.AccountType;
 import com.budget.tracker.model.Category;
+import com.budget.tracker.model.Label;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.model.User;
 import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.repository.AccountRepository;
 import com.budget.tracker.repository.CategoryRepository;
+import com.budget.tracker.repository.LabelRepository;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.payload.request.TransferRequest;
 import com.budget.tracker.service.CategoryService;
@@ -26,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -37,6 +41,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final LabelRepository labelRepository;
     private final PasswordEncoder passwordEncoder;
     private final CategoryService categoryService;
     private final LabelService labelService;
@@ -44,9 +49,10 @@ public class DataSeeder implements CommandLineRunner {
     private final TransferService transferService;
     private final UserPreferenceService userPreferenceService;
 
-    public DataSeeder(UserRepository userRepository,
+   public DataSeeder(UserRepository userRepository,
                       AccountRepository accountRepository,
                       CategoryRepository categoryRepository,
+                      LabelRepository labelRepository,
                       PasswordEncoder passwordEncoder,
                       CategoryService categoryService,
                       LabelService labelService,
@@ -56,6 +62,7 @@ public class DataSeeder implements CommandLineRunner {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
+        this.labelRepository = labelRepository;
         this.passwordEncoder = passwordEncoder;
         this.categoryService = categoryService;
         this.labelService = labelService;
@@ -111,6 +118,11 @@ public class DataSeeder implements CommandLineRunner {
                     .findFirst()
                     .orElse(null);
 
+            Label needsLabel = labelRepository.findAllByUserId(DEMO_USER_ID).stream()
+                    .filter(l -> l.getName().equals("NEEDS"))
+                    .findFirst()
+                    .orElse(null);
+
             if (foodCategory != null) {
                 Transaction foodExpense = new Transaction();
                 foodExpense.setAmount(new BigDecimal("25.00"));
@@ -119,6 +131,9 @@ public class DataSeeder implements CommandLineRunner {
                 foodExpense.setTransactionDate(OffsetDateTime.now());
                 foodExpense.setAccount(mainBank);
                 foodExpense.setCategory(foodCategory);
+                if (needsLabel != null) {
+                    foodExpense.setLabels(Set.of(needsLabel));
+                }
                 transactionService.createTransaction(foodExpense);
             }
 
@@ -127,9 +142,12 @@ public class DataSeeder implements CommandLineRunner {
             transferReq.setFromAccountId(mainBank.getId());
             transferReq.setToAccountId(cash.getId());
             transferReq.setFromAmount(new BigDecimal("50.00"));
-            transferReq.setAdjustment(new BigDecimal("5.00")); // showcases adjustment feature
+            transferReq.setAdjustment(new BigDecimal("5.00"));
             transferReq.setDescription("ATM Withdrawal");
             transferReq.setTransactionDate(OffsetDateTime.now());
+            if (needsLabel != null) {
+                transferReq.setLabelIds(List.of(needsLabel.getId()));
+            }
             transferService.createTransfer(transferReq);
 
             System.out.println("Demo data seeded successfully.");

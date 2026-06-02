@@ -1,9 +1,104 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { usePreferences } from '../context/PreferenceContext';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
 import type { ActivityItem } from '../types/activity';
+
+interface MultiSelectProps {
+  options: { id: string; name: string }[];
+  selectedIds: string[];
+  onChange: (selected: string[]) => void;
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, selectedIds, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isOpen) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setDropdownRect({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+    setIsOpen(v => !v);
+  };
+
+  const toggle = useCallback((id: string) => {
+    onChange(selectedIds.includes(id)
+      ? selectedIds.filter(s => s !== id)
+      : [...selectedIds, id]
+    );
+  }, [selectedIds, onChange]);
+
+  const dropdown = isOpen && dropdownRect ? (
+    <div
+      ref={dropdownRef}
+      style={{ position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width, zIndex: 9999 }}
+      className="bg-card border border-border rounded-md shadow-lg max-h-60 overflow-y-auto"
+      data-testid="label-dropdown"
+    >
+      {options.map(opt => {
+        const checked = selectedIds.includes(opt.id);
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => toggle(opt.id)}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-secondary flex items-center gap-2"
+          >
+            <input type="checkbox" checked={checked} readOnly className="rounded" />
+            {opt.name}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        data-testid="label-select-toggle"
+        onClick={handleToggle}
+        className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none text-left text-sm min-h-[38px] flex flex-wrap items-center gap-1"
+      >
+        {selectedIds.length === 0 && <span className="text-muted-foreground">Select labels...</span>}
+        {selectedIds.map(id => {
+          const option = options.find(o => o.id === id);
+          if (!option) return null;
+          return (
+            <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full font-medium">
+              {option.name}
+              <button type="button" onClick={(e) => { e.stopPropagation(); toggle(id); }} className="hover:text-primary/70">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          );
+        })}
+      </button>
+      {createPortal(dropdown, document.body)}
+    </div>
+  );
+};
 
 interface TransactionFormProps {
   accounts: Account[];
@@ -40,7 +135,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         accountId: initialData.account?.id || '',
         toAccountId: initialData.toAccount?.id || '',
         categoryId: initialData.category?.id || '',
-        labelId: initialData.label?.id || '',
+        labelIds: initialData.labels?.map(l => l.id) || [],
         description: initialData.description || ''
       };
     }
@@ -49,12 +144,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const initialType = preferences?.defaultTransactionType || 'EXPENSE';
     const initialAccount = preferences?.defaultAccountId || accounts[0]?.id || '';
     const initialCategory = preferences?.defaultCategoryId || categories[0]?.id || '';
-    const initialLabel = preferences?.defaultLabelId || labels.find(l => l.isDefault)?.id || labels[0]?.id || '';
+    const initialLabelId = preferences?.defaultLabelId || labels.find(l => l.isDefault)?.id;
 
     // 2. Validate fallbacks exist in current props
     const validatedAccount = accounts.some(a => a.id === initialAccount) ? initialAccount : (accounts[0]?.id || '');
     const validatedCategory = categories.some(c => c.id === initialCategory) ? initialCategory : (categories[0]?.id || '');
-    const validatedLabel = (initialLabel === '' || labels.some(l => l.id === initialLabel)) ? initialLabel : (labels[0]?.id || '');
+    const initialLabels = initialLabelId && labels.some(l => l.id === initialLabelId) ? [initialLabelId] : [];
 
     return {
       amount: '',
@@ -66,7 +161,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       accountId: validatedAccount,
       toAccountId: '',
       categoryId: validatedCategory,
-      labelId: validatedLabel,
+      labelIds: initialLabels,
       description: ''
     };
   });
@@ -164,13 +259,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
       const payload: any = {
         type: 'TRANSFER',
-        transactionDate: formData.transactionDate.includes('T') 
-          ? formData.transactionDate 
+        transactionDate: formData.transactionDate.includes('T')
+          ? formData.transactionDate
           : `${formData.transactionDate}T00:00:00Z`,
         fromAccountId: formData.accountId,
         toAccountId: formData.toAccountId,
         categoryId: formData.categoryId || null,
-        labelId: formData.labelId || null,
+        labelIds: formData.labelIds || [],
         description: formData.description
       };
 
@@ -190,11 +285,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       const payload: any = {
         ...formData,
         amount: amountNum,
-        transactionDate: formData.transactionDate.includes('T') 
-          ? formData.transactionDate 
+        labelIds: undefined,
+        labels: formData.labelIds.map(id => ({ id })),
+        transactionDate: formData.transactionDate.includes('T')
+          ? formData.transactionDate
           : `${formData.transactionDate}T00:00:00Z`
       };
-      
+
       await onSubmit(payload);
     }
   };
@@ -351,18 +448,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       )}
 
       <div className="space-y-1">
-        <label htmlFor="trans-label" className="text-sm font-medium">Label</label>
-        <select
-          id="trans-label"
-          value={formData.labelId}
-          onChange={(e) => setFormData({ ...formData, labelId: e.target.value })}
-          className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
-        >
-          <option value="">No Label</option>
-          {labels.map(lbl => (
-            <option key={lbl.id} value={lbl.id}>{lbl.name}</option>
-          ))}
-        </select>
+        <label className="text-sm font-medium">Label</label>
+        <MultiSelect
+          options={labels.map(l => ({ id: l.id, name: l.name }))}
+          selectedIds={formData.labelIds}
+          onChange={(selected) => setFormData({ ...formData, labelIds: selected })}
+        />
       </div>
 
       <div className="space-y-1">

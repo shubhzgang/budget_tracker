@@ -76,14 +76,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                       ? ` → ${item.toAccount.name}`
                       : ''}
                   </span>
-                  {item.label && (
-                    <>
+                  {item.labels && item.labels.length > 0 && item.labels.map((label) => (
+                    <React.Fragment key={label.id}>
                       <span className="text-[10px] text-muted-foreground uppercase font-bold">•</span>
                       <span className="px-1.5 py-0.5 bg-accent text-accent-foreground text-[10px] rounded-full font-medium">
-                        {item.label.name}
+                        {label.name}
                       </span>
-                    </>
-                  )}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>

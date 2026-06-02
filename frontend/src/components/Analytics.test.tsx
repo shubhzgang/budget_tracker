@@ -35,7 +35,7 @@ describe('Analytics Component', () => {
       amount: 100,
       type: 'EXPENSE',
       category: { id: 'c1', name: 'Food', icon: '🍔', isDefault: true, createdAt: '' },
-      label: { id: 'l1', name: 'Needs', isDefault: true, createdAt: '' },
+      labels: [{ id: 'l1', name: 'Needs', isDefault: true, createdAt: '' }],
       transactionDate: '2026-05-01T00:00:00Z',
       accountId: 'a1',
       createdAt: ''

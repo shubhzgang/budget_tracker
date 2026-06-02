@@ -87,24 +87,30 @@ public class BackupService {
         // Transactions
         List<Transaction> transactions = transactionRepository.findAllByUserId(userId);
         for (Transaction transaction : transactions) {
-            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, label_id, type, amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', %s, %s, '%s', %s, '%s', '%s', '%s');\n",
+            sql.append(String.format("INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', %s, '%s', %s, '%s', '%s', '%s');\n",
                     transaction.getId(), userId, transaction.getAccount().getId(),
                     transaction.getCategory() != null ? "'" + transaction.getCategory().getId() + "'" : "NULL",
-                    transaction.getLabel() != null ? "'" + transaction.getLabel().getId() + "'" : "NULL",
                     transaction.getType(), transaction.getAmount(), escapeSql(transaction.getDescription()),
                     transaction.getTransactionDate(),
                     transaction.getCreatedAt()));
+            for (Label label : transaction.getLabels()) {
+                sql.append(String.format("INSERT INTO transaction_labels (transaction_id, label_id) VALUES ('%s', '%s');\n",
+                        transaction.getId(), label.getId()));
+            }
         }
 
         // Transfers
         List<Transfer> transfers = transferRepository.findAllByUserId(userId);
         for (Transfer transfer : transfers) {
-            sql.append(String.format("INSERT INTO transfers (id, user_id, from_account_id, to_account_id, category_id, label_id, from_amount, adjustment, to_amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', '%s', %s, %s, %s, %s, %s, '%s', '%s', '%s');\n",
+            sql.append(String.format("INSERT INTO transfers (id, user_id, from_account_id, to_account_id, category_id, from_amount, adjustment, to_amount, description, transaction_date, created_at) VALUES ('%s', '%s', '%s', '%s', %s, %s, %s, %s, '%s', '%s', '%s');\n",
                     transfer.getId(), userId, transfer.getFromAccount().getId(), transfer.getToAccount().getId(),
                     transfer.getCategory() != null ? "'" + transfer.getCategory().getId() + "'" : "NULL",
-                    transfer.getLabel() != null ? "'" + transfer.getLabel().getId() + "'" : "NULL",
                     transfer.getFromAmount(), transfer.getAdjustment(), transfer.getToAmount(),
                     escapeSql(transfer.getDescription()), transfer.getTransactionDate(), transfer.getCreatedAt()));
+            for (Label label : transfer.getLabels()) {
+                sql.append(String.format("INSERT INTO transfer_labels (transfer_id, label_id) VALUES ('%s', '%s');\n",
+                        transfer.getId(), label.getId()));
+            }
         }
 
         Files.writeString(path, sql.toString());
@@ -123,7 +129,7 @@ public class BackupService {
         try (Writer writer = Files.newBufferedWriter(path);
              CSVWriter csvWriter = new CSVWriter(writer)) {
 
-            String[] header = {"ID", "Date", "Amount", "Type", "Account", "Category", "Label", "Description"};
+            String[] header = {"ID", "Date", "Amount", "Type", "Account", "Category", "Labels", "Description"};
             csvWriter.writeNext(header);
 
             for (Transaction t : transactions) {
@@ -134,7 +140,7 @@ public class BackupService {
                         t.getType().toString(),
                         t.getAccount().getName(),
                         t.getCategory() != null ? t.getCategory().getName() : "",
-                        t.getLabel() != null ? t.getLabel().getName() : "",
+                        t.getLabels().stream().map(Label::getName).collect(java.util.stream.Collectors.joining("|")),
                         t.getDescription()
                 };
                 csvWriter.writeNext(data);
@@ -227,15 +233,19 @@ public class BackupService {
                 }
 
                 if (!nextLine[6].isEmpty()) {
-                    Label label = labelMap.get(nextLine[6]);
-                    if (label == null) {
-                        label = new Label();
-                        label.setUserId(userId);
-                        label.setName(nextLine[6]);
-                        label = labelRepository.save(label);
-                        labelMap.put(label.getName(), label);
+                    for (String labelName : nextLine[6].split("\\|")) {
+                        String trimmedName = labelName.trim();
+                        if (trimmedName.isEmpty()) continue;
+                        Label label = labelMap.get(trimmedName);
+                        if (label == null) {
+                            label = new Label();
+                            label.setUserId(userId);
+                            label.setName(trimmedName);
+                            label = labelRepository.save(label);
+                            labelMap.put(label.getName(), label);
+                        }
+                        t.getLabels().add(label);
                     }
-                    t.setLabel(label);
                 }
 
                 t.setDescription(nextLine[7]);

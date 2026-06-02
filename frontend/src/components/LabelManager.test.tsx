@@ -3,10 +3,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { LabelManager } from './LabelManager';
 import { ThemeProvider } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
+import { UIProvider } from '../context/UIContext';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>
-    <ToastProvider>{children}</ToastProvider>
+    <ToastProvider>
+      <UIProvider>{children}</UIProvider>
+    </ToastProvider>
   </ThemeProvider>
 );
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { useToast } from '../context/ToastContext';
+import { useUI } from '../context/UIContext';
 import type { Label, CreateLabelRequest } from '../types/label';
 
 export const LabelManager: React.FC = () => {
   const { addToast } = useToast();
+  const { triggerRefresh } = useUI();
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,11 +29,16 @@ export const LabelManager: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (name.includes('|')) {
+      addToast("Label name cannot contain '|'", 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await apiClient.post('/labels', { name } as CreateLabelRequest);
       setName('');
       await fetchLabels();
+      triggerRefresh();
       addToast('Label added successfully', 'success');
     } catch (error) {
       addToast('Failed to add label', 'error');
@@ -46,6 +53,7 @@ export const LabelManager: React.FC = () => {
     try {
       await apiClient.delete(`/labels/${id}`);
       await fetchLabels();
+      triggerRefresh();
       addToast('Label deleted', 'success');
     } catch (error) {
       addToast('Failed to delete label', 'error');

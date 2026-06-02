@@ -8,6 +8,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -25,6 +27,6 @@ public class ActivityResponse {
     private Account account;
     private Account toAccount;
     private Category category;
-    private Label label;
+    private Set<Label> labels = new HashSet<>();
     private OffsetDateTime createdAt;
 }

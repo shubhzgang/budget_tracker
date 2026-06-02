@@ -15,8 +15,8 @@ export interface Transfer {
   toAccount?: Account;
   categoryId?: string;
   category?: Category;
-  labelId?: string;
-  label?: Label;
+  labelIds?: string[];
+  labels?: Label[];
   createdAt: string;
 }
 
@@ -28,6 +28,6 @@ export interface CreateTransferRequest {
   fromAccountId: string;
   toAccountId: string;
   categoryId?: string;
-  labelId?: string;
+  labelIds?: string[];
   description?: string;
 }

@@ -18,6 +18,6 @@ export interface ActivityItem {
   account?: Account;
   toAccount?: Account;
   category?: Category;
-  label?: Label;
+  labels?: Label[];
   createdAt: string;
 }

@@ -14,8 +14,8 @@ export interface Transaction {
   account?: Account;
   categoryId?: string;
   category?: Category;
-  labelId?: string;
-  label?: Label;
+  labelIds?: string[];
+  labels?: Label[];
   createdAt: string;
 }
 
@@ -26,5 +26,5 @@ export interface CreateTransactionRequest {
   transactionDate: string;
   accountId: string;
   categoryId?: string;
-  labelId?: string;
+  labelIds?: string[];
 }

@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -92,11 +94,18 @@ public class TransferService {
                     .orElseThrow(() -> new RuntimeException("Category not found or access denied"));
         }
 
-        Label label = null;
-        if (request.getLabelId() != null) {
-            label = labelRepository.findById(request.getLabelId())
-                    .filter(l -> l.getUserId().equals(userId))
-                    .orElseThrow(() -> new RuntimeException("Label not found or access denied"));
+        Set<Label> labels = new HashSet<>();
+        if (request.getLabelIds() != null && !request.getLabelIds().isEmpty()) {
+            List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
+            for (Label label : fetchedLabels) {
+                if (!label.getUserId().equals(userId)) {
+                    throw new RuntimeException("Label not found or access denied");
+                }
+                labels.add(label);
+            }
+            if (labels.size() != request.getLabelIds().size()) {
+                throw new RuntimeException("One or more labels not found");
+            }
         }
 
         Transfer transfer = new Transfer();
@@ -104,7 +113,7 @@ public class TransferService {
         transfer.setFromAccount(fromAccount);
         transfer.setToAccount(toAccount);
         transfer.setCategory(category);
-        transfer.setLabel(label);
+        transfer.setLabels(labels);
         transfer.setFromAmount(fromAmount);
         transfer.setToAmount(toAmount);
         transfer.setAdjustment(adjustment);
@@ -187,17 +196,24 @@ public class TransferService {
                     .orElseThrow(() -> new RuntimeException("Category not found or access denied"));
         }
 
-        Label label = null;
-        if (request.getLabelId() != null) {
-            label = labelRepository.findById(request.getLabelId())
-                    .filter(l -> l.getUserId().equals(userId))
-                    .orElseThrow(() -> new RuntimeException("Label not found or access denied"));
+        Set<Label> labels = new HashSet<>();
+        if (request.getLabelIds() != null && !request.getLabelIds().isEmpty()) {
+            List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
+            for (Label label : fetchedLabels) {
+                if (!label.getUserId().equals(userId)) {
+                    throw new RuntimeException("Label not found or access denied");
+                }
+                labels.add(label);
+            }
+            if (labels.size() != request.getLabelIds().size()) {
+                throw new RuntimeException("One or more labels not found");
+            }
         }
 
         existing.setFromAccount(fromAccount);
         existing.setToAccount(toAccount);
         existing.setCategory(category);
-        existing.setLabel(label);
+        existing.setLabels(labels);
         existing.setFromAmount(fromAmount);
         existing.setToAmount(toAmount);
         existing.setAdjustment(adjustment);

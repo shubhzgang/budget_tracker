@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -308,7 +309,7 @@ class TransactionServiceTest {
         tx.setDescription("Test");
         tx.setTransactionDate(OffsetDateTime.now());
         tx.setCategory(new Category());
-        tx.setLabel(new Label());
+        tx.setLabels(Set.of(new Label()));
         return tx;
     }
 }

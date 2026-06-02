@@ -12,7 +12,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl border border-border animate-in fade-in zoom-in duration-200">
         <div className="flex justify-between items-center p-6 border-b border-border">
           <h2 className="text-xl font-bold">{title}</h2>
           <button

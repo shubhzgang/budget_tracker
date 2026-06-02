@@ -32,8 +32,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ transactions, loading }) =
   const labelData = useMemo(() => {
     const data: Record<string, number> = {};
     expenseTransactions.forEach(t => {
-      const labelName = t.label?.name || 'Unlabeled';
-      data[labelName] = (data[labelName] || 0) + Math.abs(t.amount);
+      if (!t.labels || t.labels.length === 0) {
+        data['Unlabeled'] = (data['Unlabeled'] || 0) + Math.abs(t.amount);
+      } else {
+        t.labels.forEach(label => {
+          data[label.name] = (data[label.name] || 0) + Math.abs(t.amount);
+        });
+      }
     });
     return Object.entries(data)
       .map(([name, value]) => ({ name, value }))

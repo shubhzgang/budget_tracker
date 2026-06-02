@@ -125,6 +125,18 @@ class LabelServiceTest {
     }
 
     @Test
+    void createLabel_withPipeCharacter_shouldThrow() {
+        Label label = new Label();
+        assertThrows(IllegalArgumentException.class, () -> label.setName("BAD|LABEL"));
+    }
+
+    @Test
+    void updateLabel_withPipeCharacter_shouldThrow() {
+        Label label = new Label();
+        assertThrows(IllegalArgumentException.class, () -> label.setName("BAD|LABEL"));
+    }
+
+    @Test
     void initializeDefaultLabels_shouldCreateDefaults_whenNoneExist() {
         when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
 

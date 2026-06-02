@@ -15,19 +15,19 @@ import java.util.UUID;
 @Repository
 public interface TransferRepository extends JpaRepository<Transfer, UUID> {
 
-    @Query("SELECT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label WHERE t.userId = :userId")
+    @Query("SELECT DISTINCT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels WHERE t.userId = :userId")
     List<Transfer> findAllByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT DISTINCT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label " +
+    @Query("SELECT DISTINCT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels " +
             "WHERE (t.fromAccount.id = :accountId OR t.toAccount.id = :accountId) AND t.userId = :userId")
     List<Transfer> findAccountTransfers(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
 
-    @Query("SELECT DISTINCT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.label " +
+    @Query("SELECT DISTINCT t FROM Transfer t LEFT JOIN FETCH t.fromAccount LEFT JOIN FETCH t.toAccount LEFT JOIN FETCH t.category LEFT JOIN FETCH t.labels " +
             "WHERE t.userId = :userId " +
             "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' " +
             "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
             "OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "OR LOWER(t.label.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+            "OR EXISTS (SELECT 1 FROM t.labels lbl WHERE LOWER(lbl.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))) " +
             "AND (cast(:startDate as string) IS NULL OR t.transactionDate >= :startDate) " +
             "AND (cast(:endDate as string) IS NULL OR t.transactionDate <= :endDate)")
     Page<Transfer> searchTransfers(

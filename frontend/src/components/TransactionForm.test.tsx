@@ -288,7 +288,7 @@ describe('TransactionForm', () => {
       transactionDate: '2026-05-20T00:00:00Z',
       account: { id: '1', name: 'Bank 1' },
       category: { id: 'c1', name: 'Food', icon: '🍔' },
-      label: { id: 'l1', name: 'Personal' }
+      labels: [{ id: 'l1', name: 'Personal' }]
     };
 
     render(
@@ -306,7 +306,7 @@ describe('TransactionForm', () => {
     expect(screen.getByLabelText(/Description/i)).toHaveValue('Groceries edit');
     expect(screen.getByLabelText(/Type/i)).toHaveValue('EXPENSE');
     expect(screen.getByLabelText(/Category/i)).toHaveValue('c1');
-    expect(screen.getByLabelText(/Label/i)).toHaveValue('l1');
+    expect(screen.getByText('Personal')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
   });
 

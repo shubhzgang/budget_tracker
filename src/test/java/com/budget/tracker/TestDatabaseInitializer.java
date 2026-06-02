@@ -23,7 +23,20 @@ public class TestDatabaseInitializer {
     public void init() {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS transaction_labels CASCADE");
+            stmt.execute("DROP TABLE IF EXISTS transfer_labels CASCADE");
             stmt.execute("DROP TABLE IF EXISTS activity_view CASCADE");
+
+            stmt.execute("CREATE TABLE transaction_labels (" +
+                    "transaction_id UUID NOT NULL, " +
+                    "label_id UUID NOT NULL, " +
+                    "PRIMARY KEY (transaction_id, label_id))");
+
+            stmt.execute("CREATE TABLE transfer_labels (" +
+                    "transfer_id UUID NOT NULL, " +
+                    "label_id UUID NOT NULL, " +
+                    "PRIMARY KEY (transfer_id, label_id))");
+
             stmt.execute("CREATE VIEW activity_view AS " +
                     "SELECT " +
                     "id, " +
@@ -32,7 +45,6 @@ public class TestDatabaseInitializer {
                     "account_id, " +
                     "CAST(NULL AS UUID) AS to_account_id, " +
                     "category_id, " +
-                    "label_id, " +
                     "amount, " +
                     "CAST(type AS VARCHAR) AS type, " +
                     "CAST(NULL AS DECIMAL(19,4)) AS from_amount, " +
@@ -50,7 +62,6 @@ public class TestDatabaseInitializer {
                     "from_account_id AS account_id, " +
                     "to_account_id, " +
                     "category_id, " +
-                    "label_id, " +
                     "CAST(NULL AS DECIMAL(19,4)) AS amount, " +
                     "'TRANSFER' AS type, " +
                     "from_amount, " +

@@ -321,7 +321,7 @@ class TransferServiceTest {
         req.setToAccountId(toAccountId);
         req.setFromAmount(new BigDecimal("100.00"));
         req.setAdjustment(new BigDecimal("10.00"));
-        req.setLabelId(lbl.getId());
+        req.setLabelIds(List.of(lbl.getId()));
 
         when(accountRepository.findById(fromAccountId)).thenReturn(Optional.of(fromAccount));
         when(accountRepository.findById(toAccountId)).thenReturn(Optional.of(toAccount));

@@ -55,7 +55,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           description: data.description || '',
           transactionDate: data.transactionDate,
           categoryId: data.categoryId || null,
-          labelId: data.labelId || null
+          labelIds: data.labelIds || []
         };
         await apiClient.post('/transfers', transferPayload);
         addToast('Transfer created successfully', 'success');
@@ -67,7 +67,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           transactionDate: data.transactionDate,
           account: { id: data.accountId },
           category: data.categoryId ? { id: data.categoryId } : null,
-          label: data.labelId ? { id: data.labelId } : null
+          labels: data.labels || []
         };
         await apiClient.post('/transactions', transactionPayload);
         addToast('Transaction saved successfully', 'success');

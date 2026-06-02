@@ -67,7 +67,7 @@ public class TransferController {
         response.setFromAccount(transfer.getFromAccount());
         response.setToAccount(transfer.getToAccount());
         response.setCategory(transfer.getCategory());
-        response.setLabel(transfer.getLabel());
+        response.setLabels(transfer.getLabels());
         response.setCreatedAt(transfer.getCreatedAt());
         return response;
     }

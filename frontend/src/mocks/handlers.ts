@@ -85,6 +85,7 @@ export const handlers = [
           account: { id: '1', name: 'Main Bank' },
           categoryId: 'c1',
           category: { id: 'c1', name: 'Food', icon: '🍔' },
+          labels: [{ id: 'l1', name: 'Personal', isDefault: true }],
           createdAt: new Date().toISOString()
         },
         {
@@ -142,6 +143,7 @@ export const handlers = [
           account: { id: '1', name: 'Main Bank' },
           categoryId: 'c1',
           category: { id: 'c1', name: 'Food', icon: '🍔' },
+          labels: [{ id: 'l1', name: 'Personal', isDefault: true }],
           createdAt: new Date().toISOString()
         },
         {
