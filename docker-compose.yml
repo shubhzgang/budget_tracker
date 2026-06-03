@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: budget_tracker
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     networks:
@@ -29,8 +27,6 @@ services:
       SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/budget_tracker
       SPRING_FLYWAY_USER: user
       SPRING_FLYWAY_PASSWORD: password
-    ports:
-      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
