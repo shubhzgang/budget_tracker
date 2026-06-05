@@ -140,7 +140,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Mobile Top Header (Minimal) */}
       <header className="md:hidden border-b border-border p-4 flex justify-between items-center bg-card sticky top-0 z-50">
         <h1 className="text-lg font-bold text-primary">BudgetTracker</h1>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={logout}
+            className="text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 px-3 py-1 rounded-md transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
