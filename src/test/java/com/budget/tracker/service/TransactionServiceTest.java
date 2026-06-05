@@ -218,7 +218,7 @@ class TransactionServiceTest {
         Transaction tx = buildTransaction(TransactionType.INCOME, sourceAccount);
         tx.setId(transactionId);
 
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(tx));
 
         Transaction found = transactionService.getTransactionById(transactionId);
 
@@ -238,7 +238,7 @@ class TransactionServiceTest {
         details.setAmount(new BigDecimal("150"));
         details.setDescription("Updated");
 
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(existing));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -262,7 +262,7 @@ class TransactionServiceTest {
         tx.setId(transactionId);
         tx.setAmount(new BigDecimal("200"));
 
-        when(transactionRepository.findAllByUserId(userId)).thenReturn(List.of(tx));
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(tx));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
 
         transactionService.deleteTransaction(transactionId);

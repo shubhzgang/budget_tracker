@@ -58,9 +58,7 @@ public class TransactionService {
     }
 
     public Transaction getTransactionById(UUID transactionId) {
-        return transactionRepository.findAllByUserId(getCurrentUserId()).stream()
-                .filter(t -> t.getId().equals(transactionId))
-                .findFirst()
+        return transactionRepository.findByIdAndUserId(transactionId, getCurrentUserId())
                 .orElseThrow(() -> new RuntimeException("Transaction not found or access denied"));
     }
 
