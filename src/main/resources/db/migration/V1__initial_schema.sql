@@ -1,5 +1,4 @@
-
--- Initial schema for Budget Tracker
+-- Initial schema for Budget Tracker (merged V1 + V2)
 
 -- Enums
 CREATE TYPE account_type AS ENUM ('CREDIT_CARD', 'CASH', 'BANK', 'FRIEND_LENDING');
@@ -44,13 +43,12 @@ CREATE TABLE categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Transactions Table
+-- Transactions Table (multi-label: no label_id column, uses transaction_labels join table)
 CREATE TABLE transactions (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    label_id UUID REFERENCES labels(id) ON DELETE SET NULL,
     type transaction_type NOT NULL,
     amount DECIMAL(19, 4) NOT NULL,
     description TEXT,
@@ -58,20 +56,32 @@ CREATE TABLE transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Transfers Table
+-- Transfers Table (multi-label: no label_id column, uses transfer_labels join table)
 CREATE TABLE transfers (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     from_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     to_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    label_id UUID REFERENCES labels(id) ON DELETE SET NULL,
     from_amount DECIMAL(19, 4) NOT NULL,
     adjustment DECIMAL(19, 4) NOT NULL DEFAULT 0,
     to_amount DECIMAL(19, 4) NOT NULL,
     description TEXT,
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- Multi-label join tables
+CREATE TABLE transaction_labels (
+    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    label_id UUID NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    PRIMARY KEY (transaction_id, label_id)
+);
+
+CREATE TABLE transfer_labels (
+    transfer_id UUID NOT NULL REFERENCES transfers(id) ON DELETE CASCADE,
+    label_id UUID NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    PRIMARY KEY (transfer_id, label_id)
 );
 
 -- User Preferences Table
@@ -102,45 +112,25 @@ CREATE TABLE backup_records (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Activity View
+-- Activity View (unified transaction + transfer listing, no label_id)
 CREATE VIEW activity_view AS
 SELECT
-    id,
-    'TRANSACTION' AS kind,
-    user_id,
-    account_id,
-    NULL::uuid AS to_account_id,
-    category_id,
-    label_id,
-    amount,
-    type::text AS type,
-    NULL::decimal(19,4) AS from_amount,
-    NULL::decimal(19,4) AS to_amount,
-    NULL::decimal(19,4) AS adjustment,
-    description,
-    transaction_date,
-    created_at
-FROM transactions
+    t.id, 'TRANSACTION' AS kind, t.user_id, t.account_id,
+    NULL::uuid AS to_account_id, t.category_id,
+    t.amount, t.type::text AS type,
+    NULL::decimal(19,4) AS from_amount, NULL::decimal(19,4) AS to_amount, NULL::decimal(19,4) AS adjustment,
+    t.description, t.transaction_date, t.created_at
+FROM transactions t
 UNION ALL
 SELECT
-    id,
-    'TRANSFER' AS kind,
-    user_id,
-    from_account_id AS account_id,
-    to_account_id,
-    category_id,
-    label_id,
-    NULL::decimal(19,4) AS amount,
-    'TRANSFER' AS type,
-    from_amount,
-    to_amount,
-    adjustment,
-    description,
-    transaction_date,
-    created_at
-FROM transfers;
+    tr.id, 'TRANSFER' AS kind, tr.user_id, tr.from_account_id AS account_id,
+    tr.to_account_id, tr.category_id,
+    NULL::decimal(19,4) AS amount, 'TRANSFER' AS type,
+    tr.from_amount, tr.to_amount, tr.adjustment,
+    tr.description, tr.transaction_date, tr.created_at
+FROM transfers tr;
 
--- Indexes for performance
+-- Indexes
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX idx_labels_user_id ON labels(user_id);
 CREATE INDEX idx_categories_user_id ON categories(user_id);
@@ -153,3 +143,7 @@ CREATE INDEX idx_transfers_to_account_id ON transfers(to_account_id);
 CREATE INDEX idx_transfers_date ON transfers(transaction_date);
 CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
 CREATE INDEX idx_backup_records_user_id ON backup_records(user_id);
+CREATE INDEX idx_transaction_labels_transaction_id ON transaction_labels(transaction_id);
+CREATE INDEX idx_transaction_labels_label_id ON transaction_labels(label_id);
+CREATE INDEX idx_transfer_labels_transfer_id ON transfer_labels(transfer_id);
+CREATE INDEX idx_transfer_labels_label_id ON transfer_labels(label_id);

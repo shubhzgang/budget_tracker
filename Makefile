@@ -95,6 +95,7 @@ test-e2e: build
 	fi; \
 	cd e2e && npm install && $${PLAYWRIGHT_INSTALL_CMD} && npm run test; \
 	EXIT_CODE=$$?; \
+	cd ..; \
 	docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v; \
 	exit $$EXIT_CODE
 
