@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: budget_tracker
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata_prod:/var/lib/postgresql
     networks:
       - budget-tracker-net
     healthcheck:
@@ -55,4 +55,4 @@ networks:
     driver: bridge
 
 volumes:
-  pgdata:
+  pgdata_prod:

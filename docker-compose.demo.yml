@@ -1,5 +1,12 @@
 services:
+  postgres:
+    volumes:
+      - pgdata_demo:/var/lib/postgresql
+
   backend:
     environment:
       SPRING_PROFILES_ACTIVE: demo
       APP_DATA-SEEDER_ENABLED: "true"
+
+volumes:
+  pgdata_demo:

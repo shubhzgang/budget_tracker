@@ -1,4 +1,10 @@
 services:
+  postgres:
+    volumes:
+      - pgdata_test_e2e:/var/lib/postgresql
   backend:
     ports:
       - "8080:8080"
+
+volumes:
+  pgdata_test_e2e:

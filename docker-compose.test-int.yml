@@ -2,6 +2,11 @@ services:
   postgres:
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata_test_int:/var/lib/postgresql
   backend:
     ports:
       - "8080:8080"
+
+volumes:
+  pgdata_test_int:
