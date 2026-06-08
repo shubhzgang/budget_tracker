@@ -25,7 +25,7 @@ class CorsDisabledTest {
     @Test
     void shouldNotReturnCorsHeadersWhenCorsNotConfigured() throws Exception {
         mockMvc.perform(get("/actuator/health")
-                        .header("Origin", "http://localhost:5173"))
+                        .header("Origin", "http://localhost:55173"))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
@@ -33,7 +33,7 @@ class CorsDisabledTest {
     @Test
     void shouldNotReturnCredentialsHeaderWhenCorsNotConfigured() throws Exception {
         mockMvc.perform(get("/actuator/health")
-                        .header("Origin", "http://localhost:5173"))
+                        .header("Origin", "http://localhost:55173"))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"));
     }

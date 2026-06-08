@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://backend:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,7 +44,7 @@ services:
       dockerfile: Dockerfile
     container_name: budget-tracker-frontend
     ports:
-      - "3000:80"
+      - "3300:80"
     depends_on:
       - backend
     networks:

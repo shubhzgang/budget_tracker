@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("integration")
 public class AuthSystemIntegrationTest {
 
-    private static final String BASE_URL = "http://localhost:8080/api/v1/auth";
+    private static final String BASE_URL = "http://localhost:8811/api/v1/auth";
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test

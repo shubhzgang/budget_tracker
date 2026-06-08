@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("integration")
 public class HealthIntegrationTest {
 
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:8811";
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test

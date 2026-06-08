@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "app.cors.allowed-origins=http://localhost:5173,http://localhost:3000",
+        "app.cors.allowed-origins=http://localhost:55173,http://localhost:3300",
         "app.security.enabled=false"
 })
 class CorsConfigurationTest {
@@ -27,17 +27,17 @@ class CorsConfigurationTest {
     @Test
     void shouldReturnAllowOriginHeaderForAllowedOrigin() throws Exception {
         mockMvc.perform(get("/actuator/health")
-                        .header("Origin", "http://localhost:5173"))
+                        .header("Origin", "http://localhost:55173"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:55173"));
     }
 
     @Test
     void shouldReturnAllowOriginForSecondAllowedOrigin() throws Exception {
         mockMvc.perform(get("/actuator/health")
-                        .header("Origin", "http://localhost:3000"))
+                        .header("Origin", "http://localhost:3300"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3300"));
     }
 
     @Test
@@ -52,17 +52,17 @@ class CorsConfigurationTest {
     @Test
     void shouldHandlePreflightOptionsRequest() throws Exception {
         mockMvc.perform(options("/actuator/health")
-                        .header("Origin", "http://localhost:5173")
+                        .header("Origin", "http://localhost:55173")
                         .header("Access-Control-Request-Method", "POST")
                         .header("Access-Control-Request-Headers", "Authorization,Content-Type"))
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:55173"))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
     @Test
     void shouldIncludeAllowCredentialsHeader() throws Exception {
         mockMvc.perform(get("/actuator/health")
-                        .header("Origin", "http://localhost:5173"))
+                        .header("Origin", "http://localhost:55173"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
