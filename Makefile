@@ -110,6 +110,10 @@ run-stack: build build-frontend
 	@echo "Launching Budget Tracker stack..."
 	docker compose up --build -d
 
+# Build frontend locally (avoids ARM npm issues in Docker)
+build-frontend:
+	cd frontend && npm install && npm run build && cd ..
+
 # Stop the stack and remove volumes
 stop-stack:
 	@echo "Stopping stack (keeping volumes)..."
