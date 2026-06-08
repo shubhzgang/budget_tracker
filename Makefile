@@ -76,7 +76,7 @@ java-test:
 OS_NAME := $(shell uname -s)
 
 # Main target: Run the full E2E test suite
-test-e2e: build
+test-e2e: build build-frontend
 	@echo "Starting full stack for E2E tests..."
 	@-docker volume rm budget_tracker_pgdata_test_e2e 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
@@ -106,9 +106,13 @@ test-e2e: build
 	exit $$EXIT_CODE
 
 # Launch the entire stack for local use
-run-stack: build
+run-stack: build build-frontend
 	@echo "Launching Budget Tracker stack..."
 	docker compose up --build
+
+# Build frontend locally (avoids ARM npm issues in Docker)
+build-frontend:
+	cd frontend && npm install && npm run build && cd ..
 
 # Stop the stack and remove volumes
 stop-stack:
