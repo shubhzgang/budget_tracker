@@ -108,11 +108,7 @@ test-e2e: build build-frontend
 # Launch the entire stack for local use
 run-stack: build build-frontend
 	@echo "Launching Budget Tracker stack..."
-	docker compose up --build
-
-# Build frontend locally (avoids ARM npm issues in Docker)
-build-frontend:
-	cd frontend && npm install && npm run build && cd ..
+	docker compose up --build -d
 
 # Stop the stack and remove volumes
 stop-stack:
@@ -124,4 +120,4 @@ run-demo: build
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
 	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
-	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build -d
