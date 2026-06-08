@@ -4,7 +4,7 @@
 Budget Tracker is a full-stack application for managing personal finances, featuring accounts, categories, labels, and transactions with support for different account types (e.g., Credit Cards, Bank, Friend Lending).
 
 ## Tech Stack
-- **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle.
+- **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle. Schema initialized via SQL script on startup (no Flyway).
 - **Frontend**: React (Vite), TypeScript, Tailwind CSS, Vitest, React Testing Library.
 - **Testing**: JUnit 5, Playwright (E2E), Testcontainers (Integration), Vitest (Frontend).
 - **Infrastructure**: Docker, Docker Compose, Nginx (for frontend serving).
