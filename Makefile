@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: test-int test-int-up test-int-down test-int-clean test-int-build java-test test-e2e
 
 # Main target: Run the full integration test suite
