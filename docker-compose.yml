@@ -24,9 +24,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_tracker
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
-      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/budget_tracker
-      SPRING_FLYWAY_USER: user
-      SPRING_FLYWAY_PASSWORD: password
     depends_on:
       postgres:
         condition: service_healthy
