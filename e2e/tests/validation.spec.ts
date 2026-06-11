@@ -1,24 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Zero Amount Validation', () => {
-  // Use a helper to get unique emails for each test run
-  const getTestEmail = () => `zero-test-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
   const testPassword = 'password123';
 
   test.beforeEach(async ({ page }) => {
-    const email = getTestEmail();
-    // Register and Login to start fresh
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-
-    // Wait for redirect to Login page
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+    const email = uniqueEmail('zero');
+    await registerAndLogin(page, email, testPassword);
   });
 
   test('should block zero amount and show alert', async ({ page }) => {

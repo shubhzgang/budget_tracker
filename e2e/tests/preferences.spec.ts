@@ -3,25 +3,15 @@
  * make test-e2e
  */
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('User Preferences', () => {
   const password = 'password123';
   let email = '';
 
   test.beforeEach(async ({ page }) => {
-    email = `pref_e2e_${Math.floor(Math.random() * 100000)}_${Date.now()}@example.com`;
-    // 1. Register
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', password);
-    await page.click('button:has-text("Sign Up")');
-    
-    // 2. Login
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', password);
-    await page.click('button:has-text("Sign In")');
-    await expect(page).toHaveURL(/.*dashboard/);
+    email = uniqueEmail('pref_e2e');
+    await registerAndLogin(page, email, testPassword);
   });
 
   test('should set and apply default transaction values', async ({ page }) => {

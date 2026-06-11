@@ -11,25 +11,15 @@
  * separate type and should only appear when filtering by TRANSFER.
  */
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Transfer Display in Transactions Page', () => {
-  const getTestEmail = () =>
-    `transfer-filter-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
   const testPassword = 'password123';
 
   /** Register a fresh user and land on the Dashboard. */
   test.beforeEach(async ({ page }) => {
-    const email = getTestEmail();
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+    const email = uniqueEmail('transfer-filter');
+    await registerAndLogin(page, email, testPassword);
   });
 
   // ─── Helpers ────────────────────────────────────────────────────────────────

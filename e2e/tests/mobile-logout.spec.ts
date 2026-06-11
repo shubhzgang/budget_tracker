@@ -1,19 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Mobile Logout', () => {
   const testPassword = 'password123';
 
   test.beforeEach(async ({ page }) => {
-    const testEmail = `test-${Date.now()}@example.com`;
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page).toHaveURL(/.*dashboard/);
+    await registerAndLogin(page, uniqueEmail('mobile'), testPassword);
   });
 
   test('should show logout button on mobile viewport', async ({ page }) => {

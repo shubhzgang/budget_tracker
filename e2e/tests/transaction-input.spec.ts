@@ -1,19 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Transaction Form Amount Input', () => {
-  const testEmail = `test-${Date.now()}@example.com`;
   const testPassword = 'password123';
 
   test.beforeEach(async ({ page }) => {
     // 1. Register and Login
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
+    await registerAndLogin(page, uniqueEmail('txinput'), testPassword);
 
     // 2. Create an account so we can open the transaction form
     await page.click('button:has-text("Add Account")');

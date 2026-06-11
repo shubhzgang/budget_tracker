@@ -6,6 +6,7 @@ import { test, expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Backup and Restore', () => {
   const getTestEmail = () => `backup-test-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
@@ -26,17 +27,8 @@ test.describe('Backup and Restore', () => {
     // Auto-accept all confirmation dialogs
     page.on('dialog', dialog => dialog.accept());
 
-    const email = getTestEmail();
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+    const email = uniqueEmail('backup');
+    await registerAndLogin(page, email, testPassword);
   });
 
   async function navigateToBackup(page) {

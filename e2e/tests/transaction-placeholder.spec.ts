@@ -1,21 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Form Placeholders', () => {
   const testPassword = 'password123';
   let testEmail = '';
 
   test.beforeEach(async ({ page }) => {
-    testEmail = `test-${Date.now()}-${Math.floor(Math.random() * 100000)}@example.com`;
-    // 1. Register and Login
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', testEmail);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page).toHaveURL(/.*dashboard/);
+    testEmail = uniqueEmail('placeholder');
+    await registerAndLogin(page, testEmail, testPassword);
   });
 
   test('should verify account form has 123 placeholder and is initially empty', async ({ page }) => {

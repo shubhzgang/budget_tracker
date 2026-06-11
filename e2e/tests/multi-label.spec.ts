@@ -3,22 +3,14 @@
  * make test-e2e
  */
 import { test, expect } from '@playwright/test';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Multi-Label Support', () => {
-  const getTestEmail = () => `multilabel-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
   const testPassword = 'password123';
 
   test.beforeEach(async ({ page }) => {
-    const email = getTestEmail();
-    await page.goto('/register');
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign Up")');
-    await expect(page).toHaveURL(/.*login/);
-    await page.fill('input[placeholder="Email"]', email);
-    await page.fill('input[placeholder="Password"]', testPassword);
-    await page.click('button:has-text("Sign In")');
-    await expect(page).toHaveURL(/.*dashboard/);
+    const email = uniqueEmail('multilabel');
+    await registerAndLogin(page, email, testPassword);
   });
 
   test('should create a transaction with multiple labels', async ({ page }) => {
