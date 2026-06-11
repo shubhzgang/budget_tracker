@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { useToast } from '../context/ToastContext';
 import type { Category, CreateCategoryRequest } from '../types/category';
+import { EmojiPicker, EMOJI_SECTIONS } from './EmojiPicker';
 
-const AVAILABLE_ICONS = [
-  '🍔', '🛒', '🚗', '🏠', '💡', '🏥', '🎓', '🎬', '✈️', '🎁', '💰', '📉', '🛠️', '📱', '👕'
-];
+const DEFAULT_ICON = EMOJI_SECTIONS[0].emojis[0];
 
 export const CategoryManager: React.FC = () => {
   const { addToast } = useToast();
@@ -14,7 +13,7 @@ export const CategoryManager: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateCategoryRequest>({
     name: '',
-    icon: AVAILABLE_ICONS[0]
+    icon: DEFAULT_ICON
   });
 
   const fetchCategories = async () => {
@@ -37,7 +36,7 @@ export const CategoryManager: React.FC = () => {
     setIsSubmitting(true);
     try {
       await apiClient.post('/categories', formData);
-      setFormData({ name: '', icon: AVAILABLE_ICONS[0] });
+      setFormData({ name: '', icon: DEFAULT_ICON });
       await fetchCategories();
       addToast('Category added successfully', 'success');
     } catch (error) {
@@ -76,17 +75,12 @@ export const CategoryManager: React.FC = () => {
               placeholder="e.g. Groceries"
             />
           </div>
-          <div className="space-y-1 w-full sm:w-32">
+          <div className="space-y-1 w-full sm:w-44">
             <label className="text-sm font-medium">Icon</label>
-            <select
+            <EmojiPicker
               value={formData.icon}
-              onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-              className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
-            >
-              {AVAILABLE_ICONS.map(icon => (
-                <option key={icon} value={icon}>{icon}</option>
-              ))}
-            </select>
+              onChange={(emoji) => setFormData({ ...formData, icon: emoji })}
+            />
           </div>
           <button
             type="submit"
