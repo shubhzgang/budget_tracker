@@ -87,6 +87,13 @@ test-e2e: build build-frontend
 	  docker compose down; \
 	  exit 1; \
 	fi
+	@echo "Waiting for frontend to respond on port 3300..."
+	@n=0; until curl -sf http://localhost:3300 >/dev/null || [ $$n -ge 15 ]; do sleep 2; n=$$(($$n + 1)); done; \
+	if [ $$n -ge 15 ]; then \
+	  echo "Error: Frontend failed to respond on port 3300"; \
+	  docker compose down; \
+	  exit 1; \
+	fi
 	@echo "Stack is ready. Running Playwright tests on $(OS_NAME)..."
 	@if [ "$(OS_NAME)" = "Linux" ]; then \
 		DISTRO=$$(. /etc/os-release && echo $${ID:-""}); \

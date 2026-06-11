@@ -101,7 +101,7 @@ test.describe('Category Management', () => {
     await page.click('button:has-text("Add")');
 
     // The new category should appear in the list with the correct emoji and name
-    const categoryCard = page.locator('div', { has: page.getByText('Pizza Fund') });
+    const categoryCard = page.locator('.group', { hasText: 'Pizza Fund' });
     await expect(categoryCard).toBeVisible();
     await expect(categoryCard.getByText('🍕')).toBeVisible();
   });
@@ -126,13 +126,13 @@ test.describe('Category Management', () => {
     await page.click('button:has-text("Add")');
     await expect(page.getByText('Temporary Cat')).toBeVisible();
 
-    // Hover to reveal delete button and click it
-    const card = page.locator('div', { has: page.getByText('Temporary Cat') });
-    await card.hover();
-    await card.locator('button[title="Delete Category"]').click();
-
     // Confirm the browser dialog
     page.on('dialog', (dialog) => dialog.accept());
+
+    // Hover to reveal delete button and click it
+    const card = page.locator('.group', { hasText: 'Temporary Cat' });
+    await card.hover();
+    await card.locator('button[title="Delete Category"]').click();
 
     // Category should be gone
     await expect(page.getByText('Temporary Cat')).not.toBeVisible();
@@ -140,7 +140,7 @@ test.describe('Category Management', () => {
 
   test('should not show a delete button for default categories', async ({ page }) => {
     // Default categories come pre-seeded; find the "Default" badge
-    const defaultCard = page.locator('div', { has: page.getByText('Default') }).first();
+    const defaultCard = page.locator('.group', { hasText: 'Default' }).first();
     await defaultCard.hover();
     await expect(defaultCard.locator('button[title="Delete Category"]')).not.toBeVisible();
   });

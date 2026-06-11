@@ -20,6 +20,7 @@ public class Category extends BaseEntity {
     private String icon;
 
     @Column(name = "is_default")
+    @com.fasterxml.jackson.annotation.JsonProperty("isDefault")
     private boolean isDefault;
 
     @Column(name = "user_id")

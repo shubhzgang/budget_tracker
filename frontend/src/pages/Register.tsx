@@ -38,8 +38,11 @@ export const Register = () => {
     }
   };
 
+  // Show inline mismatch only when both fields have content and differ
   const passwordsTyped = password.length > 0 && confirmPassword.length > 0;
   const passwordMismatch = passwordsTyped && password !== confirmPassword;
+  // Button is disabled when passwords don't match (covers empty confirm too)
+  const submitDisabled = isLoading || password !== confirmPassword;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground transition-colors">
@@ -60,7 +63,7 @@ export const Register = () => {
             <label className="text-sm font-medium">Email</label>
             <input
               type="email"
-              placeholder="you@example.com"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="border border-input bg-background text-foreground p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
@@ -101,7 +104,7 @@ export const Register = () => {
 
           <button
             type="submit"
-            disabled={isLoading || passwordMismatch}
+            disabled={submitDisabled}
             className="bg-primary text-primary-foreground p-2 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 mt-1"
           >
             {isLoading ? 'Creating Account...' : 'Sign Up'}
