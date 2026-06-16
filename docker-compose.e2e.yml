@@ -5,6 +5,10 @@ services:
   backend:
     ports:
       - "8811:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      APP_AUTH_REGISTER_ENABLED: "true"
+      APP_DATA_SEEDER_ENABLED: "true"
 
 volumes:
   pgdata_test_e2e:

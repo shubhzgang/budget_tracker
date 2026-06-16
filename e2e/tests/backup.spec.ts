@@ -9,7 +9,7 @@ import * as os from 'os';
 import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Backup and Restore', () => {
-  const getTestEmail = () => `backup-test-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
+  const getTestEmail = () => `backup-test-${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
   const testPassword = 'password123';
   let tempDir: string;
 

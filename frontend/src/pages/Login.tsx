@@ -81,10 +81,6 @@ export const Login = () => {
             {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-        
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don't have an account? <button onClick={() => navigate('/register')} className="text-primary hover:underline">Sign Up</button>
-        </p>
       </div>
     </div>
   );

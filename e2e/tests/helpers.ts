@@ -1,27 +1,28 @@
 /**
  * Shared helpers for E2E tests.
  *
- * registerAndLogin() performs a full register + login flow for a fresh user
- * and lands on the dashboard. It correctly fills both the Password and
- * Confirm Password fields introduced in the register form redesign.
+ * registerAndLogin() creates a unique user via the backend API (not the UI)
+ * and then logs in via the login page. This keeps tests isolated while
+ * the public register UI is removed.
  */
-import type { Page } from '@playwright/test';
+import type { Page, APIRequestContext } from '@playwright/test';
 import { expect } from '@playwright/test';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8811';
 
 export async function registerAndLogin(
   page: Page,
   email: string,
   password: string,
 ): Promise<void> {
-  // ── Register ────────────────────────────────────────────────────────────────
-  await page.goto('/register');
-  await page.fill('input[placeholder="Email"]', email);
-  await page.fill('input[placeholder="Password"]', password);
-  await page.fill('input[placeholder="Confirm Password"]', password);
-  await page.click('button:has-text("Sign Up")');
+  // ── Register via API (no UI) ─────────────────────────────────────────────
+  const context = page.context();
+  await context.request.post(`${BACKEND_URL}/api/v1/auth/register`, {
+    data: { email, password },
+  });
 
-  // ── Login ───────────────────────────────────────────────────────────────────
-  await expect(page).toHaveURL(/.*login/);
+  // ── Login via UI ─────────────────────────────────────────────────────────
+  await page.goto('/login');
   await page.fill('input[placeholder="Email"]', email);
   await page.fill('input[placeholder="Password"]', password);
   await page.click('button:has-text("Sign In")');

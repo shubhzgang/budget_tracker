@@ -7,6 +7,8 @@ services:
   backend:
     ports:
       - "8811:8080"
+    environment:
+      APP_AUTH_REGISTER_ENABLED: "true"
 
 volumes:
   pgdata_test_int:
