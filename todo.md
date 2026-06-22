@@ -120,9 +120,12 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] Edit accounts
 - [x] Edit transactions
 ### Finalization & Deployment (Phase 4)
-- [ ] **Testing Review**: Run full suite of unit, integration, and E2E tests.
 - [x] **Configuration**: Configure CORS policies in Spring Boot (configurable via `app.cors.allowed-origins`, off by default).
 - [x] **Dockerization**:
     - [x] Create multi-stage `Dockerfile` for Backend.
     - [x] Create multi-stage `Dockerfile` for Frontend.
 - [x] **Orchestration**: Finalize `docker-compose.yml` for unified stack deployment (Postgres, Backend, Frontend).
+- [ ] emojis on the category creation page should be searchable by typing words, not actual emoji.
+- [ ] Extra flag in accounts page for should this account be considered for budget/networth calculation
+- [ ] Think about how to model this: I have 3 credit cards which have a shared pool of money. When I spend money on one, the credit limit for all of them goes down. All are using shared limit. We can have something like a main card and linked cards. Linked cards wont have their own balance but affect the main card's balance.
+- [ ] Unable to delete labels. Instead of delete icon, I see FIX on the labels settings page.
