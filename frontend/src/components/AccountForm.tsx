@@ -8,32 +8,45 @@ interface AccountFormProps {
   isLoading?: boolean;
 }
 
+type LendingDirection = 'THEY_OWE_ME' | 'I_OWE_THEM';
+
 export const AccountForm: React.FC<AccountFormProps> = ({ initialData, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState<{
     name: string;
     type: AccountType;
     balance: string;
     creditLimit: string;
+    lendingDirection: LendingDirection;
   }>({
     name: initialData?.name || '',
     type: initialData?.type || 'BANK',
-    balance: initialData ? (initialData.initialBalance !== undefined ? initialData.initialBalance.toString() : initialData.balance.toString()) : '',
+    balance: initialData ? Math.abs(initialData.initialBalance !== undefined ? initialData.initialBalance : initialData.balance).toString() : '',
     creditLimit: initialData?.creditLimit?.toString() || '',
+    lendingDirection: initialData?.type === 'FRIEND_LENDING'
+      ? (initialData.balance >= 0 ? 'THEY_OWE_ME' : 'I_OWE_THEM')
+      : 'THEY_OWE_ME',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const balanceNum = parseFloat(formData.balance);
     const creditLimitNum = formData.creditLimit ? parseFloat(formData.creditLimit) : undefined;
-    
+    const rawBalance = isNaN(balanceNum) ? 0 : balanceNum;
+
+    // For FRIEND_LENDING: apply sign based on direction
+    const signedBalance = formData.type === 'FRIEND_LENDING'
+      ? (formData.lendingDirection === 'I_OWE_THEM' ? -Math.abs(rawBalance) : Math.abs(rawBalance))
+      : rawBalance;
+
     const payload: CreateAccountRequest = {
-      ...formData,
-      initialBalance: isNaN(balanceNum) ? 0 : balanceNum,
-      balance: isNaN(balanceNum) ? 0 : balanceNum,
+      name: formData.name,
+      type: formData.type,
+      initialBalance: signedBalance,
+      balance: signedBalance,
       creditLimit: isNaN(creditLimitNum as number) ? undefined : creditLimitNum,
     };
-    
+
     await onSubmit(payload);
   };
 
@@ -66,6 +79,21 @@ export const AccountForm: React.FC<AccountFormProps> = ({ initialData, onSubmit,
           <option value="FRIEND_LENDING">Friend/Lending</option>
         </select>
       </div>
+
+      {formData.type === 'FRIEND_LENDING' && (
+        <div className="space-y-1">
+          <label htmlFor="lending-direction" className="text-sm font-medium">Direction</label>
+          <select
+            id="lending-direction"
+            value={formData.lendingDirection}
+            onChange={(e) => setFormData({ ...formData, lendingDirection: e.target.value as LendingDirection })}
+            className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
+          >
+            <option value="THEY_OWE_ME">They owe me</option>
+            <option value="I_OWE_THEM">I owe them</option>
+          </select>
+        </div>
+      )}
 
       <div className="space-y-1">
         <label htmlFor="initial-balance" className="text-sm font-medium">Initial Balance</label>
