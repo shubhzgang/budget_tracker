@@ -127,7 +127,7 @@ stop-stack:
 	docker compose down
 
 # Launch the stack with a pre-seeded test account
-run-demo: build
+run-demo: build build-frontend
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
 	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
