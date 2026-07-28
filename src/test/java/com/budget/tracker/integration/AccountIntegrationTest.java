@@ -168,7 +168,7 @@ public class AccountIntegrationTest {
                 "\"transactionDate\":\"2026-05-01T10:00:00Z\"," +
                 "\"description\":\"Dinner\"," +
                 "\"type\":\"EXPENSE\"," +
-                "\"account\":{\"id\":\"%s\"}" +
+                "\"accountId\":\"%s\"" +
                 "}", accountId);
 
         HttpRequest txRequest = HttpRequest.newBuilder()

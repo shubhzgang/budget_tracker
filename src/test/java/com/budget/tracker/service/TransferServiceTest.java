@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -235,6 +236,50 @@ class TransferServiceTest {
         verify(accountRepository, atLeastOnce()).save(argThat(a -> a.getId().equals(fromAccountId) && a.getBalance().compareTo(new BigDecimal("900.00")) == 0));
         // Revert dest: 500 - 100 (toAmount) -> 400. Apply new: 400 + 200 -> 600.
         verify(accountRepository, atLeastOnce()).save(argThat(a -> a.getId().equals(toAccountId) && a.getBalance().compareTo(new BigDecimal("600.00")) == 0));
+    }
+
+    @Test
+    void updateTransfer_withNullCategoryIdAndLabelIds_shouldPreserveExisting() {
+        Category existingCategory = new Category();
+        existingCategory.setId(UUID.randomUUID());
+        existingCategory.setUserId(userId);
+
+        Label existingLabel = new Label();
+        existingLabel.setId(UUID.randomUUID());
+        existingLabel.setUserId(userId);
+
+        Transfer existing = new Transfer();
+        existing.setId(UUID.randomUUID());
+        existing.setFromAccount(fromAccount);
+        existing.setToAccount(toAccount);
+        existing.setFromAmount(new BigDecimal("100.00"));
+        existing.setToAmount(new BigDecimal("100.00"));
+        existing.setAdjustment(BigDecimal.ZERO);
+        existing.setUserId(userId);
+        existing.setCategory(existingCategory);
+        existing.setLabels(Set.of(existingLabel));
+
+        TransferRequest req = new TransferRequest();
+        req.setFromAccountId(fromAccountId);
+        req.setToAccountId(toAccountId);
+        req.setFromAmount(new BigDecimal("200.00"));
+        req.setToAmount(new BigDecimal("200.00"));
+        req.setTransactionDate(OffsetDateTime.now());
+        req.setDescription("Updated");
+        req.setCategoryId(null); // Preserve category
+        req.setLabelIds(null);   // Preserve labels
+
+        when(transferRepository.findById(any())).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(fromAccountId)).thenReturn(Optional.of(fromAccount));
+        when(accountRepository.findById(toAccountId)).thenReturn(Optional.of(toAccount));
+        when(transferRepository.save(any(Transfer.class))).thenAnswer(i -> i.getArgument(0));
+
+        Transfer updated = transferService.updateTransfer(existing.getId(), req);
+
+        assertNotNull(updated);
+        assertEquals(existingCategory, updated.getCategory());
+        assertEquals(1, updated.getLabels().size());
+        assertTrue(updated.getLabels().contains(existingLabel));
     }
 
     @Test

@@ -1,12 +1,10 @@
 package com.budget.tracker.controller;
 
 import com.budget.tracker.context.AuthContext;
-import com.budget.tracker.model.Account;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
+import com.budget.tracker.payload.request.TransactionRequest;
 import com.budget.tracker.security.UserDetailsImpl;
-import com.budget.tracker.service.AccountService;
-import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -17,7 +15,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,12 +45,6 @@ public class TransactionControllerTest {
     @MockBean
     private TransactionService transactionService;
 
-    @MockBean
-    private AccountService accountService;
-
-    @MockBean
-    private CategoryService categoryService;
-
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -77,24 +68,53 @@ public class TransactionControllerTest {
 
     @Test
     void shouldCreateTransaction() throws Exception {
-        Transaction transaction = new Transaction();
-        transaction.setAmount(new BigDecimal("50.00"));
-        transaction.setDescription("Lunch");
-        transaction.setType(TransactionType.EXPENSE);
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(UUID.randomUUID());
+        req.setAmount(new BigDecimal("50.00"));
+        req.setDescription("Lunch");
+        req.setType(TransactionType.EXPENSE);
+        req.setTransactionDate(OffsetDateTime.now());
 
         Transaction saved = new Transaction();
         saved.setId(UUID.randomUUID());
         saved.setAmount(new BigDecimal("50.00"));
         saved.setUserId(userId);
 
-        when(transactionService.createTransaction(any(Transaction.class))).thenReturn(saved);
+        when(transactionService.createTransaction(any(TransactionRequest.class))).thenReturn(saved);
 
         mockMvc.perform(post("/api/v1/transactions")
                 .with(user(userDetails))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(transaction)))
+                .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.amount").value(50.00));
+    }
+
+    @Test
+    void shouldUpdateTransaction() throws Exception {
+        UUID tid = UUID.randomUUID();
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(UUID.randomUUID());
+        req.setAmount(new BigDecimal("75.00"));
+        req.setDescription("Dinner");
+        req.setType(TransactionType.EXPENSE);
+        req.setTransactionDate(OffsetDateTime.now());
+
+        Transaction updated = new Transaction();
+        updated.setId(tid);
+        updated.setAmount(new BigDecimal("75.00"));
+        updated.setDescription("Dinner");
+        updated.setUserId(userId);
+
+        when(transactionService.updateTransaction(eq(tid), any(TransactionRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/v1/transactions/" + tid)
+                .with(user(userDetails))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(75.00))
+                .andExpect(jsonPath("$.description").value("Dinner"));
     }
 
     @Test

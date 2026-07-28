@@ -7,7 +7,10 @@ import com.budget.tracker.model.Category;
 import com.budget.tracker.model.Label;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
+import com.budget.tracker.payload.request.TransactionRequest;
 import com.budget.tracker.repository.AccountRepository;
+import com.budget.tracker.repository.CategoryRepository;
+import com.budget.tracker.repository.LabelRepository;
 import com.budget.tracker.repository.TransactionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +37,12 @@ class TransactionServiceTest {
     @Mock
     private AccountRepository accountRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
+    @Mock
+    private LabelRepository labelRepository;
+
     private TransactionService transactionService;
 
     private UUID userId;
@@ -47,7 +56,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        transactionService = new TransactionService(transactionRepository, accountRepository);
+        transactionService = new TransactionService(transactionRepository, accountRepository, categoryRepository, labelRepository);
         userId = UUID.randomUUID();
         transactionId = UUID.randomUUID();
         accountId = UUID.randomUUID();
@@ -75,6 +84,30 @@ class TransactionServiceTest {
     }
 
     // -- createTransaction --
+
+    @Test
+    void createTransaction_fromRequest_shouldSaveAndIncreaseBalance() {
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(accountId);
+        req.setAmount(new BigDecimal("200"));
+        req.setType(TransactionType.INCOME);
+        req.setDescription("Freelance");
+        req.setTransactionDate(OffsetDateTime.now());
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Transaction result = transactionService.createTransaction(req);
+
+        assertNotNull(result);
+        assertEquals(userId, result.getUserId());
+        assertEquals(new BigDecimal("200"), result.getAmount());
+        verify(transactionRepository).save(any());
+        verify(accountRepository).save(argThat(acct ->
+                acct.getId().equals(accountId) &&
+                acct.getBalance().compareTo(new BigDecimal("1200")) == 0
+        ));
+    }
 
     @Test
     void createTransaction_income_shouldSaveAndIncreaseBalance() {
@@ -167,7 +200,6 @@ class TransactionServiceTest {
 
         assertNotNull(result);
         verify(transactionRepository).save(tx);
-        // LEND decreases balance (sending money away): 1000 - 100 = 900
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) &&
                 acct.getBalance().compareTo(new BigDecimal("900")) == 0
@@ -186,14 +218,11 @@ class TransactionServiceTest {
 
         assertNotNull(result);
         verify(transactionRepository).save(tx);
-        // BORROW increases balance (getting money): 1000 + 250 = 1250
         verify(accountRepository).save(argThat(acct ->
                 acct.getId().equals(accountId) &&
                 acct.getBalance().compareTo(new BigDecimal("1250")) == 0
         ));
     }
-
-
 
     @Test
     void createTransaction_zeroAmount_shouldThrow() {
@@ -229,20 +258,23 @@ class TransactionServiceTest {
     // -- updateTransaction --
 
     @Test
-    void updateTransaction_nonTransfer_shouldUpdateFieldsAndBalances() {
+    void updateTransaction_fromRequest_shouldUpdateFieldsAndBalances() {
         Transaction existing = buildTransaction(TransactionType.INCOME, sourceAccount);
         existing.setId(transactionId);
         existing.setAmount(new BigDecimal("100"));
 
-        Transaction details = buildTransaction(TransactionType.INCOME, sourceAccount);
-        details.setAmount(new BigDecimal("150"));
-        details.setDescription("Updated");
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(accountId);
+        req.setAmount(new BigDecimal("150"));
+        req.setType(TransactionType.INCOME);
+        req.setDescription("Updated");
+        req.setTransactionDate(OffsetDateTime.now());
 
         when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(existing));
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
         when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        Transaction updated = transactionService.updateTransaction(transactionId, details);
+        Transaction updated = transactionService.updateTransaction(transactionId, req);
 
         assertEquals(new BigDecimal("150"), updated.getAmount());
         assertEquals("Updated", updated.getDescription());
@@ -252,7 +284,71 @@ class TransactionServiceTest {
         ));
     }
 
+    @Test
+    void updateTransaction_withAccountChange_shouldUpdateBothBalances() {
+        Transaction existing = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        existing.setId(transactionId);
+        existing.setAmount(new BigDecimal("100"));
 
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(destAccountId); // Changed account to destAccount
+        req.setAmount(new BigDecimal("100"));
+        req.setType(TransactionType.EXPENSE);
+        req.setDescription("Moved to dest account");
+        req.setTransactionDate(OffsetDateTime.now());
+
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findById(destAccountId)).thenReturn(Optional.of(destAccount));
+        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Transaction updated = transactionService.updateTransaction(transactionId, req);
+
+        assertEquals(destAccountId, updated.getAccount().getId());
+        // Source account: Revert EXPENSE 100 -> add 100 -> 1000 + 100 = 1100
+        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
+                acct.getId().equals(accountId) && acct.getBalance().compareTo(new BigDecimal("1100")) == 0
+        ));
+        // Dest account: Apply EXPENSE 100 -> sub 100 -> 500 - 100 = 400
+        verify(accountRepository, atLeastOnce()).save(argThat(acct ->
+                acct.getId().equals(destAccountId) && acct.getBalance().compareTo(new BigDecimal("400")) == 0
+        ));
+    }
+
+    @Test
+    void updateTransaction_withNullCategoryAndLabels_shouldPreserveExisting() {
+        Category existingCategory = new Category();
+        existingCategory.setId(UUID.randomUUID());
+        existingCategory.setUserId(userId);
+
+        Label existingLabel = new Label();
+        existingLabel.setId(UUID.randomUUID());
+        existingLabel.setUserId(userId);
+
+        Transaction existing = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        existing.setId(transactionId);
+        existing.setAmount(new BigDecimal("50"));
+        existing.setCategory(existingCategory);
+        existing.setLabels(Set.of(existingLabel));
+
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(accountId);
+        req.setAmount(new BigDecimal("60"));
+        req.setType(TransactionType.EXPENSE);
+        req.setTransactionDate(OffsetDateTime.now());
+        req.setCategoryId(null); // Preserve category
+        req.setLabelIds(null);   // Preserve labels
+
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Transaction updated = transactionService.updateTransaction(transactionId, req);
+
+        assertEquals(existingCategory, updated.getCategory());
+        assertEquals(1, updated.getLabels().size());
+        assertTrue(updated.getLabels().contains(existingLabel));
+    }
 
     // -- deleteTransaction --
 
@@ -273,8 +369,6 @@ class TransactionServiceTest {
         ));
         verify(transactionRepository).delete(tx);
     }
-
-
 
     // -- list methods --
 

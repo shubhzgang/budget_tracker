@@ -73,7 +73,7 @@ public class TransactionIntegrationTest {
                 "\"transactionDate\":\"2026-04-27T10:00:00Z\"," +
                 "\"description\":\"Salary\"," +
                 "\"type\":\"INCOME\"," +
-                "\"account\":{\"id\":\"%s\"}" +
+                "\"accountId\":\"%s\"" +
                 "}", accountId);
 
         HttpRequest createRequest = HttpRequest.newBuilder()
@@ -92,7 +92,32 @@ public class TransactionIntegrationTest {
         // Verify balance updated (1000 + 500 = 1500)
         verifyBalance(1500.00);
 
-        // 2. Get All Transactions
+        // 2. Update Transaction
+        String updateTxJson = String.format("{" +
+                "\"amount\":600.00," +
+                "\"transactionDate\":\"2026-04-27T10:00:00Z\"," +
+                "\"description\":\"Updated Salary\"," +
+                "\"type\":\"INCOME\"," +
+                "\"accountId\":\"%s\"" +
+                "}", accountId);
+
+        HttpRequest updateRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions/" + txId))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .PUT(HttpRequest.BodyPublishers.ofString(updateTxJson))
+                .build();
+
+        HttpResponse<String> updateResponse = client.send(updateRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, updateResponse.statusCode());
+        JsonNode updatedTx = mapper.readTree(updateResponse.body());
+        assertEquals(600.0, updatedTx.get("amount").asDouble());
+        assertEquals("Updated Salary", updatedTx.get("description").asText());
+
+        // Verify balance updated (1000 + 600 = 1600)
+        verifyBalance(1600.00);
+
+        // 3. Get All Transactions
         HttpRequest listRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/transactions"))
                 .header("Authorization", "Bearer " + token)
@@ -102,7 +127,7 @@ public class TransactionIntegrationTest {
         assertEquals(200, listResponse.statusCode());
         assertTrue(mapper.readTree(listResponse.body()).get("content").size() > 0);
 
-        // 3. Delete Transaction
+        // 4. Delete Transaction
         HttpRequest deleteRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/transactions/" + txId))
                 .header("Authorization", "Bearer " + token)
@@ -110,7 +135,7 @@ public class TransactionIntegrationTest {
                 .build();
         assertEquals(204, client.send(deleteRequest, HttpResponse.BodyHandlers.ofString()).statusCode());
 
-        // Verify balance reverted (1500 - 500 = 1000)
+        // Verify balance reverted (1600 - 600 = 1000)
         verifyBalance(1000.00);
     }
 

@@ -96,16 +96,11 @@ public class TransferService {
 
         Set<Label> labels = new HashSet<>();
         if (request.getLabelIds() != null && !request.getLabelIds().isEmpty()) {
-            List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
-            for (Label label : fetchedLabels) {
-                if (!label.getUserId().equals(userId)) {
-                    throw new RuntimeException("Label not found or access denied");
-                }
-                labels.add(label);
-            }
-            if (labels.size() != request.getLabelIds().size()) {
+            List<Label> fetchedLabels = labelRepository.findAllByIdInAndUserId(request.getLabelIds(), userId);
+            if (fetchedLabels.size() != request.getLabelIds().size()) {
                 throw new RuntimeException("One or more labels not found");
             }
+            labels.addAll(fetchedLabels);
         }
 
         Transfer transfer = new Transfer();
@@ -189,31 +184,27 @@ public class TransferService {
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new RuntimeException("Destination account not found or access denied"));
 
-        Category category = null;
         if (request.getCategoryId() != null) {
-            category = categoryRepository.findById(request.getCategoryId())
+            Category category = categoryRepository.findById(request.getCategoryId())
                     .filter(c -> c.getUserId().equals(userId))
                     .orElseThrow(() -> new RuntimeException("Category not found or access denied"));
+            existing.setCategory(category);
         }
 
-        Set<Label> labels = new HashSet<>();
-        if (request.getLabelIds() != null && !request.getLabelIds().isEmpty()) {
-            List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
-            for (Label label : fetchedLabels) {
-                if (!label.getUserId().equals(userId)) {
-                    throw new RuntimeException("Label not found or access denied");
+        if (request.getLabelIds() != null) {
+            if (request.getLabelIds().isEmpty()) {
+                existing.setLabels(new HashSet<>());
+            } else {
+                List<Label> fetchedLabels = labelRepository.findAllByIdInAndUserId(request.getLabelIds(), userId);
+                if (fetchedLabels.size() != request.getLabelIds().size()) {
+                    throw new RuntimeException("One or more labels not found");
                 }
-                labels.add(label);
-            }
-            if (labels.size() != request.getLabelIds().size()) {
-                throw new RuntimeException("One or more labels not found");
+                existing.setLabels(new HashSet<>(fetchedLabels));
             }
         }
 
         existing.setFromAccount(fromAccount);
         existing.setToAccount(toAccount);
-        existing.setCategory(category);
-        existing.setLabels(labels);
         existing.setFromAmount(fromAmount);
         existing.setToAmount(toAmount);
         existing.setAdjustment(adjustment);

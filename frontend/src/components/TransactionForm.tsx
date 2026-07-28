@@ -283,10 +283,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       }
 
       const payload: any = {
-        ...formData,
         amount: amountNum,
-        labelIds: undefined,
-        labels: formData.labelIds.map(id => ({ id })),
+        type: formData.type,
+        accountId: formData.accountId,
+        categoryId: formData.categoryId || null,
+        labelIds: formData.labelIds || [],
+        description: formData.description,
         transactionDate: formData.transactionDate.includes('T')
           ? formData.transactionDate
           : `${formData.transactionDate}T00:00:00Z`

@@ -65,9 +65,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           type: data.type,
           description: data.description,
           transactionDate: data.transactionDate,
-          account: { id: data.accountId },
-          category: data.categoryId ? { id: data.categoryId } : null,
-          labels: data.labels || []
+          accountId: data.accountId,
+          categoryId: data.categoryId || null,
+          labelIds: data.labelIds || []
         };
         await apiClient.post('/transactions', transactionPayload);
         addToast('Transaction saved successfully', 'success');

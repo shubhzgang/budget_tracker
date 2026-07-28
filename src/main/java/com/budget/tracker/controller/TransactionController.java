@@ -1,11 +1,8 @@
 package com.budget.tracker.controller;
 
-import com.budget.tracker.model.Account;
-import com.budget.tracker.model.Category;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
-import com.budget.tracker.service.AccountService;
-import com.budget.tracker.service.CategoryService;
+import com.budget.tracker.payload.request.TransactionRequest;
 import com.budget.tracker.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -17,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,13 +21,9 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final AccountService accountService;
-    private final CategoryService categoryService;
 
-    public TransactionController(TransactionService transactionService, AccountService accountService, CategoryService categoryService) {
+    public TransactionController(TransactionService transactionService) {
         this.transactionService = transactionService;
-        this.accountService = accountService;
-        this.categoryService = categoryService;
     }
 
     @GetMapping
@@ -50,13 +42,13 @@ public class TransactionController {
     }
 
     @PostMapping
-    public Transaction createTransaction(@Valid @RequestBody Transaction transaction) {
-        return transactionService.createTransaction(transaction);
+    public Transaction createTransaction(@Valid @RequestBody TransactionRequest request) {
+        return transactionService.createTransaction(request);
     }
 
     @PutMapping("/{id}")
-    public Transaction updateTransaction(@PathVariable UUID id, @Valid @RequestBody Transaction transactionDetails) {
-        return transactionService.updateTransaction(id, transactionDetails);
+    public Transaction updateTransaction(@PathVariable UUID id, @Valid @RequestBody TransactionRequest request) {
+        return transactionService.updateTransaction(id, request);
     }
 
     @DeleteMapping("/{id}")
