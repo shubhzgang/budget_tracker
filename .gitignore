@@ -148,3 +148,5 @@ e2e/test-results/
 
 backups/
 .antigravitycli/
+
+tmp/
