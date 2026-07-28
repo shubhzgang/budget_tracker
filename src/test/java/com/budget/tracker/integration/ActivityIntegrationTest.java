@@ -85,7 +85,7 @@ public class ActivityIntegrationTest {
                 "\"transactionDate\":\"2026-05-21T09:00:00Z\"," +
                 "\"description\":\"Dinner at restaurant\"," +
                 "\"type\":\"EXPENSE\"," +
-                "\"account\":{\"id\":\"%s\"}" +
+                "\"accountId\":\"%s\"" +
                 "}", fromAccountId);
 
         HttpRequest createTxRequest = HttpRequest.newBuilder()
