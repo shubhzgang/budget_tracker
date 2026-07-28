@@ -190,25 +190,6 @@ public class TransactionService {
         return transactionRepository.save(existing);
     }
 
-    @Transactional
-    public Transaction updateTransaction(UUID transactionId, Transaction transactionDetails) {
-        UUID userId = getCurrentUserId();
-        Transaction existing = getTransactionById(transactionId);
-        TransactionType oldType = existing.getType();
-        BigDecimal oldAmount = existing.getAmount();
-
-        updateBalance(existing.getAccount().getId(), userId, oldType, oldAmount, BalanceAction.REVERT);
-        updateBalance(existing.getAccount().getId(), userId, transactionDetails.getType(), transactionDetails.getAmount(), BalanceAction.APPLY);
-
-        existing.setAmount(transactionDetails.getAmount());
-        existing.setType(transactionDetails.getType());
-        existing.setDescription(transactionDetails.getDescription());
-        existing.setTransactionDate(transactionDetails.getTransactionDate());
-        existing.setCategory(transactionDetails.getCategory());
-        existing.setLabels(transactionDetails.getLabels());
-
-        return transactionRepository.save(existing);
-    }
 
     @Transactional
     public void deleteTransaction(UUID transactionId) {
