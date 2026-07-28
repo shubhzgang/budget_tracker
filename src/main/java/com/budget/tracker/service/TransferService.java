@@ -96,16 +96,11 @@ public class TransferService {
 
         Set<Label> labels = new HashSet<>();
         if (request.getLabelIds() != null && !request.getLabelIds().isEmpty()) {
-            List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
-            for (Label label : fetchedLabels) {
-                if (!label.getUserId().equals(userId)) {
-                    throw new RuntimeException("Label not found or access denied");
-                }
-                labels.add(label);
-            }
-            if (labels.size() != request.getLabelIds().size()) {
+            List<Label> fetchedLabels = labelRepository.findAllByIdInAndUserId(request.getLabelIds(), userId);
+            if (fetchedLabels.size() != request.getLabelIds().size()) {
                 throw new RuntimeException("One or more labels not found");
             }
+            labels.addAll(fetchedLabels);
         }
 
         Transfer transfer = new Transfer();
@@ -200,18 +195,11 @@ public class TransferService {
             if (request.getLabelIds().isEmpty()) {
                 existing.setLabels(new HashSet<>());
             } else {
-                List<Label> fetchedLabels = labelRepository.findAllById(request.getLabelIds());
-                Set<Label> labels = new HashSet<>();
-                for (Label label : fetchedLabels) {
-                    if (!label.getUserId().equals(userId)) {
-                        throw new RuntimeException("Label not found or access denied");
-                    }
-                    labels.add(label);
-                }
-                if (labels.size() != request.getLabelIds().size()) {
+                List<Label> fetchedLabels = labelRepository.findAllByIdInAndUserId(request.getLabelIds(), userId);
+                if (fetchedLabels.size() != request.getLabelIds().size()) {
                     throw new RuntimeException("One or more labels not found");
                 }
-                existing.setLabels(labels);
+                existing.setLabels(new HashSet<>(fetchedLabels));
             }
         }
 

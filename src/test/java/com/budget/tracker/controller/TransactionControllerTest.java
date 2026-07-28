@@ -5,8 +5,6 @@ import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.payload.request.TransactionRequest;
 import com.budget.tracker.security.UserDetailsImpl;
-import com.budget.tracker.service.AccountService;
-import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -46,12 +44,6 @@ public class TransactionControllerTest {
 
     @MockBean
     private TransactionService transactionService;
-
-    @MockBean
-    private AccountService accountService;
-
-    @MockBean
-    private CategoryService categoryService;
 
     @Autowired
     private ObjectMapper objectMapper;

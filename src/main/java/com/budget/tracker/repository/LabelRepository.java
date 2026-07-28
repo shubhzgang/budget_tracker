@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface LabelRepository extends JpaRepository<Label, UUID> {
     List<Label> findAllByUserId(UUID userId);
+    List<Label> findAllByIdInAndUserId(List<UUID> ids, UUID userId);
 }
