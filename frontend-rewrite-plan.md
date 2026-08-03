@@ -6,7 +6,7 @@
 |---|---|---|
 | Backend | Java 21, Spring Boot 3.5, JPA, PostgreSQL 18, Flyway | Well-structured, proper pagination via Spring Data `Page` |
 | Frontend | React 19 + Vite 8 + TypeScript 6 + Tailwind 4 + Recharts 3 | **Heavyweight for the use case** |
-| Auth | JWT (Bearer token in localStorage) | Standard |
+| Auth | JWT (Bearer token in localStorage) → migrating to HttpOnly cookie | See Phase 1 auth section |
 | API | `/api/v1/*` prefix, ~9 controllers | RESTful with DTOs in some places |
 | Deployment | Docker Compose (Postgres + Backend + Nginx-served frontend) | Clean |
 
@@ -56,78 +56,48 @@ implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 ```
 
-#### Auth: Dual SecurityFilterChain (Session + JWT)
+#### Auth: JWT in HttpOnly Cookie
 
-The current `SecurityConfig.java` uses `SessionCreationPolicy.STATELESS` and disables CSRF. We need to support **both** auth mechanisms simultaneously during migration (and permanently for MCP access). This requires **two `SecurityFilterChain` beans** with `@Order`:
+Keep a **single** stateless `SecurityFilterChain`. Instead of form login + sessions, switch the token transport from `localStorage` to a **secure HttpOnly cookie**. This eliminates the need for form login, CSRF tokens on API calls, and dual auth chains.
+
+**Login endpoint change:** `POST /api/v1/auth/login` already returns a JWT. Add a response cookie alongside the JSON body:
 
 ```java
-// API chain — stateless JWT (existing behavior, higher priority)
-@Bean
-@Order(1)
-public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
-    http
-        .securityMatcher("/api/v1/**")
-        .csrf(AbstractHttpConfigurer::disable)
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/v1/auth/**").permitAll()
-            .anyRequest().authenticated()
-        )
-        .addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterAfter(authContextFilter, AuthTokenFilter.class);
-    return http.build();
-}
+// In AuthController.java login method
+ResponseCookie jwtCookie = ResponseCookie.from("jwt", jwt)
+    .httpOnly(true)
+    .secure(false)  // set true in production
+    .path("/")
+    .maxAge(86400)  // 24 hours
+    .sameSite("Lax")
+    .build();
+return ResponseEntity.ok()
+    .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+    .body(new JwtResponse(jwt, ...));
+```
 
-// Web chain — session-based for Thymeleaf pages (lower priority, catches everything else)
-@Bean
-@Order(2)
-public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
-    http
-        .securityMatcher("/**")
-        .csrf(Customizer.withDefaults())  // CSRF enabled
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/actuator/health").permitAll()
-            .anyRequest().authenticated()
-        )
-        .formLogin(form -> form
-            .loginPage("/login")
-            .defaultSuccessUrl("/dashboard", true)
-        )
-        .logout(logout -> logout.logoutSuccessUrl("/login"));
-    return http.build();
+**AuthTokenFilter update:** Check the `jwt` cookie as a fallback after the `Authorization` header:
+
+```java
+String jwt = parseJwtFromHeader(request);  // existing logic
+if (jwt == null) {
+    jwt = parseJwtFromCookie(request);     // new: fallback to cookie
 }
 ```
+
+**Landing page redirect:** Add a simple `GET /` redirect to `/dashboard` for authenticated users, `/login` for unauthenticated users. No form login needed.
 
 Key points:
-- `/api/v1/**` matched first (`@Order(1)`) — stateless JWT, CSRF disabled, existing behavior unchanged
-- `/**` matched second (`@Order(2)`) — session-based, CSRF enabled, form login
-- The `AuthContext` ThreadLocal pattern still works — populated from session `UserDetails` via a filter on the web chain
+- Single `SecurityFilterChain` — no `@Order` tricks, no dual auth
+- JWT in cookie means no `localStorage` access, no Axios interceptor, no client-side token handling
+- `/api/v1/**` endpoints continue to accept `Authorization: Bearer` header (for MCP/programmatic access)
+- Thymeleaf pages read JWT from cookie automatically — browser sends it with every request
+- CSRF must be disabled (stateless, no session) — but cookie is HttpOnly so XSS can't steal it
+- `AuthContext` ThreadLocal pattern unchanged — still populated by `AuthTokenFilter`
 
-#### CSRF Protection for HTMX
+#### CSRF Strategy
 
-HTMX does not automatically send CSRF tokens. The solution:
-
-1. **Inject the token via Thymeleaf** in `layout.html`:
-```html
-<meta name="_csrf" th:content="${_csrf.token}">
-<meta name="_csrf_header" th:content="${_csrf.headerName}">
-```
-
-2. **Configure HTMX** to attach it to every mutating request:
-```html
-<script>
-  document.addEventListener('htmx:configRequest', function(event) {
-    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-    if (csrfToken && csrfHeader) {
-      event.detail.headers[csrfHeader] = csrfToken;
-    }
-  });
-</script>
-```
-
-This ensures all `hx-post`, `hx-put`, `hx-delete` requests include the CSRF token header automatically.
+With JWT in HttpOnly cookie (stateless, no session), CSRF is **disabled** — same as the current API. The cookie is HttpOnly so XSS cannot read the token. For any future session-based features, CSRF can be added at that point.
 
 #### New Thymeleaf Controllers
 
@@ -136,13 +106,24 @@ Create a new set of controllers that return Thymeleaf views/fragments instead of
 | Route | Purpose | Returns |
 |---|---|---|
 | `GET /login` | Login page | Full page |
-| `POST /login` | Form login | Redirect to `/dashboard` |
+| `POST /login` | Form login → sets JWT cookie | Redirect to `/dashboard` |
 | `GET /dashboard` | Dashboard page | Full page |
 | `GET /dashboard/accounts` | Accounts section fragment | HTML fragment |
 | `GET /dashboard/recent` | Recent transactions fragment | HTML fragment |
 | `GET /transactions` | Transactions page | Full page |
-| `GET /transactions/list` | Transaction list fragment (paginated) | HTML fragment |
-| `GET /accounts/form` | Account create/edit form | HTML fragment (for modal) |
+| `GET /transactions/list` | Transaction/activity list fragment (paginated, filtered) | HTML fragment |
+| `GET /transactions/form` | Transaction create form | HTML fragment (for modal) |
+| `GET /transactions/{id}/edit` | Transaction edit form | HTML fragment (for modal) |
+| `POST /transactions` | Create transaction | HX-Trigger header + redirect/swap |
+| `PUT /transactions/{id}` | Update transaction | HX-Trigger header + redirect/swap |
+| `DELETE /transactions/{id}` | Delete transaction | HX-Trigger header |
+| `GET /transfers/form` | Transfer create form | HTML fragment (for modal) |
+| `GET /transfers/{id}/edit` | Transfer edit form | HTML fragment (for modal) |
+| `POST /transfers` | Create transfer | HX-Trigger header + redirect/swap |
+| `PUT /transfers/{id}` | Update transfer | HX-Trigger header + redirect/swap |
+| `DELETE /transfers/{id}` | Delete transfer | HX-Trigger header |
+| `GET /accounts/form` | Account create form | HTML fragment (for modal) |
+| `GET /accounts/{id}/edit` | Account edit form | HTML fragment (for modal) |
 | `POST /accounts` | Create account | HX-Trigger header + redirect/swap |
 | `PUT /accounts/{id}` | Update account | HX-Trigger header + redirect/swap |
 | `DELETE /accounts/{id}` | Delete account | HX-Trigger header |
@@ -205,6 +186,23 @@ src/main/resources/
        hx-include="[name='type'], [name='accountId']"
        placeholder="Search transactions...">
 ```
+
+#### Account filter with pagination reset
+
+The account filter dropdown is populated server-side on page load. When the selection changes, it resets pagination to page 0:
+
+```html
+<select name="accountId"
+        hx-get="/transactions/list"
+        hx-trigger="change"
+        hx-target="#transaction-list"
+        hx-include="[name='search'], [name='type']">
+  <option value="">All Accounts</option>
+  <option th:each="a : ${accounts}" th:value="${a.id}" th:text="${a.name}"></option>
+</select>
+```
+
+The first request to `/transactions/list?accountId=X&page=0` starts fresh. The sentinel incrementally adds pages from there. Changing the filter triggers a full swap (page 0), so the old sentinel is replaced.
 
 #### Infinite scroll
 
@@ -346,18 +344,93 @@ The initial `x-data` reads from the already-correct `data-theme` attribute (set 
 </div>
 ```
 
+#### Emoji picker (Alpine.js)
+
+Emoji data stored as a static JSON file (`/js/emojis.json`) mapping keywords → emoji characters. Alpine.js component with instant client-side filtering:
+
+```html
+<div x-data="{
+  search: '',
+  emojis: [],
+  selected: '',
+  filtered() { return this.search ? this.emojis.filter(e => e.keywords.some(k => k.includes(this.search.toLowerCase()))) : this.emojis.slice(0, 60); }
+}" x-init="fetch('/js/emojis.json').then(r => r.json()).then(d => emojis = d)">
+  <input type="text" x-model="search" placeholder="Search emoji...">
+  <div class="emoji-grid">
+    <button th:each="e : ${filtered()}" @click="selected = e.emoji" th:text="${e.emoji}"></button>
+  </div>
+  <input type="hidden" name="icon" x-model="selected">
+</div>
+```
+
+#### Currency formatting (server-side)
+
+Instead of React's `PreferenceContext` formatting client-side, pass `currencySymbol` to every template via a model attribute (e.g., from a `HandlerInterceptor` or by injecting `UserPreferenceService` into each controller). All money values are formatted server-side using Thymeleaf:
+
+```html
+<!-- In template -->
+<span th:text="${currencySymbol} + ' ' + ${#numbers.formatDecimal(account.balance, 0, 'COMMA', 2, 'POINT')}">₹ 1,250.00</span>
+```
+
+Or create a Thymeleaf utility (`#currency.format(amount)`) registered as a dialect bean for cleaner usage across all templates.
+
+#### Validation error rendering
+
+When a form submission fails server-side validation (`@Valid`), the controller returns the same form fragment with error messages injected:
+
+```java
+@PostMapping("/accounts")
+public String createAccount(@Valid @ModelAttribute AccountForm form, BindingResult result, Model model) {
+    if (result.hasErrors()) {
+        model.addAttribute("errors", result.getFieldErrors());
+        return "fragments/account-form";  // returns form HTML with errors
+    }
+    accountService.create(form);
+    model.addAttribute("toast", "Account created!");
+    return "fragments/account-form :: #form";  // close modal + toast
+}
+```
+
+```html
+<!-- In account-form.html -->
+<input type="text" name="name" th:value="${form.name}">
+<div th:if="${errors?.getFieldError('name')}"
+     th:text="${errors.getFieldError('name').defaultMessage}"
+     class="text-red-500 text-sm"></div>
+```
+
+#### Transaction/transfer form toggle
+
+Single form that switches fields based on transaction type selection:
+
+```html
+<select name="type" x-model="type" @change="type === 'TRANSFER' ? htmx.ajax('GET', '/transfers/form', '#form-content') : htmx.ajax('GET', '/transactions/form', '#form-content')">
+  <option value="INCOME">Income</option>
+  <option value="EXPENSE">Expense</option>
+  <option value="LEND">Lend</option>
+  <option value="BORROW">Borrow</option>
+  <option value="TRANSFER">Transfer</option>
+</select>
+<div id="form-content">
+  <!-- Replaced by HTMX with the correct form fragment -->
+</div>
+```
+
+Selecting "Transfer" swaps in the transfer form (with to-account, fromAmount, toAmount, adjustment). Selecting any transaction type swaps in the transaction form (with single account, amount). Both fragments are self-contained and handle their own submissions.
+
 ### Migration Approach
 
 1. **Keep both frontends running** during migration — the React frontend at its current path, HTMX frontend served by Spring Boot directly
-2. Migrate page by page: Login → Dashboard → Transactions → Settings
-3. Once all pages are migrated and verified, remove the `frontend/` directory and its Docker container
-4. Update `docker-compose.yml` to remove the frontend service (Spring Boot serves everything)
-5. Update `Dockerfile` to include static assets in the Spring Boot jar
+2. Add Thymeleaf dependency and cookie-based JWT auth to `SecurityConfig`
+3. Migrate page by page: Login → Dashboard → Transactions → Settings
+4. Once all pages are migrated and verified with E2E tests, remove the `frontend/` directory and its Docker container
+5. Update `docker-compose.yml` to remove the frontend service (Spring Boot serves everything)
+6. Update `Dockerfile` to include static assets (CSS, JS, emoji JSON) in the Spring Boot jar
 
 ### What Gets Deleted After Migration
 
 ```
-frontend/                    # Entire React frontend directory (~197KB source + node_modules)
+frontend/                    # Entire React frontend directory
 ├── src/                     # All React components, contexts, pages, types
 ├── package.json             # React, Vite, Tailwind, Recharts dependencies
 ├── vite.config.ts
@@ -367,11 +440,13 @@ frontend/                    # Entire React frontend directory (~197KB source + 
 └── ...
 ```
 
-The `docker-compose.yml` frontend service also gets removed. Spring Boot serves the Thymeleaf HTML directly.
+The `docker-compose.yml` frontend service also gets removed. E2E tests in `e2e/` are preserved — they test user flows against the rendered HTML, not the implementation.
 
 ---
 
-## Phase 2: Expenditure Period Feature (on HTMX stack)
+## Phase 2: Expenditure Dashboard (on HTMX stack)
+
+> **Note:** No charts of any kind in this phase. Spending limits stored on `UserPreference` entity. Period cards show totals as styled HTML; clicking a card filters the transaction list by that date range.
 
 ### Backend — New Endpoint
 
@@ -409,6 +484,30 @@ WHERE user_id = :userId AND type IN ('EXPENSE', 'LEND')
 
 Week boundaries use **ISO weeks (Monday start)** — PostgreSQL's `date_trunc('week', ...)` default.
 
+#### Spending Limits
+
+Add two fields to the existing `UserPreference` entity:
+
+```java
+@Entity
+@Table(name = "user_preferences")
+public class UserPreference extends BaseEntity {
+    // ... existing fields (currencySymbol, theme) ...
+    
+    @Column(name = "weekly_limit")
+    private BigDecimal weeklyLimit;
+    
+    @Column(name = "monthly_limit")
+    private BigDecimal monthlyLimit;
+}
+```
+
+Requires a Flyway migration to add the columns. Limits are optional (null = no limit set). The period cards compare actual spending against the relevant limit, showing a progress indicator (e.g., "₹3,200 of ₹5,000" with a fill bar).
+
+#### Rollover
+
+**No rollover** — each period resets. Budget is a fixed monthly/weekly amount. Underspent amount does not carry forward.
+
 #### Files to create/modify:
 
 | File | Change |
@@ -417,6 +516,8 @@ Week boundaries use **ISO weeks (Monday start)** — PostgreSQL's `date_trunc('w
 | `TransactionRepository.java` | **[MODIFY]** Add `@Query(nativeQuery=true)` method |
 | `TransactionService.java` | **[MODIFY]** Add `getExpenditureSummary()` method |
 | `TransactionController.java` | **[MODIFY]** Add `GET /expenditure-summary` endpoint |
+| `UserPreference.java` | **[MODIFY]** Add `weeklyLimit`, `monthlyLimit` fields |
+| `V2__add_spending_limits.sql` | **[NEW]** Flyway migration for new columns |
 
 ### Frontend — Dashboard Period Cards (Thymeleaf + HTMX)
 
@@ -430,16 +531,17 @@ A row of clickable period cards rendered as a Thymeleaf fragment:
                                                     ▲ active
 ```
 
-Clicking a card uses `hx-get` to re-fetch the analytics fragment with `startDate`/`endDate` query params, updating the charts below.
+Clicking a card uses `hx-get` to re-fetch the transaction list below with the corresponding date range (`startDate`/`endDate` query params), showing only transactions from that period. No charts — just a filtered, styled list of transactions.
+
+When a weekly/monthly limit is set on `UserPreference`, the "This Week" and "This Month" cards also show a progress bar comparing actual spend against the limit.
 
 #### Files to create/modify:
 
 | File | Change |
 |---|---|
-| `fragments/period-cards.html` | **[NEW]** Period cards Thymeleaf fragment |
-| `fragments/analytics.html` | **[MODIFY]** Accept date range params, filter chart data |
-| `dashboard.html` | **[MODIFY]** Include period cards section |
-| `DashboardViewController.java` | **[MODIFY]** Fetch expenditure summary, pass to template |
+| `fragments/period-cards.html` | **[NEW]** Period cards Thymeleaf fragment with limit progress bars |
+| `dashboard.html` | **[MODIFY]** Include period cards section above transaction list |
+| `DashboardViewController.java` | **[MODIFY]** Fetch expenditure summary + user preferences, pass to template |
 
 ---
 
@@ -450,8 +552,10 @@ Clicking a card uses `hx-get` to re-fetch the analytics fragment with `startDate
 - **Playwright E2E tests**: Run `make test-e2e` — existing E2E tests should pass against the new frontend (they test user flows, not implementation)
 - **Backend unit tests**: `./gradlew test` — ensure no regressions from Thymeleaf controller additions
 
-### Phase 2 (Expenditure Feature)
+### Phase 2 (Expenditure Dashboard)
 - Add unit test for `TransactionService.getExpenditureSummary()` mocking the repository
 - Add `@WebMvcTest` for the new endpoint
+- Add `@DataJpaTest` for the native query with test data in various periods
+- Flyway migration test: verify `weeklyLimit`/`monthlyLimit` columns added to `user_preferences`
 - Manual verification: `make run-demo` → check dashboard period cards with seeded data
-- Test edge cases: no transactions, first day of week/month, transactions only in some periods
+- Test edge cases: no transactions, first day of week/month, transactions only in some periods, limit exceeded vs. under-limit display

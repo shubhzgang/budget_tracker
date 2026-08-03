@@ -131,3 +131,41 @@ This file tracks the progress of the Budget Tracker project against the original
 - [ ] Unable to delete labels. Instead of delete icon, I see FIX on the labels settings page.
 - [x] **Transaction update from UI is broken** — Fixed by switching to `TransactionRequest` DTO (mirrors `TransferRequest` pattern with `labelIds: List<UUID>` and `categoryId: UUID`). Controller, service, and all test layers verified: unit tests (controller + service), integration test, and 5 E2E tests covering category/label preservation, account change balances, and full field combinations. ✓
 - [x] **Transfer update from UI also wipes category/labels** — Fixed by adding conditional guards in `TransferService.updateTransfer`: `if (request.getCategoryId() != null)` and `if (request.getLabelIds() != null)` prevent overwrites. Service unit test verifies null category/labels are preserved. E2E tests confirm category and label persistence after transfer edits. ✓
+
+---
+
+## 🏗️ Frontend Rewrite (HTMX + Thymeleaf)
+
+Full plan: `frontend-rewrite-plan.md`
+
+### Phase 1: HTMX + Thymeleaf Rewrite
+- [ ] **Auth**: Switch to JWT stored in secure HttpOnly cookie (no localStorage, no session-based form login).
+- [ ] **Dependencies**: Add `spring-boot-starter-thymeleaf` and `thymeleaf-extras-springsecurity6` to `build.gradle`.
+- [ ] **Dual SecurityFilterChain**: Keep `/api/v1/**` stateless JWT; add chain for Thymeleaf pages reading JWT from cookie.
+- [ ] **CSRF**: Enable CSRF for web routes; configure HTMX to attach CSRF token via `htmx:configRequest`.
+- [ ] **CSS**: Rebuild theme system (CSS variables, light/dark) as plain CSS — drop Tailwind.
+- [ ] **Templates (full pages)**: `layout.html`, `login.html`, `dashboard.html`, `transactions.html`, `settings.html`
+- [ ] **Template fragments**: account-card, account-form, account-list, transaction-card, transaction-list, transaction-form (handles both transactions and transfers via type toggle), category-manager, label-manager, preference-form, backup-manager, confirm-dialog, toast
+- [ ] **Login page**: Serve `GET /login` via Thymeleaf; form POST sets JWT as HttpOnly cookie.
+- [ ] **Dashboard page**: `GET /dashboard` with account balances + recent transactions.
+- [ ] **Transactions page**: Paginated infinite scroll list with account filter, search debounce, type filter.
+- [ ] **Transaction/transfer form**: Single form that toggles fields based on type. 3-way transfer calculation via Alpine.js. Includes edit flow for both.
+- [ ] **Settings page**: Tab-based (categories, labels, preferences, backup) with HTMX tab switching.
+- [ ] **Emoji picker**: Alpine.js component with keyword search (emoji data as JSON file served statically).
+- [ ] **Theme toggle**: Cookie-based (no FOUC). Server reads cookie → renders `data-theme`. Alpine.js writes changes back to cookie.
+- [ ] **Toast notifications**: Out-of-band HTMX swaps with Alpine.js auto-dismiss.
+- [ ] **Confirm dialog**: HTMX-powered delete confirmation modals for all entities.
+- [ ] **Validation errors**: Server-side `@Valid` errors rendered back into form HTML via HTMX swap.
+- [ ] **Currency formatting**: Pass `currencySymbol` from `UserPreference` to every template via model attribute. Format server-side.
+- [ ] **Migration**: Page-by-page (Login → Dashboard → Transactions → Settings). Keep both frontends running during migration.
+- [ ] **Cleanup**: Remove `frontend/` directory, remove frontend service from `docker-compose.yml`, update `Dockerfile` to serve static assets from Spring Boot jar.
+- [ ] **Verification**: Run `make test-e2e` against new frontend; run `./gradlew test` for backend regressions.
+
+### Phase 2: Expenditure Dashboard
+- [ ] **Spending limits**: Store `weeklyLimit` and `monthlyLimit` on `UserPreference` entity.
+- [ ] **Expenditure summary endpoint**: `GET /api/v1/transactions/expenditure-summary` — returns today, yesterday, currentWeek, lastWeek, currentMonth, lastMonth totals (EXPENSE + LEND only).
+- [ ] **Period cards**: Thymeleaf fragment showing 6 period totals. Clicking a card filters the transaction list by date range.
+- [ ] **No charts**: Neither phase includes charts. Period totals shown as styled HTML summary only.
+- [ ] **Verification**: Unit test for `getExpenditureSummary()`; `@WebMvcTest` for endpoint; manual check with `make run-demo`.
+
+(End of file - total 164 lines)
