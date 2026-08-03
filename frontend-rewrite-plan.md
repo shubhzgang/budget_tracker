@@ -35,8 +35,8 @@ The current React frontend uses ~200KB+ of minified JS (React + ReactDOM + Route
 | Bundle size | ~200KB+ minified JS | ~14KB (HTMX) + ~15KB (Alpine.js) |
 | Data flow | JSON → JS objects → Virtual DOM → Real DOM | Server renders HTML → HTMX swaps into DOM |
 | State management | 5 React Contexts, many useState hooks | Server is single source of truth |
-| Auth | JWT in localStorage + Axios interceptor | Session-based (Spring Security default) — cookies sent automatically |
-| CSRF | Disabled (stateless JWT) | Enabled — HTMX configured to send CSRF token via `htmx:configRequest` |
+| Auth | JWT in localStorage + Axios interceptor | JWT in HttpOnly cookie (single stateless chain) — browser sends automatically |
+| CSRF | Disabled (stateless JWT) | Disabled (stateless, HttpOnly cookie immune to XSS) |
 | Build step | Vite + TypeScript compilation + Tailwind PostCSS | None — Thymeleaf templates served directly |
 | Charts | Recharts (Pie + Bar) | **Dropped** — not migrating charts for now |
 | Search/filter | Client-side state + re-fetch | `hx-get` with `hx-trigger="input changed delay:300ms"` |
@@ -53,7 +53,9 @@ The current React frontend uses ~200KB+ of minified JS (React + ReactDOM + Route
 ```groovy
 // build.gradle
 implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+// Note: thymeleaf-extras-springsecurity6 is NOT included —
+// it requires session-based Authentication which is incompatible with stateless JWT-in-cookie.
+// Auth checks in templates will use a custom Thymeleaf dialect or AuthContext passed via model.
 ```
 
 #### Auth: JWT in HttpOnly Cookie
@@ -105,8 +107,11 @@ Create a new set of controllers that return Thymeleaf views/fragments instead of
 
 | Route | Purpose | Returns |
 |---|---|---|
+| `GET /register` | Registration page | Full page |
+| `POST /register` | Create account → sets JWT cookie | Redirect to `/dashboard` |
 | `GET /login` | Login page | Full page |
-| `POST /login` | Form login → sets JWT cookie | Redirect to `/dashboard` |
+| `POST /login` | Authenticate → sets JWT cookie | Redirect to `/dashboard` |
+| `POST /logout` | Clear JWT cookie | Redirect to `/login` |
 | `GET /dashboard` | Dashboard page | Full page |
 | `GET /dashboard/accounts` | Accounts section fragment | HTML fragment |
 | `GET /dashboard/recent` | Recent transactions fragment | HTML fragment |
@@ -145,8 +150,9 @@ The existing `/api/v1/*` JSON endpoints remain unchanged for:
 ```
 src/main/resources/
 ├── templates/
-│   ├── layout.html              # Base layout (nav, footer, HTMX/Alpine/CSRF includes)
+│   ├── layout.html              # Base layout (nav, footer, HTMX/Alpine includes)
 │   ├── login.html               # Login page
+│   ├── register.html            # Registration page
 │   ├── dashboard.html           # Dashboard page
 │   ├── transactions.html        # Transactions page
 │   ├── settings.html            # Settings page
@@ -170,7 +176,7 @@ src/main/resources/
 │   └── js/
 │       ├── htmx.min.js         # HTMX library (~14KB)
 │       ├── alpine.min.js       # Alpine.js for client-side reactivity (~15KB)
-│       └── app.js              # Minimal custom JS (CSRF config, theme cookie sync)
+│       └── app.js              # Minimal custom JS (theme cookie sync)
 ```
 
 > **Note:** Charts (Recharts/Chart.js) are **not included** in this migration. Analytics/spending charts will be added back in a future phase if needed.
@@ -418,6 +424,30 @@ Single form that switches fields based on transaction type selection:
 
 Selecting "Transfer" swaps in the transfer form (with to-account, fromAmount, toAmount, adjustment). Selecting any transaction type swaps in the transaction form (with single account, amount). Both fragments are self-contained and handle their own submissions.
 
+#### Browser history (hx-push-url)
+
+Without `hx-push-url`, HTMX fragment swaps (search, filter, paginate) don't update the browser URL, so the back button jumps to the previous full page — losing state. Use `hx-push-url` on navigational swaps:
+
+```html
+<!-- Search: push URL so back button restores previous query -->
+<input type="search" name="search"
+       hx-get="/transactions/list"
+       hx-push-url="true"
+       hx-trigger="input changed delay:300ms"
+       hx-target="#transaction-list">
+
+<!-- Pagination sentinel: push URL for each page -->
+<div th:if="${hasMore}"
+     hx-get="/transactions/list?page=1"
+     hx-push-url="true"
+     hx-trigger="revealed"
+     hx-swap="outerHTML">
+  Loading more...
+</div>
+```
+
+The exception is modal forms and OOB toast swaps — those don't push URLs since they don't represent navigational state. Filter dropdowns and search inputs use `hx-push-url="true"`; delete/update HX-Trigger responses do not.
+
 ### Migration Approach
 
 1. **Keep both frontends running** during migration — the React frontend at its current path, HTMX frontend served by Spring Boot directly
@@ -531,7 +561,15 @@ A row of clickable period cards rendered as a Thymeleaf fragment:
                                                     ▲ active
 ```
 
-Clicking a card uses `hx-get` to re-fetch the transaction list below with the corresponding date range (`startDate`/`endDate` query params), showing only transactions from that period. No charts — just a filtered, styled list of transactions.
+Clicking a card navigates to the transactions page with the corresponding date range filter applied:
+
+```html
+<a th:href="@{/transactions(startDate=${period.startDate}, endDate=${period.endDate})}">
+  <!-- period card content -->
+</a>
+```
+
+This takes the user to `/transactions?startDate=...&endDate=...` where the full paginated transaction list is filtered to that period. No charts — just filtered, styled transaction rows.
 
 When a weekly/monthly limit is set on `UserPreference`, the "This Week" and "This Month" cards also show a progress bar comparing actual spend against the limit.
 
@@ -549,7 +587,7 @@ When a weekly/monthly limit is set on `UserPreference`, the "This Week" and "Thi
 
 ### Phase 1 (HTMX Rewrite)
 - **Per-page manual verification**: After migrating each page, visually compare with the React version
-- **Playwright E2E tests**: Run `make test-e2e` — existing E2E tests should pass against the new frontend (they test user flows, not implementation)
+- **Playwright E2E tests**: After migrating each page, update corresponding E2E tests to target new Thymeleaf selectors (incremental — don't let all 19 specs break at once). Run `make test-e2e` for the migrated pages.
 - **Backend unit tests**: `./gradlew test` — ensure no regressions from Thymeleaf controller additions
 
 ### Phase 2 (Expenditure Dashboard)

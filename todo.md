@@ -140,11 +140,14 @@ Full plan: `frontend-rewrite-plan.md`
 
 ### Phase 1: HTMX + Thymeleaf Rewrite
 - [ ] **Auth**: Switch to JWT stored in secure HttpOnly cookie (no localStorage, no session-based form login).
-- [ ] **Dependencies**: Add `spring-boot-starter-thymeleaf` and `thymeleaf-extras-springsecurity6` to `build.gradle`.
-- [ ] **Dual SecurityFilterChain**: Keep `/api/v1/**` stateless JWT; add chain for Thymeleaf pages reading JWT from cookie.
-- [ ] **CSRF**: Enable CSRF for web routes; configure HTMX to attach CSRF token via `htmx:configRequest`.
+- [ ] **Dependencies**: Add `spring-boot-starter-thymeleaf` to `build.gradle`. Drop `thymeleaf-extras-springsecurity6` (needs session-based auth, incompatible with stateless JWT).
+- [ ] **AuthTokenFilter**: Update to read JWT from HttpOnly cookie as fallback after `Authorization` header. Single `SecurityFilterChain` stays stateless.
+- [ ] **CSRF**: Disabled (stateless, HttpOnly cookie immune to XSS — same as current API).
+- [ ] **Login endpoint**: `POST /api/v1/auth/login` sets JWT as HttpOnly cookie alongside JSON response.
+- [ ] **Logout endpoint**: `POST /api/v1/auth/logout` clears the JWT cookie (`Set-Cookie: jwt=; Max-Age=0`).
+- [ ] **Registration**: `POST /api/v1/auth/register` with Thymeleaf registration page (`GET /register`).
 - [ ] **CSS**: Rebuild theme system (CSS variables, light/dark) as plain CSS — drop Tailwind.
-- [ ] **Templates (full pages)**: `layout.html`, `login.html`, `dashboard.html`, `transactions.html`, `settings.html`
+- [ ] **Templates (full pages)**: `layout.html`, `login.html`, `register.html`, `dashboard.html`, `transactions.html`, `settings.html`
 - [ ] **Template fragments**: account-card, account-form, account-list, transaction-card, transaction-list, transaction-form (handles both transactions and transfers via type toggle), category-manager, label-manager, preference-form, backup-manager, confirm-dialog, toast
 - [ ] **Login page**: Serve `GET /login` via Thymeleaf; form POST sets JWT as HttpOnly cookie.
 - [ ] **Dashboard page**: `GET /dashboard` with account balances + recent transactions.
