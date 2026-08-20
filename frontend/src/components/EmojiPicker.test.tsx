@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { EMOJI_TAGS } from './EmojiPicker';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { EmojiPicker, EMOJI_TAGS } from './EmojiPicker';
 
 describe('EMOJI_TAGS', () => {
   it('has tag arrays for mapped emoji', () => {
@@ -28,5 +29,56 @@ describe('EMOJI_TAGS', () => {
       expect(tags.length).toBeGreaterThan(0);
       expect(emoji.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('EmojiPicker input', () => {
+  const lastChange = (spy: ReturnType<typeof vi.fn>) =>
+    spy.mock.calls[spy.mock.calls.length - 1][0];
+
+  it('propagates a pasted emoji via onChange', () => {
+    const onChange = vi.fn();
+    render(<EmojiPicker value="😀" onChange={onChange} />);
+
+    const input = screen.getByLabelText('Emoji');
+    fireEvent.change(input, { target: { value: '🧪' } });
+
+    expect(onChange).toHaveBeenCalledWith('🧪');
+  });
+
+  it('trims surrounding whitespace from the pasted value', () => {
+    const onChange = vi.fn();
+    render(<EmojiPicker value="" onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText('Emoji'), { target: { value: '  🎉  ' } });
+
+    expect(lastChange(onChange)).toBe('🎉');
+  });
+
+  it('keeps only the first emoji when multiple are pasted', () => {
+    const onChange = vi.fn();
+    render(<EmojiPicker value="" onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText('Emoji'), { target: { value: '🍕🍔' } });
+
+    expect(lastChange(onChange)).toBe('🍕');
+  });
+
+  it('keeps ZWJ sequences as a single emoji', () => {
+    const onChange = vi.fn();
+    render(<EmojiPicker value="" onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText('Emoji'), { target: { value: '👨‍👩‍👧 extra' } });
+
+    expect(lastChange(onChange)).toBe('👨‍👩‍👧');
+  });
+
+  it('clears the value for blank input', () => {
+    const onChange = vi.fn();
+    render(<EmojiPicker value="😀" onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText('Emoji'), { target: { value: '   ' } });
+
+    expect(lastChange(onChange)).toBe('');
   });
 });

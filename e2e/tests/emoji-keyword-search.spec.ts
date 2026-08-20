@@ -70,9 +70,9 @@ test.describe('Emoji Keyword Search', () => {
     await page.fill('input[placeholder="Search emoji…"]', 'pizza');
     await page.click('button[title="🍕"]');
 
-    // Picker closes, trigger shows selected emoji
-    const trigger = page.locator('button:has-text("Pick emoji")');
-    await expect(trigger).toContainText('🍕');
+    // Picker closes, emoji input shows the selected emoji
+    const emojiInput = page.locator('input[aria-label="Emoji"]').first();
+    await expect(emojiInput).toHaveValue('🍕');
 
     // Submit
     await page.click('button:has-text("Add")');
