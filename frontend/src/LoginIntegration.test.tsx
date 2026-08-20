@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PreferenceProvider } from './context/PreferenceContext';
@@ -8,23 +8,30 @@ import { UIProvider } from './context/UIContext';
 import { ToastProvider } from './context/ToastContext';
 import { AppRoutes } from './App';
 
+const renderApp = (initialPath = '/login') =>
+  render(
+    <ThemeProvider>
+      <AuthProvider>
+        <PreferenceProvider>
+          <ToastProvider>
+            <UIProvider>
+              <MemoryRouter initialEntries={[initialPath]}>
+                <AppRoutes />
+              </MemoryRouter>
+            </UIProvider>
+          </ToastProvider>
+        </PreferenceProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+
 describe('Login Integration', () => {
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
   it('allows a user to log in and redirects to dashboard', async () => {
-    render(
-      <ThemeProvider>
-        <AuthProvider>
-          <PreferenceProvider>
-            <ToastProvider>
-              <UIProvider>
-                <MemoryRouter initialEntries={['/login']}>
-                  <AppRoutes />
-                </MemoryRouter>
-              </UIProvider>
-            </ToastProvider>
-          </PreferenceProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    );
+    renderApp();
 
     // Initially on Login page
     expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
@@ -48,21 +55,7 @@ describe('Login Integration', () => {
   });
 
   it('displays an error message when login fails', async () => {
-    render(
-      <ThemeProvider>
-        <AuthProvider>
-          <PreferenceProvider>
-            <ToastProvider>
-              <UIProvider>
-                <MemoryRouter initialEntries={['/login']}>
-                  <AppRoutes />
-                </MemoryRouter>
-              </UIProvider>
-            </ToastProvider>
-          </PreferenceProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    );
+    renderApp();
 
     const emailInput = screen.getByPlaceholderText(/Email/i);
     const passwordInput = screen.getByPlaceholderText(/Password/i);
@@ -75,5 +68,23 @@ describe('Login Integration', () => {
     await waitFor(() => {
       expect(screen.getByText(/Invalid email or password/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows a session expired notice when redirected after a session expiry', () => {
+    sessionStorage.setItem('sessionExpired', 'true');
+    renderApp();
+
+    expect(
+      screen.getByText(/Your session has expired. Please sign in again./i)
+    ).toBeInTheDocument();
+    expect(sessionStorage.getItem('sessionExpired')).toBeNull();
+  });
+
+  it('does not show the session expired notice on a normal visit', () => {
+    renderApp();
+
+    expect(
+      screen.queryByText(/Your session has expired. Please sign in again./i)
+    ).not.toBeInTheDocument();
   });
 });

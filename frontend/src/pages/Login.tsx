@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
 import { useNavigate } from 'react-router-dom';
@@ -8,10 +8,19 @@ export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice] = useState<string | null>(() =>
+    sessionStorage.getItem('sessionExpired')
+      ? 'Your session has expired. Please sign in again.'
+      : null
+  );
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    sessionStorage.removeItem('sessionExpired');
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +56,12 @@ export const Login = () => {
         {error && (
           <div className="mb-4 p-3 bg-destructive/10 border border-destructive text-destructive text-sm rounded-md">
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div className="mb-4 p-3 bg-accent/50 border border-border text-foreground text-sm rounded-md">
+            {notice}
           </div>
         )}
 
