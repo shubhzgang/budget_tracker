@@ -22,4 +22,21 @@ apiClient.interceptors.request.use(
   }
 );
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const requestUrl: string = error.config?.url ?? '';
+    if (status === 401 && !requestUrl.includes('/auth/login')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        sessionStorage.setItem('sessionExpired', 'true');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;
