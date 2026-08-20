@@ -127,6 +127,20 @@ test.describe('Category Management', () => {
     await expect(categoryCard.getByText('🍕')).toBeVisible();
   });
 
+  test('should reject creating a category with an existing name', async ({ page }) => {
+    const cardsBefore = await page.locator('.group').count();
+
+    // "Food" is a seeded default category
+    await page.fill('input[placeholder="e.g. Groceries"]', 'Food');
+    await page.click('button:has-text("Add")');
+
+    // The backend error message is shown
+    await expect(page.getByText('A category named "Food" already exists')).toBeVisible();
+
+    // No new category card was added
+    await expect(page.locator('.group')).toHaveCount(cardsBefore);
+  });
+
   test('should highlight the currently selected emoji in the picker', async ({ page }) => {
     await page.click('button:has-text("Pick emoji")');
 

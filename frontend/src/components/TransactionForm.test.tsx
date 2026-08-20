@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { TransactionForm } from './TransactionForm';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
@@ -378,6 +380,42 @@ describe('TransactionForm', () => {
 
     // The new category is available in the dropdown options
     expect(screen.getByRole('option', { name: /Groceries/ })).toBeInTheDocument();
+  });
+
+  it('shows the backend error and keeps the row open when the name is a duplicate', async () => {
+    server.use(
+      http.post('/api/v1/categories', () =>
+        HttpResponse.json({ message: 'A category named "Food" already exists' }, { status: 400 })
+      )
+    );
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const handleSubmit = vi.fn();
+
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const categorySelect = screen.getByLabelText('Category') as HTMLSelectElement;
+    fireEvent.change(categorySelect, { target: { value: '__new__' } });
+    fireEvent.change(screen.getByLabelText('New category name'), { target: { value: 'Food' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: /^Add$/ }));
+
+    await waitFor(() => {
+      expect(alertMock).toHaveBeenCalledWith('A category named "Food" already exists');
+    });
+    // Quick-add stays open on the sentinel so the user can fix the name
+    expect(categorySelect).toHaveValue('__new__');
+    expect(screen.getByLabelText('New category name')).toBeInTheDocument();
+    expect(handleSubmit).not.toHaveBeenCalled();
+
+    alertMock.mockRestore();
   });
 
   it('blocks submission while the new category quick-add is open', async () => {

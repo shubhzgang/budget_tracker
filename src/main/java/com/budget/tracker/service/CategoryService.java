@@ -28,7 +28,13 @@ public class CategoryService {
     }
 
     public Category createCategory(Category category) {
-        category.setUserId(getCurrentUserId());
+        UUID userId = getCurrentUserId();
+        String name = category.getName().trim();
+        if (categoryRepository.existsByUserIdAndNameIgnoreCase(userId, name)) {
+            throw new IllegalArgumentException("A category named \"" + name + "\" already exists");
+        }
+        category.setName(name);
+        category.setUserId(userId);
         return categoryRepository.save(category);
     }
 
@@ -45,7 +51,11 @@ public class CategoryService {
 
     public Category updateCategory(UUID categoryId, Category categoryDetails) {
         Category category = getCategoryById(categoryId);
-        category.setName(categoryDetails.getName());
+        String name = categoryDetails.getName().trim();
+        if (categoryRepository.existsByUserIdAndNameIgnoreCaseAndIdNot(category.getUserId(), name, categoryId)) {
+            throw new IllegalArgumentException("A category named \"" + name + "\" already exists");
+        }
+        category.setName(name);
         category.setIcon(categoryDetails.getIcon());
         return categoryRepository.save(category);
     }
