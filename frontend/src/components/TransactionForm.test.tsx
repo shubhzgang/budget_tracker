@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TransactionForm } from './TransactionForm';
 import type { Account } from '../types/account';
@@ -343,6 +343,125 @@ describe('TransactionForm', () => {
     expect(screen.getByLabelText(/Type/i)).toHaveValue('TRANSFER');
     expect(screen.getByLabelText(/Type/i)).toBeDisabled();
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
+  });
+
+  it('creates a new category inline and selects it', async () => {
+    const handleSubmit = vi.fn();
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const categorySelect = screen.getByLabelText('Category') as HTMLSelectElement;
+    expect(categorySelect).toHaveValue('c1');
+
+    // Choose the "new category" sentinel option
+    fireEvent.change(categorySelect, { target: { value: '__new__' } });
+
+    // Quick-add row appears
+    const nameInput = screen.getByLabelText('New category name');
+    expect(nameInput).toBeInTheDocument();
+    fireEvent.change(nameInput, { target: { value: 'Groceries' } });
+
+    // Add the category (MSW mock returns id 'c3')
+    await fireEvent.click(screen.getByRole('button', { name: /^Add$/ }));
+
+    await waitFor(() => {
+      expect(categorySelect).toHaveValue('c3');
+    });
+    expect(screen.queryByLabelText('New category name')).not.toBeInTheDocument();
+
+    // The new category is available in the dropdown options
+    expect(screen.getByRole('option', { name: /Groceries/ })).toBeInTheDocument();
+  });
+
+  it('blocks submission while the new category quick-add is open', async () => {
+    const handleSubmit = vi.fn();
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    const { container } = render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__new__' } });
+    fireEvent.change(screen.getByLabelText('New category name'), { target: { value: 'Groceries' } });
+
+    const form = container.querySelector('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    expect(alertMock).toHaveBeenCalledWith('Please add or cancel the new category first');
+    expect(handleSubmit).not.toHaveBeenCalled();
+
+    alertMock.mockRestore();
+  });
+
+  it('submits with the new category id after quick-add succeeds', async () => {
+    const handleSubmit = vi.fn();
+    const { container } = render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__new__' } });
+    fireEvent.change(screen.getByLabelText('New category name'), { target: { value: 'Groceries' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: /^Add$/ }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Category')).toHaveValue('c3');
+    });
+
+    const form = container.querySelector('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    expect(handleSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 100,
+      categoryId: 'c3'
+    }));
+  });
+
+  it('cancels inline category creation and keeps previous selection', () => {
+    render(
+      <TransactionForm
+        accounts={mockAccounts}
+        categories={mockCategories}
+        labels={mockLabels}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    const categorySelect = screen.getByLabelText('Category') as HTMLSelectElement;
+    expect(categorySelect).toHaveValue('c1');
+
+    fireEvent.change(categorySelect, { target: { value: '__new__' } });
+    expect(categorySelect).toHaveValue('__new__');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel new category' }));
+
+    expect(categorySelect).toHaveValue('c1');
+    expect(screen.queryByLabelText('New category name')).not.toBeInTheDocument();
   });
 
   it('hides TRANSFER type option for standard transaction edit mode', () => {

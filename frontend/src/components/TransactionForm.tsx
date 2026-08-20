@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { usePreferences } from '../context/PreferenceContext';
+import apiClient from '../api/client';
+import { EmojiPicker, EMOJI_SECTIONS } from './EmojiPicker';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
 import type { Label } from '../types/label';
 import type { ActivityItem } from '../types/activity';
+
+const NEW_CATEGORY_OPTION = '__new__';
+const DEFAULT_CATEGORY_ICON = EMOJI_SECTIONS[0].emojis[0];
 
 interface MultiSelectProps {
   options: { id: string; name: string }[];
@@ -177,6 +182,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return [];
   });
 
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState(DEFAULT_CATEGORY_ICON);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+
+  const allCategories = useMemo(() => {
+    const seen = new Set(categories.map(c => c.id));
+    return [...categories, ...localCategories.filter(c => !seen.has(c.id))];
+  }, [categories, localCategories]);
+
+  const handleQuickAddCategory = async () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    setIsCreatingCategory(true);
+    try {
+      const response = await apiClient.post('/categories', { name, icon: newCatIcon });
+      const created: Category = response.data;
+      setLocalCategories(prev => [...prev, created]);
+      setFormData(prev => ({ ...prev, categoryId: created.id }));
+      setCreatingCategory(false);
+      setNewCatName('');
+      setNewCatIcon(DEFAULT_CATEGORY_ICON);
+    } catch (error) {
+      alert('Failed to create category. Please try again.');
+      console.error('Failed to create category', error);
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
   useEffect(() => {
     if (!formData.accountId && accounts.length > 0) {
       setFormData(prev => ({
@@ -236,7 +272,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (creatingCategory) {
+      alert('Please add or cancel the new category first');
+      return;
+    }
+
     if (formData.type === 'TRANSFER') {
       const fromVal = parseFloat(formData.fromAmount);
       const toVal = parseFloat(formData.toAmount);
@@ -438,14 +479,57 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <label htmlFor="trans-category" className="text-sm font-medium">Category</label>
           <select
             id="trans-category"
-            value={formData.categoryId}
-            onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+            value={creatingCategory ? NEW_CATEGORY_OPTION : formData.categoryId}
+            onChange={(e) => {
+              if (e.target.value === NEW_CATEGORY_OPTION) {
+                setNewCatName('');
+                setNewCatIcon(DEFAULT_CATEGORY_ICON);
+                setCreatingCategory(true);
+              } else {
+                setCreatingCategory(false);
+                setFormData({ ...formData, categoryId: e.target.value });
+              }
+            }}
             className="w-full border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none"
           >
-            {categories.map(cat => (
+            {allCategories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
             ))}
+            <option value={NEW_CATEGORY_OPTION}>+ New category…</option>
           </select>
+          {creatingCategory && (
+            <div className="flex gap-2 items-start pt-1 animate-in slide-in-from-top-1 duration-200">
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="New category name"
+                aria-label="New category name"
+                className="flex-1 min-w-0 border border-input bg-background p-2 rounded-md focus:ring-2 focus:ring-ring outline-none text-sm"
+              />
+              <div className="w-40 shrink-0">
+                <EmojiPicker value={newCatIcon} onChange={setNewCatIcon} />
+              </div>
+              <button
+                type="button"
+                disabled={!newCatName.trim() || isCreatingCategory}
+                onClick={handleQuickAddCategory}
+                className="shrink-0 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isCreatingCategory ? 'Adding…' : 'Add'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatingCategory(false)}
+                aria-label="Cancel new category"
+                className="shrink-0 px-2 py-2 border border-input bg-background rounded-md text-sm hover:bg-secondary transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

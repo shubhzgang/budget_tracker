@@ -1086,6 +1086,14 @@ function emojiMatches(emoji: string, query: string): boolean {
   return false;
 }
 
+function sanitizeEmojiInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  // Keep a single emoji (one grapheme cluster, ZWJ sequences included)
+  const segments = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(trimmed)];
+  return segments[0]?.segment ?? trimmed;
+}
+
 interface EmojiPickerProps {
   value: string;
   onChange: (emoji: string) => void;
@@ -1137,18 +1145,27 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ value, onChange }) => 
 
   return (
     <div className="relative" ref={popoverRef}>
-      {/* Trigger button */}
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 w-full border border-input bg-background text-foreground p-2 rounded-md focus:ring-2 focus:ring-ring outline-none hover:bg-secondary/50 transition-colors"
-      >
-        <span className="text-xl leading-none">{value}</span>
-        <span className="text-sm text-muted-foreground flex-1 text-left">Pick emoji</span>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-muted-foreground">
-          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-        </svg>
-      </button>
+      {/* Trigger: editable input (paste any emoji) + picker toggle */}
+      <div className="flex items-center w-full border border-input bg-background text-foreground rounded-md focus-within:ring-2 focus-within:ring-ring hover:bg-secondary/50 transition-colors">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(sanitizeEmojiInput(e.target.value))}
+          placeholder="🍔"
+          aria-label="Emoji"
+          className="flex-1 min-w-0 bg-transparent outline-none p-2 text-xl leading-none"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-1 shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Pick emoji
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
 
       {/* Popover */}
       {open && (

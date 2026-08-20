@@ -62,7 +62,7 @@ test.describe('Category Management', () => {
     await expect(page.getByText('No emoji found')).toBeVisible();
   });
 
-  test('should update the trigger button when an emoji is selected', async ({ page }) => {
+  test('should update the emoji input when an emoji is selected', async ({ page }) => {
     await page.click('button:has-text("Pick emoji")');
 
     // Select the pizza emoji from the Food section
@@ -72,9 +72,30 @@ test.describe('Category Management', () => {
     // Picker closes after selection
     await expect(page.locator('input[placeholder="Search emoji…"]')).not.toBeVisible();
 
-    // The trigger button now shows the chosen emoji
-    const trigger = page.locator('button:has-text("Pick emoji")');
-    await expect(trigger).toContainText('🍕');
+    // The emoji input now shows the chosen emoji
+    const emojiInput = page.locator('input[aria-label="Emoji"]').first();
+    await expect(emojiInput).toHaveValue('🍕');
+  });
+
+  test('should accept any pasted emoji, not just picker presets', async ({ page }) => {
+    const emojiInput = page.locator('input[aria-label="Emoji"]').first();
+
+    // Paste an emoji that is not part of the preset dataset
+    await emojiInput.fill('🧪');
+    await expect(emojiInput).toHaveValue('🧪');
+
+    await page.fill('input[placeholder="e.g. Groceries"]', 'Lab Supplies');
+    await page.click('button:has-text("Add")');
+
+    const categoryCard = page.locator('.group', { hasText: 'Lab Supplies' });
+    await expect(categoryCard).toBeVisible();
+    await expect(categoryCard.getByText('🧪')).toBeVisible();
+  });
+
+  test('should keep only the first emoji when multiple are pasted', async ({ page }) => {
+    const emojiInput = page.locator('input[aria-label="Emoji"]').first();
+    await emojiInput.fill('🍕🍔');
+    await expect(emojiInput).toHaveValue('🍕');
   });
 
   test('should close the picker on outside click', async ({ page }) => {
