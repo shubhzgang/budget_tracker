@@ -97,6 +97,25 @@ test.describe('Inline Category Creation', () => {
     await expect(option).toBeAttached();
   });
 
+  test('should reject a duplicate name in the quick-add row and keep it open', async ({ page }) => {
+    await page.click('button[aria-label="Add Transaction"]');
+    await page.fill('input[id="trans-amount"]', '5');
+
+    await page.selectOption('select[id="trans-category"]', { label: '+ New category…' });
+    await page.getByLabel('New category name').fill('Food');
+
+    const dialogPromise = page.waitForEvent('dialog');
+
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+
+    // The backend duplicate error is shown and the row stays open for correction
+    const dialog = await dialogPromise;
+    expect(dialog.message()).toBe('A category named "Food" already exists');
+    await dialog.accept();
+    await expect(page.getByLabel('New category name')).toBeVisible();
+    await expect(page.locator('select[id="trans-category"]')).toHaveValue('__new__');
+  });
+
   test('should allow cancelling inline category creation', async ({ page }) => {
     await page.click('button[aria-label="Add Transaction"]');
 

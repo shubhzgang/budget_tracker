@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import apiClient from '../api/client';
+import apiClient, { getErrorMessage } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import type { Category, CreateCategoryRequest } from '../types/category';
 import { EmojiPicker, EMOJI_SECTIONS } from './EmojiPicker';
@@ -40,7 +40,7 @@ export const CategoryManager: React.FC = () => {
       await fetchCategories();
       addToast('Category added successfully', 'success');
     } catch (error) {
-      addToast('Failed to add category', 'error');
+      addToast(getErrorMessage(error, 'Failed to add category'), 'error');
       console.error('Failed to create category', error);
     } finally {
       setIsSubmitting(false);

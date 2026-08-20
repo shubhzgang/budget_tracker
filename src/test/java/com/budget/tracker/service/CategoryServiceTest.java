@@ -56,6 +56,35 @@ class CategoryServiceTest {
     }
 
     @Test
+    void createCategory_shouldThrow_whenNameAlreadyExists() {
+        Category category = new Category();
+        category.setName("Food");
+
+        when(categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "Food")).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> categoryService.createCategory(category));
+
+        assertEquals("A category named \"Food\" already exists", exception.getMessage());
+        verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
+    void createCategory_shouldTrimNameBeforeCheckingAndSaving() {
+        Category category = new Category();
+        category.setName("  Groceries  ");
+
+        when(categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "Groceries")).thenReturn(false);
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category savedCategory = categoryService.createCategory(category);
+
+        assertEquals("Groceries", savedCategory.getName());
+        verify(categoryRepository).existsByUserIdAndNameIgnoreCase(userId, "Groceries");
+        verify(categoryRepository).save(category);
+    }
+
+    @Test
     void getCategoryById_shouldReturnCategory_whenExists() {
         Category category = new Category();
         category.setId(categoryId);
@@ -111,6 +140,50 @@ class CategoryServiceTest {
         assertEquals("New Name", updated.getName());
         assertEquals("🍕", updated.getIcon());
         verify(categoryRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void updateCategory_shouldThrow_whenNameExistsForAnotherCategory() {
+        Category existing = new Category();
+        existing.setId(categoryId);
+        existing.setUserId(userId);
+        existing.setName("Old Name");
+
+        Category details = new Category();
+        details.setName("Taken Name");
+
+        when(categoryRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(categoryRepository.existsByUserIdAndNameIgnoreCaseAndIdNot(userId, "Taken Name", categoryId))
+                .thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> categoryService.updateCategory(categoryId, details));
+
+        assertEquals("A category named \"Taken Name\" already exists", exception.getMessage());
+        verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
+    void updateCategory_shouldAllowSameNameAndTrimNewName() {
+        Category existing = new Category();
+        existing.setId(categoryId);
+        existing.setUserId(userId);
+        existing.setName("Food");
+
+        Category details = new Category();
+        details.setName("  Food  ");
+        details.setIcon("🍕");
+
+        when(categoryRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(categoryRepository.existsByUserIdAndNameIgnoreCaseAndIdNot(userId, "Food", categoryId))
+                .thenReturn(false);
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category updated = categoryService.updateCategory(categoryId, details);
+
+        assertEquals("Food", updated.getName());
+        assertEquals("🍕", updated.getIcon());
+        verify(categoryRepository).save(existing);
     }
 
     @Test

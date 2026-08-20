@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { usePreferences } from '../context/PreferenceContext';
-import apiClient from '../api/client';
+import apiClient, { getErrorMessage } from '../api/client';
 import { EmojiPicker, EMOJI_SECTIONS } from './EmojiPicker';
 import type { Account } from '../types/account';
 import type { Category } from '../types/category';
@@ -206,7 +206,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setNewCatName('');
       setNewCatIcon(DEFAULT_CATEGORY_ICON);
     } catch (error) {
-      alert('Failed to create category. Please try again.');
+      alert(getErrorMessage(error, 'Failed to create category. Please try again.'));
       console.error('Failed to create category', error);
     } finally {
       setIsCreatingCategory(false);

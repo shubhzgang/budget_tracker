@@ -80,4 +80,43 @@ class CategoryRepositoryTest {
 
         assertThat(user2Categories).isEmpty();
     }
+
+    @Test
+    void shouldDetectExistingNameCaseInsensitivelyPerUser() {
+        UUID userId = UUID.randomUUID();
+
+        Category category = new Category();
+        category.setName("Food");
+        category.setIcon("icon");
+        category.setDefault(false);
+        category.setUserId(userId);
+        categoryRepository.save(category);
+
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "food")).isTrue();
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "FOOD")).isTrue();
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCase(userId, "Travel")).isFalse();
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCase(UUID.randomUUID(), "food")).isFalse();
+    }
+
+    @Test
+    void shouldDetectExistingNameExcludingTheCategoryItself() {
+        UUID userId = UUID.randomUUID();
+
+        Category food = new Category();
+        food.setName("Food");
+        food.setIcon("icon1");
+        food.setDefault(false);
+        food.setUserId(userId);
+        Category savedFood = categoryRepository.save(food);
+
+        Category travel = new Category();
+        travel.setName("Travel");
+        travel.setIcon("icon2");
+        travel.setDefault(false);
+        travel.setUserId(userId);
+        categoryRepository.save(travel);
+
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCaseAndIdNot(userId, "food", savedFood.getId())).isFalse();
+        assertThat(categoryRepository.existsByUserIdAndNameIgnoreCaseAndIdNot(userId, "travel", savedFood.getId())).isTrue();
+    }
 }

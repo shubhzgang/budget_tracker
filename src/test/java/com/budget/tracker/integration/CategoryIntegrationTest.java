@@ -98,4 +98,61 @@ public class CategoryIntegrationTest {
                 .build();
         assertEquals(204, client.send(deleteRequest, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
+
+    @Test
+    void testDuplicateCategoryNameIsRejected() throws Exception {
+        // 1. Create a category
+        HttpResponse<String> createResponse = sendCreateCategory("{\"name\":\"Duplicates\", \"icon\":\"📁\"}");
+        assertEquals(200, createResponse.statusCode());
+
+        // 2. Same name with different case is rejected
+        HttpResponse<String> dupResponse = sendCreateCategory("{\"name\":\"duplicates\", \"icon\":\"📂\"}");
+        assertEquals(400, dupResponse.statusCode());
+        assertEquals("A category named \"duplicates\" already exists",
+                mapper.readTree(dupResponse.body()).get("message").asText());
+
+        // 3. A seeded default name is rejected
+        HttpResponse<String> defaultResponse = sendCreateCategory("{\"name\":\"Food\", \"icon\":\"🍔\"}");
+        assertEquals(400, defaultResponse.statusCode());
+    }
+
+    @Test
+    void testRenameToExistingCategoryNameIsRejected() throws Exception {
+        HttpResponse<String> firstResponse = sendCreateCategory("{\"name\":\"Renamer\", \"icon\":\"✏️\"}");
+        assertEquals(200, firstResponse.statusCode());
+        String firstId = mapper.readTree(firstResponse.body()).get("id").asText();
+
+        HttpResponse<String> secondResponse = sendCreateCategory("{\"name\":\"Renamee\", \"icon\":\"📄\"}");
+        assertEquals(200, secondResponse.statusCode());
+
+        // Renaming to a case-variant of its own name is allowed
+        HttpResponse<String> ownNameResponse = sendUpdateCategory(firstId, "{\"name\":\"renamer\", \"icon\":\"✏️\"}");
+        assertEquals(200, ownNameResponse.statusCode());
+
+        // Renaming to another category's name is rejected
+        HttpResponse<String> conflictResponse = sendUpdateCategory(firstId, "{\"name\":\"renamee\", \"icon\":\"✏️\"}");
+        assertEquals(400, conflictResponse.statusCode());
+        assertEquals("A category named \"renamee\" already exists",
+                mapper.readTree(conflictResponse.body()).get("message").asText());
+    }
+
+    private HttpResponse<String> sendCreateCategory(String json) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/categories"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> sendUpdateCategory(String categoryId, String json) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/categories/" + categoryId))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .PUT(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
 }
