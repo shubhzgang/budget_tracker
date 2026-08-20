@@ -54,4 +54,33 @@ describe('LabelManager', () => {
 
     confirmSpy.mockRestore();
   });
+
+  it('marks the default label with a DEFAULT badge instead of a delete button', async () => {
+    render(
+      <LabelManager />,
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Default')).toBeInTheDocument();
+    expect(screen.queryByText('Fix')).not.toBeInTheDocument();
+  });
+
+  it('does not show a delete button for the default label', async () => {
+    render(
+      <LabelManager />,
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+    });
+
+    const labelPill = screen.getByText('Personal').closest('div');
+    expect(labelPill).not.toBeNull();
+    expect(labelPill!.querySelector('[title="Delete Label"]')).toBeNull();
+  });
 });

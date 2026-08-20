@@ -115,7 +115,7 @@ export const LabelManager: React.FC = () => {
                   </button>
                 )}
                 {label.isDefault && (
-                  <span className="text-[8px] opacity-50 uppercase font-black">Fix</span>
+                  <span className="text-[8px] opacity-50 uppercase font-black">Default</span>
                 )}
               </div>
             ))}
