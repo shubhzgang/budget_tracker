@@ -139,7 +139,8 @@ public class BackupSystemIntegrationTest {
         // 2. Export to SQL
         MvcResult exportResult = mockMvc.perform(post("/api/v1/backups/export")
                 .param("format", "SQL")
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andReturn();
         
@@ -162,7 +163,8 @@ public class BackupSystemIntegrationTest {
 
         // 4. Delete All Data
         mockMvc.perform(delete("/api/v1/backups/clear")
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
 
         // Verify data is gone
@@ -180,7 +182,8 @@ public class BackupSystemIntegrationTest {
         MockMultipartFile file = new MockMultipartFile("file", "backup.sql", "text/plain", backupContent);
         mockMvc.perform(multipart("/api/v1/backups/import")
                 .file(file)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk());
 
         // 6. Verify data is restored

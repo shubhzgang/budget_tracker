@@ -373,7 +373,7 @@ window.transactionForm = function () {
       const self = this;
       fetch('/api/v1/categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
         body: JSON.stringify({ name: name, icon: icon })
       })
         .then(function (r) {

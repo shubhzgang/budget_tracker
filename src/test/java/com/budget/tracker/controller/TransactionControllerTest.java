@@ -89,6 +89,7 @@ public class TransactionControllerTest {
 
         mockMvc.perform(post("/api/v1/transactions")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -115,6 +116,7 @@ public class TransactionControllerTest {
 
         mockMvc.perform(put("/api/v1/transactions/" + tid)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -140,7 +142,8 @@ public class TransactionControllerTest {
     void shouldDeleteTransaction() throws Exception {
         UUID tid = UUID.randomUUID();
         mockMvc.perform(delete("/api/v1/transactions/" + tid)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
     }
 

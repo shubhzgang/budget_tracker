@@ -87,6 +87,7 @@ class UserPreferenceControllerTest {
 
         mockMvc.perform(put("/api/v1/preferences")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

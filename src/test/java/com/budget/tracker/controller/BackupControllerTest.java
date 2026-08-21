@@ -82,7 +82,8 @@ public class BackupControllerTest {
 
         mockMvc.perform(post("/api/v1/backups/export")
                 .param("format", "CSV")
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.format").value("CSV"));
         
@@ -95,7 +96,8 @@ public class BackupControllerTest {
 
         mockMvc.perform(multipart("/api/v1/backups/import")
                 .file(file)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Backup imported successfully"));
 

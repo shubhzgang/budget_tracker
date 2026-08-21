@@ -88,6 +88,7 @@ public class TransferControllerTest {
 
         mockMvc.perform(post("/api/v1/transfers")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -154,6 +155,7 @@ public class TransferControllerTest {
 
         mockMvc.perform(put("/api/v1/transfers/" + id)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -165,7 +167,8 @@ public class TransferControllerTest {
     void shouldDeleteTransfer() throws Exception {
         UUID id = UUID.randomUUID();
         mockMvc.perform(delete("/api/v1/transfers/" + id)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
     }
 }

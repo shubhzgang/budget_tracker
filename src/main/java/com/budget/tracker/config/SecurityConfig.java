@@ -3,6 +3,7 @@ package com.budget.tracker.config;
 import com.budget.tracker.security.AuthContextFilter;
 import com.budget.tracker.security.AuthEntryPointJwt;
 import com.budget.tracker.security.AuthTokenFilter;
+import com.budget.tracker.security.CsrfHeaderFilter;
 import com.budget.tracker.security.JwtUtils;
 import com.budget.tracker.security.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +48,11 @@ public class SecurityConfig {
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter(jwtUtils, userDetailsService);
+    }
+
+    @Bean
+    public CsrfHeaderFilter csrfHeaderFilter() {
+        return new CsrfHeaderFilter();
     }
 
     @Bean
@@ -115,6 +121,7 @@ public class SecurityConfig {
 
             http.authenticationProvider(authenticationProvider());
             http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+            http.addFilterBefore(csrfHeaderFilter(), AuthTokenFilter.class);
             http.addFilterAfter(authContextFilter(), AuthTokenFilter.class);
         }
         return http.build();
