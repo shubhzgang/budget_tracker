@@ -20,6 +20,8 @@ services:
   backend:
     build: .
     container_name: budget-tracker-backend
+    ports:
+      - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_tracker
       SPRING_DATASOURCE_USERNAME: user
@@ -32,18 +34,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - budget-tracker-net
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: budget-tracker-frontend
-    ports:
-      - "3300:80"
-    depends_on:
-      - backend
     networks:
       - budget-tracker-net
 

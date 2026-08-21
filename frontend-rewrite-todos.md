@@ -107,11 +107,13 @@ Step-by-step plan to execute `frontend-rewrite-plan.md`. Work on branch `feature
 - [x] 10.3 Verify: E2E `validation.spec.ts`, `delete-transaction.spec.ts`, `cors.spec.ts` green (part of full suite: 81 passed, 0 failed, 0 skipped)
 
 ### Step 11 — Remove React frontend
-- [ ] 11.1 Delete `frontend/` directory
-- [ ] 11.2 `docker-compose.yml`: remove frontend service (Spring Boot serves everything)
-- [ ] 11.3 `Dockerfile`: confirm static assets (css/js/emojis.json) are in the jar
-- [ ] 11.4 `Makefile`: drop `build-frontend` from `test-e2e`/`run-stack`/`run-demo`
-- [ ] 11.5 Verify: `make run-stack` → full app on Spring Boot port only; `make test-e2e` ALL 21 specs green; `make test-int` green
+- [x] 11.1 Delete `frontend/` directory
+- [x] 11.2 `docker-compose.yml`: remove frontend service (Spring Boot serves everything); expose backend on host port 8080 (replaces old nginx:3300 entry point)
+- [x] 11.3 `Dockerfile`: confirm static assets (css/js/emojis.json) are in the jar
+- [x] 11.4 `Makefile`: drop `build-frontend` from `test-e2e`/`run-stack`/`run-demo` + remove port-3300 wait
+- [x] 11.5 Verify: `make run-stack` → full app on Spring Boot port only (login page + all static assets on :8080, only postgres+backend containers); `make test-e2e` ALL specs green (81 passed); `make test-int` green
+
+**Flake fix found during 11.5:** `multi-label.spec.ts` transfer test failed ~1/3 of full-suite runs — `findAllByUserId` had no ORDER BY, so under parallel test load the account list order flipped and the "first account" fallback (`accounts.get(0)`, matching React's `accounts[0]?.id`) intermittently pre-selected the wrong from-account, which `updateToAccountOptions()` then excluded from the to-account options. Fixed with `findAllByUserIdOrderByIdAsc` (UUIDv7 = time-ordered = deterministic creation order).
 
 ## Phase 2: Expenditure Dashboard
 

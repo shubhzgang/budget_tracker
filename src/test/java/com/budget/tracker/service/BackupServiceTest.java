@@ -91,7 +91,7 @@ class BackupServiceTest {
         account.setInitialBalance(BigDecimal.ZERO);
         account.setBalance(BigDecimal.ZERO);
         account.setCreatedAt(OffsetDateTime.now());
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(account));
 
         Transaction transaction = new Transaction();
         transaction.setId(UUID.randomUUID());
@@ -165,7 +165,7 @@ class BackupServiceTest {
 
         Account account = new Account();
         account.setName("Cash");
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(account));
         when(categoryRepository.findAllByUserId(userId)).thenReturn(List.of());
         when(labelRepository.findAllByUserId(userId)).thenReturn(List.of());
         when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
