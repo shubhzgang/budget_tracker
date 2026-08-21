@@ -13,7 +13,6 @@ import { test, expect } from '@playwright/test';
 import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Transaction and Transfer Update Bug Fixes', () => {
-  test.skip(true, "Requires Settings > Categories/Labels pages (Step 8)");
   test.beforeEach(async ({ page }) => {
     const email = uniqueEmail('update-fix');
     await registerAndLogin(page, email, testPassword);

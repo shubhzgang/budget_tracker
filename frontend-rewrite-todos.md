@@ -70,7 +70,7 @@ Step-by-step plan to execute `frontend-rewrite-plan.md`. Work on branch `feature
 - [x] 6.6 Inline category creation: "+ New category…" option → Alpine inline row (name + emoji input + Add/Cancel) → `fetch()` POST `/api/v1/categories` → append `<option>` auto-selected; duplicate-name error. (Last inline-category E2E test needs Settings > Categories page → stays skipped for Step 8)
 - [x] 6.7 Multi-label Alpine picker (checkbox dropdown, chips, hidden `labelIds[]` inputs, pre-selected on edit; `const labels = /*[[${labels}]]*/ []`)
 - [x] 6.8 FAB opens `/transactions/form` modal from any page; `lastCategoryId` remembered across open/close
-- [x] 6.9 Verify: E2E `transactions`, `transaction-input`, `account-filter`, `transfer-filter`, `transaction-placeholder`, `edit-flow`, `delete-transaction`, `validation` unskipped + green (`multi-label`/`emoji-keyword-search` stay skipped — need Settings label creation, Step 8). Unit ✓. **Full suite: 41 passed, 0 failed, 40 skipped**
+- [x] 6.9 Verify: E2E `transactions`, `transaction-input`, `account-filter`, `transfer-filter`, `transaction-placeholder`, `edit-flow`, `delete-transaction`, `validation` unskipped + green (`multi-label`/`emoji-keyword-search` stay skipped — need Settings label creation, Step 8). Unit ✓. **Full suite: 41 passed, 0 failed, 40 skipped** (multi-label + emoji-keyword-search unskipped & green in Step 8)
 - [x] **Bugs found + fixed during Step 6:**
   - **Alpine 3 `this` in inline handlers**: inside `@change`/`@input`, `this` = the DOM element, NOT the component → `this.$el` was the select, not the form. Store `this.formEl = this.$el` in `init()` and use it in all methods
   - **htmx 1.9 HX-Trigger payload**: `event.detail` is `{value, elt}`, not a string → toast listeners unwrap via `triggerValue()` (`typeof detail === 'string' ? detail : detail.value`)
@@ -87,17 +87,19 @@ Step-by-step plan to execute `frontend-rewrite-plan.md`. Work on branch `feature
 - [x] 7.4 Verify: E2E `transfer-filter` (19 w/ related), `transaction-input` (3-way calc), `friend-lending` green; `update-transaction-transfer` stays skipped (needs Settings label/category creation, Step 8); manual: transfer edit prefill verified via curl (`value="300"`, hx-put url, to-account selected)
 
 ### Step 8 — Settings page
-- [ ] 8.1 `SettingsViewController`: `GET /settings` (full page with tabs), `GET /settings/categories`, `GET /settings/labels`, `GET /settings/defaults` (label "Defaults"), `GET /settings/data` (label "Data & Backup")
-- [ ] 8.2 Fragments: `category-manager.html`, `label-manager.html` (CRUD with emoji/icon), `defaults-form.html` (currency symbol, theme, default account/type/category/label), `backup-manager.html`
-- [ ] 8.3 Category/label CRUD routes (reuse or mirror API services) with validation errors rendered in-form
-- [ ] 8.4 Verify: E2E `category.spec.ts`, `preferences.spec.ts` green; manual: all 4 tabs load and work
+- [x] 8.1 `SettingsViewController`: `GET /settings` (full page with tabs), `GET /settings/categories`, `GET /settings/labels`, `GET /settings/defaults` (label "Defaults"), `GET /settings/data` (label "Data & Backup")
+- [x] 8.2 Fragments: `category-manager.html`, `label-manager.html` (CRUD with emoji/icon), `defaults-form.html` (currency symbol, theme, default account/type/category/label), `backup-manager.html`
+- [x] 8.3 Category/label CRUD routes (reuse or mirror API services) with validation errors rendered in-form (pipe pre-validation matches React message "Label name cannot contain '|'")
+- [x] 8.4 Verify: E2E `category.spec.ts`, `preferences.spec.ts`, `multi-label`, `emoji-keyword-search` green; settings tab toggle replicates React conditional mounting (inactive panels in `<template data-panel-src>`, cloned on activation); emoji picker with section tabs + keyword search + outside-click close
 
 ### Step 9 — Backups
-- [ ] 9.1 `GET /backups` (history table w/ download links via plain `<a href>`)
-- [ ] 9.2 `POST /backups/export?format=SQL|CSV` (HX-Trigger + refresh list), `POST /backups/import` (`hx-encoding="multipart/form-data"`)
-- [ ] 9.3 `GET /backups/{id}/download` (binary), `DELETE /backups/clear` (confirm dialog first → redirect `/dashboard`)
-- [ ] 9.4 `confirm-dialog.html` fragment for destructive actions
-- [ ] 9.5 Verify: E2E `backup.spec.ts` green; manual: export SQL + CSV, import restores data, delete-all with confirmation
+- [x] 9.1 `BackupsViewController` history table w/ download buttons (spec requires `button` role); fixed `ContentDisposition` builder (`.build().toString()`) and `th:attr` nested-`@{}` 500
+- [x] 9.2 `POST /backups/export?format=SQL|CSV` (HX-Trigger + refresh list), `POST /backups/import` (`hx-encoding="multipart/form-data"`, `hx-trigger="change"` on the file input — `change` doesn't bubble so form-level trigger never fires)
+- [x] 9.3 `GET /backups/{id}/download` (binary, Content-Disposition attachment), `DELETE /backups/clear` (hx-confirm)
+- [x] 9.4 `confirm-dialog.html` fragment for destructive actions
+- [x] 9.5 Verify: E2E `backup.spec.ts` green (SQL + CSV full round-trips); transfer-edit fixes: chip × removed from toggle (Playwright center-click hit it), disabled `type` select no longer sent → `type` now `required=false` in `updateTransfer`
+
+**Full suite after Steps 8+9: 81 passed, 0 failed, 0 skipped; `./gradlew test` green.**
 
 ### Step 10 — Polish: toasts + validation + edge cases
 - [ ] 10.1 `toast.html` OOB swap pattern everywhere (success + error), Alpine auto-dismiss 3s

@@ -46,6 +46,7 @@ public class TransactionsViewController {
 
     private static final int LIST_PAGE_SIZE = 20;
     private static final List<String> TYPE_OPTIONS = List.of("EXPENSE", "INCOME", "TRANSFER", "LEND", "BORROW");
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final ActivityService activityService;
     private final TransactionService transactionService;
@@ -224,8 +225,8 @@ public class TransactionsViewController {
 
     @PutMapping("/transfers/{id}")
     public ResponseEntity<String> updateTransfer(@PathVariable UUID id,
-                                 @RequestParam String type,
-                                 @RequestParam(required = false) BigDecimal amount,
+                                  @RequestParam(required = false) String type,
+                                  @RequestParam(required = false) BigDecimal amount,
                                  @RequestParam String transactionDate,
                                  @RequestParam(required = false) UUID accountId,
                                  @RequestParam(required = false) UUID fromAccountId,
@@ -319,6 +320,14 @@ public class TransactionsViewController {
         return value.setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 
+    private String toJson(Object value) {
+        try {
+            return MAPPER.writeValueAsString(value);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     private void addFilterAttributes(Model model, String search, String type, UUID accountId,
                                      LocalDate startDate, LocalDate endDate) {
         model.addAttribute("filterSearch", search);
@@ -375,6 +384,7 @@ public class TransactionsViewController {
             labelData.add(entry);
         }
         model.addAttribute("labelData", labelData);
+        model.addAttribute("labelsJson", toJson(labelData));
 
         if (item != null) {
             model.addAttribute("formAmount", formNumber(item.getAmount()));
@@ -409,12 +419,15 @@ public class TransactionsViewController {
             model.addAttribute("formType", defaultType.name());
             model.addAttribute("formCategoryId", defaultCategory);
             model.addAttribute("formLabelIds", defaultLabel == null ? List.of() : List.of(defaultLabel));
+            model.addAttribute("formLabelIdsJson", defaultLabel == null ? "[]" : toJson(List.of(defaultLabel)));
         } else {
             model.addAttribute("formAccountId", item.getAccount() == null ? null : item.getAccount().getId());
             model.addAttribute("formType", item.getType());
             model.addAttribute("formCategoryId", item.getCategory() == null ? null : item.getCategory().getId());
-            model.addAttribute("formLabelIds", item.getLabels() == null ? List.of()
-                    : item.getLabels().stream().map(Label::getId).collect(Collectors.toList()));
+            List<UUID> itemLabelIds = item.getLabels() == null ? List.of()
+                    : item.getLabels().stream().map(Label::getId).collect(Collectors.toList());
+            model.addAttribute("formLabelIds", itemLabelIds);
+            model.addAttribute("formLabelIdsJson", toJson(itemLabelIds));
         }
         model.addAttribute("isTransferEdit", isTransfer);
         model.addAttribute("showTransferOption", item == null || isTransfer);

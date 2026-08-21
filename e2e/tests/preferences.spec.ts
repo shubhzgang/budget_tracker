@@ -6,7 +6,6 @@ import { test, expect } from '@playwright/test';
 import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('User Preferences', () => {
-  test.skip(true, "HTMX migration pending: /settings not yet migrated");
   const password = 'password123';
   let email = '';
 

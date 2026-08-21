@@ -114,11 +114,24 @@ document.addEventListener('refreshAfterSave', function () {
 });
 
 // ===== Emoji picker (Alpine component, used by the transaction form) =====
+// Keep a single emoji (one grapheme cluster, ZWJ sequences included)
+function sanitizeEmojiInput(raw) {
+  const t = raw.trim();
+  if (!t) return '';
+  try {
+    const segs = Array.from(new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(t));
+    return segs.length ? segs[0].segment : t;
+  } catch (err) {
+    return t;
+  }
+}
+
 window.emojiPicker = function () {
   return {
     value: '😀',
     open: false,
     search: '',
+    activeSection: 0,
     sections: [],
     init: function () {
       const self = this;
@@ -131,7 +144,17 @@ window.emojiPicker = function () {
       this.open = !this.open;
       if (!this.open) this.search = '';
     },
-    filtered: function () {
+    selectSection: function (i) {
+      this.activeSection = i;
+      const els = this.$refs.grid ? this.$refs.grid.querySelectorAll('.emoji-section') : [];
+      if (els[i] && els[i].scrollIntoView) els[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    onEmojiInput: function (e) {
+      const clean = sanitizeEmojiInput(e.target.value);
+      if (clean !== e.target.value) e.target.value = clean;
+      this.value = clean;
+    },
+    visibleSections: function () {
       const q = this.search.trim();
       if (!q) return this.sections;
       const ql = q.toLowerCase();
@@ -152,6 +175,42 @@ window.emojiPicker = function () {
     }
   };
 };
+
+// Settings tabs: synchronous swap of the active panel (matches React conditional mounting —
+// inactive tabs are unmounted; their markup waits in <template data-panel-src> elements)
+document.addEventListener('click', function (e) {
+  const tab = e.target && e.target.closest ? e.target.closest('.settings-tab') : null;
+  if (!tab || !tab.dataset.tab) return;
+  const panels = document.getElementById('settings-panels');
+  if (!panels || panels.dataset.active === tab.dataset.tab) return;
+  const src = document.querySelector('template[data-panel-src="' + tab.dataset.tab + '"]');
+  if (!src) return;
+  const section = document.createElement('section');
+  section.className = 'settings-panel';
+  section.dataset.panel = tab.dataset.tab;
+  section.appendChild(src.content.cloneNode(true));
+  while (panels.firstChild) panels.removeChild(panels.firstChild);
+  panels.appendChild(section);
+  if (window.htmx && htmx.process) htmx.process(section);
+  panels.dataset.active = tab.dataset.tab;
+  document.querySelectorAll('.settings-tab').forEach(function (t) {
+    t.classList.toggle('active', t === tab);
+  });
+});
+
+// Close emoji pickers on outside click (matches React mousedown-outside behavior)
+document.addEventListener('mousedown', function (e) {
+  const wraps = document.querySelectorAll('.emoji-picker-wrap');
+  for (const wrap of wraps) {
+    if (!wrap.contains(e.target)) {
+      const data = window.Alpine && Alpine.$data ? Alpine.$data(wrap) : null;
+      if (data && data.open) {
+        data.open = false;
+        data.search = '';
+      }
+    }
+  }
+}, true);
 
 // ===== Transaction / transfer form (Alpine component) =====
 window.transactionForm = function () {
@@ -182,8 +241,12 @@ window.transactionForm = function () {
       this.fromAmount = readInput('fromAmount');
       this.toAmount = readInput('toAmount');
       this.adjustment = readInput('adjustment');
-      this.labels = window.LABELS_DATA || [];
-      this.selectedLabels = (window.INITIAL_LABEL_IDS || []).slice();
+      // Read from data attributes (inline <script> in swapped fragments can run AFTER
+      // Alpine initializes the x-data component — attributes are present at init time)
+      try { this.labels = JSON.parse(form.getAttribute('data-labels') || '[]'); }
+      catch (err) { this.labels = []; }
+      try { this.selectedLabels = JSON.parse(form.getAttribute('data-initial-labels') || '[]').slice(); }
+      catch (err) { this.selectedLabels = []; }
       const catSelect = form.querySelector('[data-role=category-select]');
       this.lastCategoryId = catSelect && catSelect.value !== '__new__' ? catSelect.value : '';
       // Seed 3-way calc state when editing a transfer

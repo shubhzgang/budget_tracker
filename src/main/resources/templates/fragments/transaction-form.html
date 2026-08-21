@@ -1,15 +1,11 @@
 <div id="transaction-form-fragment" th:fragment="form" class="modal-form-wrap">
     <h2 class="modal-title" th:text="${mode == 'edit'} ? 'Edit Transaction' : 'Add Transaction'">Add Transaction</h2>
-    <script th:inline="javascript">
-        window.LABELS_DATA = /*[[${labelData}]]*/ [];
-        window.INITIAL_LABEL_IDS = /*[[${formLabelIds}]]*/ [];
-    </script>
     <form class="modal-form" novalidate
           th:hx-post="${mode == 'create'} ? '/transactions' : null"
           th:hx-put="${mode == 'edit'} ? (${isTransferEdit} ? '/transfers/' + ${item.id} : '/transactions/' + ${item.id}) : null"
           hx-target="#modal-content"
           hx-swap="none"
-          th:attr="data-mode=${mode}"
+          th:attr="data-mode=${mode}, data-labels=${labelsJson}, data-initial-labels=${formLabelIdsJson}"
           x-data="transactionForm()"
           x-init="init()">
 
@@ -96,37 +92,12 @@
                         th:selected="${formCategoryId != null and formCategoryId == c.id}"></option>
                 <option value="__new__">+ New category…</option>
             </select>
-            <div class="inline-category-row" x-show="creating" x-cloak>
+            <template x-if="creating">
+            <div class="inline-category-row">
                 <input type="text" x-model="newCatName"
                        placeholder="New category name" aria-label="New category name"
                        class="inline-cat-name">
-                <div class="emoji-picker-wrap" x-data="emojiPicker()">
-                    <div class="emoji-trigger">
-                        <input type="text" x-model="value" placeholder="🍔" aria-label="Emoji"
-                               class="emoji-input">
-                        <button type="button" class="emoji-toggle" @click="toggle()">Pick emoji</button>
-                    </div>
-                    <div class="emoji-popover" x-show="open" x-cloak>
-                        <div class="emoji-search-wrap">
-                            <input type="text" x-model="search" placeholder="Search emoji…">
-                        </div>
-                        <div class="emoji-grid-wrap">
-                            <template x-for="sec in filtered()" :key="sec.label">
-                                <div class="emoji-section">
-                                    <p class="emoji-section-label" x-text="sec.label"></p>
-                                    <div class="emoji-grid">
-                                        <template x-for="it in sec.items" :key="it.emoji">
-                                            <button type="button" class="emoji-btn"
-                                                    x-text="it.emoji" :title="it.emoji"
-                                                    @click="pick(it.emoji)"></button>
-                                        </template>
-                                    </div>
-                                </div>
-                            </template>
-                            <p class="emoji-empty" x-show="filtered().length > 0 && filtered()[0].items.length === 0">No emoji found</p>
-                        </div>
-                    </div>
-                </div>
+                <div th:replace="~{fragments/emoji-picker}"></div>
                 <button type="button" class="btn-primary btn-sm"
                         :disabled="!newCatName.trim() || creatingCat"
                         @click="addCategory()">Add</button>
@@ -134,6 +105,7 @@
                         aria-label="Cancel new category"
                         @click="cancelCategory()">Cancel</button>
             </div>
+            </template>
         </div>
 
         <div class="field">
@@ -145,9 +117,6 @@
                     <template x-for="id in selectedLabels" :key="id">
                         <span class="label-chip label-chip-in-toggle">
                             <span x-text="labelName(id)"></span>
-                            <span class="label-chip-x" role="button" tabindex="0"
-                                  @click.stop="toggleLabel(id)" @keydown.enter.stop="toggleLabel(id)"
-                                  aria-label="Remove label">×</span>
                         </span>
                     </template>
                 </button>
