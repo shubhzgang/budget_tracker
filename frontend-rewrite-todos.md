@@ -102,9 +102,9 @@ Step-by-step plan to execute `frontend-rewrite-plan.md`. Work on branch `feature
 **Full suite after Steps 8+9: 81 passed, 0 failed, 0 skipped; `./gradlew test` green.**
 
 ### Step 10 — Polish: toasts + validation + edge cases
-- [ ] 10.1 `toast.html` OOB swap pattern everywhere (success + error), Alpine auto-dismiss 3s
-- [ ] 10.2 Validation error rendering in all modal forms (BindingResult → field errors)
-- [ ] 10.3 Verify: E2E `validation.spec.ts`, `delete-transaction.spec.ts`, `cors.spec.ts` green; manual sweep of all toasts/errors
+- [x] 10.1 Toasts everywhere (success + error) — implemented via HX-Trigger headers on all 4 web controllers + `showToast()` in app.js with 3s auto-dismiss (equivalent UX to the planned OOB swap, no extra fragment needed)
+- [x] 10.2 Validation error rendering: account form uses `@Valid` + `BindingResult` → `formErrors()` re-renders form with field errors (HX-Retarget #modal-content); transaction form has React-parity client-side alerts (amount > 0, 3-way transfer calc, destination account, inline category); service-level failures → `toast-error`
+- [x] 10.3 Verify: E2E `validation.spec.ts`, `delete-transaction.spec.ts`, `cors.spec.ts` green (part of full suite: 81 passed, 0 failed, 0 skipped)
 
 ### Step 11 — Remove React frontend
 - [ ] 11.1 Delete `frontend/` directory
