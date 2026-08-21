@@ -1,0 +1,56 @@
+<div id="account-form-fragment" th:fragment="form" class="modal-form-wrap">
+    <h2 class="modal-title" th:text="${mode == 'edit'} ? 'Edit Account' : 'Create New Account'">Title</h2>
+    <form class="modal-form"
+          th:hx-post="${mode == 'create'} ? '/accounts' : null"
+          th:hx-put="${mode == 'edit'} ? '/accounts/' + ${accountId} : null"
+          hx-target="#accounts-section"
+          x-data="{ type: $el.querySelector('[name=type]').value }">
+        <div class="field">
+            <label for="account-name">Account Name</label>
+            <input type="text" id="account-name" name="name"
+                   th:value="${accountForm.name}"
+                   placeholder="e.g. Chase Sapphire" required>
+            <p class="field-error" th:if="${errors != null and errors.getFieldError('name') != null}"
+               th:text="${errors.getFieldError('name').defaultMessage}"></p>
+        </div>
+
+        <div class="field">
+            <label for="account-type">Account Type</label>
+            <select id="account-type" name="type" x-model="type">
+                <option value="BANK" th:selected="${accountForm.type != null and accountForm.type.name() == 'BANK'}">Bank</option>
+                <option value="CASH" th:selected="${accountForm.type != null and accountForm.type.name() == 'CASH'}">Cash</option>
+                <option value="CREDIT_CARD" th:selected="${accountForm.type != null and accountForm.type.name() == 'CREDIT_CARD'}">Credit Card</option>
+                <option value="FRIEND_LENDING" th:selected="${accountForm.type != null and accountForm.type.name() == 'FRIEND_LENDING'}">Friend/Lending</option>
+            </select>
+        </div>
+
+        <div class="field" x-show="type === 'FRIEND_LENDING'" x-cloak>
+            <label for="lending-direction">Direction</label>
+            <select id="lending-direction" name="lendingDirection">
+                <option value="THEY_OWE_ME" th:selected="${accountForm.lendingDirection != null and accountForm.lendingDirection.name() == 'THEY_OWE_ME'}">They owe me</option>
+                <option value="I_OWE_THEM" th:selected="${accountForm.lendingDirection != null and accountForm.lendingDirection.name() == 'I_OWE_THEM'}">I owe them</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="initial-balance">Initial Balance</label>
+            <input type="text" inputmode="decimal" id="initial-balance" name="initialBalance"
+                   th:value="${accountForm.initialBalance}"
+                   placeholder="123" required>
+            <p class="field-error" th:if="${errors != null and errors.getFieldError('initialBalance') != null}"
+               th:text="${errors.getFieldError('initialBalance').defaultMessage}"></p>
+        </div>
+
+        <div class="field" x-show="type === 'CREDIT_CARD'" x-cloak>
+            <label for="credit-limit">Credit Limit</label>
+            <input type="text" inputmode="decimal" id="credit-limit" name="creditLimit"
+                   th:value="${accountForm.creditLimit}"
+                   placeholder="5000">
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').close()">Cancel</button>
+            <button type="submit" class="btn-primary" th:text="${mode == 'edit'} ? 'Save Changes' : 'Create Account'">Save</button>
+        </div>
+    </form>
+</div>

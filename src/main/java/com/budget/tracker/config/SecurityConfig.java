@@ -6,6 +6,8 @@ import com.budget.tracker.security.AuthTokenFilter;
 import com.budget.tracker.security.JwtUtils;
 import com.budget.tracker.security.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.time.Duration;
 import java.util.List;
 
 @Configuration
@@ -97,10 +100,16 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                .logout(logout -> logout
+                    .logoutUrl("/logout")
+                    .addLogoutHandler((request, response, authentication) ->
+                        response.addHeader(HttpHeaders.SET_COOKIE, clearedJwtCookie().toString()))
+                    .logoutSuccessUrl("/login"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/actuator/health").permitAll()
                     .requestMatchers("/api/v1/auth/**").permitAll()
+                    .requestMatchers("/", "/login", "/register", "/error", "/css/**", "/js/**", "/favicon.ico").permitAll()
                     .anyRequest().authenticated()
                 );
 
@@ -109,5 +118,14 @@ public class SecurityConfig {
             http.addFilterAfter(authContextFilter(), AuthTokenFilter.class);
         }
         return http.build();
+    }
+
+    private ResponseCookie clearedJwtCookie() {
+        return ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .sameSite("Lax")
+                .build();
     }
 }

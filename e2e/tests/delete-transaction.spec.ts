@@ -20,7 +20,7 @@ test.describe('Delete Transaction', () => {
     await page.fill('input[id="initial-balance"]', '1000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Delete Test Bank' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Delete Test Bank' }) });
     await expect(bankCard.getByText('₹1,000.00')).toBeVisible();
 
     // 2. Add an Expense Transaction
@@ -61,7 +61,7 @@ test.describe('Delete Transaction', () => {
     await page.fill('input[id="initial-balance"]', '500');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Income Bank' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Income Bank' }) });
     await expect(bankCard.getByText('₹500.00')).toBeVisible();
 
     // 2. Add an Income Transaction
@@ -94,7 +94,7 @@ test.describe('Delete Transaction', () => {
     await page.fill('input[id="initial-balance"]', '800');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const sourceCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Transfer Source' }) });
+    const sourceCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Transfer Source' }) });
     await expect(sourceCard.getByText('₹800.00')).toBeVisible();
 
     // 2. Create Destination Account
@@ -103,7 +103,7 @@ test.describe('Delete Transaction', () => {
     await page.fill('input[id="initial-balance"]', '100');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const destCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Transfer Dest' }) });
+    const destCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Transfer Dest' }) });
     await expect(destCard.getByText('₹100.00')).toBeVisible();
 
     // 3. Create a Transfer
@@ -195,7 +195,7 @@ test.describe('Delete Transaction', () => {
 
     // 5. Navigate back to Dashboard and verify balance is restored (600)
     await page.click('text=Dashboard');
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Trans Page Bank' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Trans Page Bank' }) });
     await expect(bankCard.getByText('₹600.00')).toBeVisible();
   });
 });

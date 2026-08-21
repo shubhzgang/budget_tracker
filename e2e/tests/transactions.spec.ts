@@ -22,7 +22,7 @@ test.describe('Transaction Management', () => {
     
     // Sync: wait for modal to close and card to appear
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const checkingsCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Checkings' }) });
+    const checkingsCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Checkings' }) });
     await expect(checkingsCard).toBeVisible();
     await expect(checkingsCard.getByText('₹1,000.00')).toBeVisible();
 
@@ -50,7 +50,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '500');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const sourceCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Source Acc' }) });
+    const sourceCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Source Acc' }) });
     await expect(sourceCard).toBeVisible();
 
     // 2. Create Destination Account
@@ -59,7 +59,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '0');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const destCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Dest Acc' }) });
+    const destCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Dest Acc' }) });
     await expect(destCard).toBeVisible();
 
     // 3. Perform Transfer
@@ -90,7 +90,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '200');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const cashCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'My Cash' }) });
+    const cashCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'My Cash' }) });
     await expect(cashCard).toBeVisible();
 
     // 2. Create Bank Account
@@ -100,7 +100,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '500');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'My Bank' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'My Bank' }) });
     await expect(bankCard).toBeVisible();
 
     // 3. Perform Transfer (Cash -> Bank)
@@ -161,7 +161,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '1000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Checkings' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Checkings' }) });
     await expect(bankCard).toBeVisible();
 
     // 2. Create Credit Card Account
@@ -172,7 +172,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="credit-limit"]', '5000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const ccCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Visa CC' }) });
+    const ccCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Visa CC' }) });
     await expect(ccCard).toBeVisible();
 
     // 3. Perform Transfer (Bank -> CC)
@@ -202,7 +202,7 @@ test.describe('Transaction Management', () => {
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
 
-    const visaCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Visa Credit' }) });
+    const visaCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Visa Credit' }) });
     await expect(visaCard).toBeVisible();
     await expect(visaCard.getByText('Debt: ₹450.00')).toBeVisible();
     await expect(visaCard.getByText('9.0%')).toBeVisible(); // 450/5000 = 9%
@@ -254,7 +254,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '0');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const lendingCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Lending Account' }) });
+    const lendingCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Lending Account' }) });
 
     // 2. Add BORROW Transaction (Getting money)
     await page.click('button:has-text("Add Transaction")');
@@ -290,7 +290,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="initial-balance"]', '1000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const bankCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'My Bank' }) });
+    const bankCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'My Bank' }) });
     await expect(bankCard).toBeVisible();
 
     // 2. Create Credit Card Account
@@ -301,7 +301,7 @@ test.describe('Transaction Management', () => {
     await page.fill('input[id="credit-limit"]', '5000');
     await page.click('button[type="submit"]:has-text("Create Account")');
     await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
-    const ccCard = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Visa CC' }) });
+    const ccCard = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Visa CC' }) });
     await expect(ccCard).toBeVisible();
 
     // 3. Perform Transfer with Adjustment (fromAmount=95, adjustment=5, toAmount=100)

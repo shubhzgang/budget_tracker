@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions — BudgetTracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header th:replace="~{layout :: desktop-nav}"></header>
+<header th:replace="~{layout :: mobile-header}"></header>
+<main class="page-main">
+        <h2 class="page-title">All Transactions</h2>
+
+        <section class="filter-bar">
+            <div class="filter-field">
+                <label for="search-filter">Search</label>
+                <input type="text" id="search-filter" name="search"
+                       th:value="${filterSearch}"
+                       placeholder="Description, category..."
+                       hx-get="/transactions/list"
+                       hx-trigger="input delay:300ms"
+                       hx-target="#transactions-list"
+                       hx-swap="innerHTML"
+                       hx-include="[name='type'], [name='accountId'], [name='startDate'], [name='endDate']">
+            </div>
+            <div class="filter-field">
+                <label for="type-filter">Type</label>
+                <select id="type-filter" name="type"
+                        hx-get="/transactions/list"
+                        hx-trigger="change"
+                        hx-target="#transactions-list"
+                        hx-swap="innerHTML"
+                        hx-include="[name='search'], [name='accountId'], [name='startDate'], [name='endDate']">
+                    <option value="" th:selected="${filterType == null or filterType == ''}">All Types</option>
+                    <option th:each="t : ${typeOptions}" th:value="${t}" th:text="${#strings.capitalize(t.toLowerCase())}" th:selected="${filterType == t}"></option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="account-filter">Account</label>
+                <select id="account-filter" name="accountId"
+                        hx-get="/transactions/list"
+                        hx-trigger="change"
+                        hx-target="#transactions-list"
+                        hx-swap="innerHTML"
+                        hx-include="[name='search'], [name='type'], [name='startDate'], [name='endDate']">
+                    <option value="" th:selected="${filterAccountId == null}">All Accounts</option>
+                    <option th:each="a : ${accounts}" th:value="${a.id}" th:text="${a.name}" th:selected="${filterAccountId != null and filterAccountId == a.id}"></option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="start-date-filter">From Date</label>
+                <input type="date" id="start-date-filter" name="startDate"
+                       th:value="${filterStartDate}"
+                       hx-get="/transactions/list"
+                       hx-trigger="change"
+                       hx-target="#transactions-list"
+                       hx-swap="innerHTML"
+                       hx-include="[name='search'], [name='type'], [name='accountId'], [name='endDate']">
+            </div>
+            <div class="filter-field">
+                <label for="end-date-filter">To Date</label>
+                <input type="date" id="end-date-filter" name="endDate"
+                       th:value="${filterEndDate}"
+                       hx-get="/transactions/list"
+                       hx-trigger="change"
+                       hx-target="#transactions-list"
+                       hx-swap="innerHTML"
+                       hx-include="[name='search'], [name='type'], [name='accountId'], [name='startDate']">
+            </div>
+        </section>
+
+        <section class="tx-section">
+            <div id="transactions-list" class="activity-list">
+                <div th:replace="~{fragments/transaction-list :: list}"></div>
+            </div>
+        </section>
+</main>
+<nav th:replace="~{layout :: mobile-bottom-nav}"></nav>
+<div th:replace="~{layout :: fab-modal}"></div>
+<div th:replace="~{layout :: toast-container}"></div>
+<span th:replace="~{layout :: scripts}"></span>
+</body>
+</html>

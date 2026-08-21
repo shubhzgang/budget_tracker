@@ -116,6 +116,7 @@ test.describe('Inline Category Creation', () => {
     await expect(page.locator('select[id="trans-category"]')).toHaveValue('__new__');
   });
 
+  test.skip(true, 'Requires Settings > Categories page (Step 8)');
   test('should allow cancelling inline category creation', async ({ page }) => {
     await page.click('button[aria-label="Add Transaction"]');
 

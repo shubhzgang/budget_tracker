@@ -1,0 +1,14 @@
+<section id="recent-section" th:fragment="recent-section" class="section" data-testid="recent-section">
+    <div class="section-header">
+        <h2 class="section-title">Recent Transactions</h2>
+        <a th:href="@{/transactions}" class="link-btn">View All</a>
+    </div>
+    <div id="recent-transactions" class="activity-list">
+        <div th:if="${activity == null or #lists.isEmpty(activity.content)}" class="empty-state">
+            <p class="text-sm text-muted">No transactions yet.</p>
+        </div>
+        <div th:each="item : ${activity?.content}">
+            <div th:replace="~{fragments/activity-row :: row}"></div>
+        </div>
+    </div>
+</section>

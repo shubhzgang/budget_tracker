@@ -32,7 +32,7 @@ test.describe('Editing Accounts and Transactions', () => {
     await expect(page.getByText('Dinner with friends')).toBeVisible();
 
     // Account balance should update to 900 (1000 - 100)
-    const card = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'E2E Account Edited' }) });
+    const card = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'E2E Account Edited' }) });
     await expect(card.getByText('₹900.00')).toBeVisible();
 
     // 4. Edit the transaction

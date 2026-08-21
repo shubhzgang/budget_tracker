@@ -1,0 +1,180 @@
+<div id="transaction-form-fragment" th:fragment="form" class="modal-form-wrap">
+    <h2 class="modal-title" th:text="${mode == 'edit'} ? 'Edit Transaction' : 'Add Transaction'">Add Transaction</h2>
+    <script th:inline="javascript">
+        window.LABELS_DATA = /*[[${labelData}]]*/ [];
+        window.INITIAL_LABEL_IDS = /*[[${formLabelIds}]]*/ [];
+    </script>
+    <form class="modal-form" novalidate
+          th:hx-post="${mode == 'create'} ? '/transactions' : null"
+          th:hx-put="${mode == 'edit'} ? (${isTransferEdit} ? '/transfers/' + ${item.id} : '/transactions/' + ${item.id}) : null"
+          hx-target="#modal-content"
+          hx-swap="none"
+          th:attr="data-mode=${mode}"
+          x-data="transactionForm()"
+          x-init="init()">
+
+        <div class="form-row-2">
+            <div class="field">
+                <label for="trans-type">Type</label>
+                <select id="trans-type" name="type"
+                        th:disabled="${isTransferEdit}"
+                        x-model="type" @change="onTypeChange()">
+                    <option value="EXPENSE" th:selected="${formType == 'EXPENSE'}">Expense</option>
+                    <option value="INCOME" th:selected="${formType == 'INCOME'}">Income</option>
+                    <option th:if="${showTransferOption}" value="TRANSFER" th:selected="${formType == 'TRANSFER'}">Transfer</option>
+                    <option value="LEND" th:selected="${formType == 'LEND'}">Lend</option>
+                    <option value="BORROW" th:selected="${formType == 'BORROW'}">Borrow</option>
+                </select>
+            </div>
+            <div class="field" x-show="type !== 'TRANSFER'" x-cloak>
+                <label for="trans-amount">Amount</label>
+                <input type="text" id="trans-amount" name="amount" inputmode="decimal"
+                       placeholder="123" required
+                       th:value="${formAmount}"
+                       :value="amount" @input="onAmountInput('amount', $event.target.value)">
+            </div>
+        </div>
+
+        <div class="form-row-3" x-show="type === 'TRANSFER'" x-cloak>
+            <div class="field">
+                <label for="trans-from-amount">From Amount</label>
+                <input type="text" id="trans-from-amount" name="fromAmount" inputmode="decimal"
+                       placeholder="0.00"
+                       th:value="${formFromAmount}"
+                       :value="fromAmount" @input="onAmountInput('fromAmount', $event.target.value)">
+            </div>
+            <div class="field">
+                <label for="trans-to-amount">To Amount</label>
+                <input type="text" id="trans-to-amount" name="toAmount" inputmode="decimal"
+                       placeholder="0.00"
+                       th:value="${formToAmount}"
+                       :value="toAmount" @input="onAmountInput('toAmount', $event.target.value)">
+            </div>
+            <div class="field">
+                <label for="trans-adjustment">Adjustment</label>
+                <input type="text" id="trans-adjustment" name="adjustment" inputmode="decimal"
+                       placeholder="0.00"
+                       th:value="${formAdjustment}"
+                       :value="adjustment" @input="onAmountInput('adjustment', $event.target.value)">
+            </div>
+        </div>
+
+        <div class="form-row-2">
+            <div class="field">
+                <label for="trans-date">Date</label>
+                <input type="date" id="trans-date" name="transactionDate" required
+                       th:value="${formDate}">
+            </div>
+            <div class="field">
+                <label for="trans-account" th:text="${formType == 'TRANSFER'} ? 'From Account' : 'Account'">Account</label>
+                <select id="trans-account" name="accountId" data-role="account-select" required
+                        @change="onAccountChange()">
+                    <option th:each="a : ${accounts}" th:value="${a.id}" th:text="${a.name}"
+                            th:selected="${formAccountId != null and formAccountId == a.id}"></option>
+                </select>
+            </div>
+        </div>
+
+        <div class="field" x-show="type === 'TRANSFER'" x-cloak>
+            <label for="trans-to-account">To Account</label>
+            <select id="trans-to-account" name="toAccountId" data-role="to-account-select" required>
+                <option value="">Select destination...</option>
+                <option th:each="a : ${accounts}"
+                        th:if="${formAccountId == null or formAccountId != a.id}"
+                        th:value="${a.id}" th:text="${a.name}"
+                        th:selected="${item != null and item.toAccount != null and item.toAccount.id == a.id}"></option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="trans-category">Category</label>
+            <select id="trans-category" name="categoryId" data-role="category-select"
+                    @change="onCategoryChange($event.target.value)">
+                <option th:each="c : ${categories}"
+                        th:value="${c.id}"
+                        th:text="${(c.icon != null and !c.icon.isEmpty()) ? c.icon + ' ' + c.name : c.name}"
+                        th:selected="${formCategoryId != null and formCategoryId == c.id}"></option>
+                <option value="__new__">+ New category…</option>
+            </select>
+            <div class="inline-category-row" x-show="creating" x-cloak>
+                <input type="text" x-model="newCatName"
+                       placeholder="New category name" aria-label="New category name"
+                       class="inline-cat-name">
+                <div class="emoji-picker-wrap" x-data="emojiPicker()">
+                    <div class="emoji-trigger">
+                        <input type="text" x-model="value" placeholder="🍔" aria-label="Emoji"
+                               class="emoji-input">
+                        <button type="button" class="emoji-toggle" @click="toggle()">Pick emoji</button>
+                    </div>
+                    <div class="emoji-popover" x-show="open" x-cloak>
+                        <div class="emoji-search-wrap">
+                            <input type="text" x-model="search" placeholder="Search emoji…">
+                        </div>
+                        <div class="emoji-grid-wrap">
+                            <template x-for="sec in filtered()" :key="sec.label">
+                                <div class="emoji-section">
+                                    <p class="emoji-section-label" x-text="sec.label"></p>
+                                    <div class="emoji-grid">
+                                        <template x-for="it in sec.items" :key="it.emoji">
+                                            <button type="button" class="emoji-btn"
+                                                    x-text="it.emoji" :title="it.emoji"
+                                                    @click="pick(it.emoji)"></button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            <p class="emoji-empty" x-show="filtered().length > 0 && filtered()[0].items.length === 0">No emoji found</p>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-primary btn-sm"
+                        :disabled="!newCatName.trim() || creatingCat"
+                        @click="addCategory()">Add</button>
+                <button type="button" class="btn-secondary btn-sm"
+                        aria-label="Cancel new category"
+                        @click="cancelCategory()">Cancel</button>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Label</label>
+            <div class="label-picker" x-ref="labelWrap">
+                <button type="button" data-testid="label-select-toggle" class="label-toggle"
+                        @click="labelsOpen = !labelsOpen">
+                    <span class="label-placeholder" x-show="selectedLabels.length === 0">Select labels...</span>
+                    <template x-for="id in selectedLabels" :key="id">
+                        <span class="label-chip label-chip-in-toggle">
+                            <span x-text="labelName(id)"></span>
+                            <span class="label-chip-x" role="button" tabindex="0"
+                                  @click.stop="toggleLabel(id)" @keydown.enter.stop="toggleLabel(id)"
+                                  aria-label="Remove label">×</span>
+                        </span>
+                    </template>
+                </button>
+                <div class="label-dropdown" data-testid="label-dropdown" x-show="labelsOpen" x-cloak>
+                    <template x-for="l in labels" :key="l.id">
+                        <button type="button" class="label-option" @click="toggleLabel(l.id)">
+                            <input type="checkbox" :checked="selectedLabels.includes(l.id)" readonly>
+                            <span x-text="l.name"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+            <template x-for="id in selectedLabels" :key="'hidden-' + id">
+                <input type="hidden" name="labelIds" :value="id">
+            </template>
+        </div>
+
+        <div class="field">
+            <label for="trans-desc">Description (Optional)</label>
+            <input type="text" id="trans-desc" name="description"
+                   th:value="${item == null ? '' : item.description}"
+                   placeholder="What was this for?">
+        </div>
+
+        <div class="form-actions form-actions-split">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').close()">Cancel</button>
+            <button type="submit" class="btn-primary" th:text="${mode == 'edit'} ? 'Save Changes' : 'Add Transaction'">Add Transaction</button>
+        </div>
+    </form>
+</div>

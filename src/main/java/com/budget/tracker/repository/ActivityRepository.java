@@ -51,6 +51,10 @@ public interface ActivityRepository extends JpaRepository<ActivityItem, UUID> {
             "WHERE (a.account.id = :accountId OR a.toAccount.id = :accountId) AND a.userId = :userId")
     List<ActivityItem> findByAccountId(@Param("userId") UUID userId, @Param("accountId") UUID accountId);
 
+    @Query("SELECT a FROM ActivityItem a LEFT JOIN FETCH a.account LEFT JOIN FETCH a.toAccount LEFT JOIN FETCH a.category " +
+            "WHERE a.id = :id AND a.userId = :userId")
+    ActivityItem findByIdWithRelations(@Param("id") UUID id, @Param("userId") UUID userId);
+
     @Query(value = "SELECT tl.transaction_id AS activity_id, l.id, l.name, l.is_default, l.user_id FROM transaction_labels tl JOIN labels l ON l.id = tl.label_id WHERE tl.transaction_id IN :ids", nativeQuery = true)
     List<Object[]> findLabelsForTransactions(@Param("ids") List<UUID> ids);
 

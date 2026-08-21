@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetTracker</title>
+</head>
+<body>
+
+<!-- ===== Theme toggle (used in navs and on auth pages) ===== -->
+<select th:fragment="theme-toggle"
+        class="theme-select"
+        aria-label="Select theme"
+        data-testid="theme-toggle"
+        x-data="{ theme: document.documentElement.getAttribute('data-theme') || 'light' }"
+        x-model="theme"
+        @change="document.documentElement.setAttribute('data-theme', theme); document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax'">
+    <option value="light" th:selected="${theme == 'light'}">Light</option>
+    <option value="dark" th:selected="${theme == 'dark'}">Dark</option>
+    <option value="oled" th:selected="${theme == 'oled'}">OLED</option>
+</select>
+
+<!-- ===== Desktop top nav (hidden below md) ===== -->
+<header th:fragment="desktop-nav" class="top-nav" data-testid="nav-desktop">
+    <div class="top-nav-left">
+        <a th:href="@{/dashboard}" class="brand">BudgetTracker</a>
+        <nav class="top-nav-links">
+            <a th:href="@{/dashboard}"
+               th:classappend="${activePage == 'dashboard'} ? 'active'"
+               data-testid="nav-link-dashboard">Dashboard</a>
+            <a th:href="@{/transactions}"
+               th:classappend="${activePage == 'transactions'} ? 'active'"
+               data-testid="nav-link-transactions">Transactions</a>
+            <a th:href="@{/settings}"
+               th:classappend="${activePage == 'settings'} ? 'active'"
+               data-testid="nav-link-settings">Settings</a>
+        </nav>
+    </div>
+    <div class="top-nav-right">
+        <span th:replace="~{layout :: theme-toggle}"></span>
+        <span class="user-email" th:text="${userEmail}">user@example.com</span>
+        <form th:action="@{/logout}" method="post" class="inline-form">
+            <button type="submit" class="logout-btn" data-testid="logout">Logout</button>
+        </form>
+    </div>
+</header>
+
+<!-- ===== Mobile top header (hidden on desktop) ===== -->
+<header th:fragment="mobile-header" class="mobile-header" data-testid="nav-mobile">
+    <h1 class="brand">BudgetTracker</h1>
+    <div class="mobile-header-actions">
+        <span th:replace="~{layout :: theme-toggle}"></span>
+        <form th:action="@{/logout}" method="post" class="inline-form">
+            <button type="submit" class="logout-btn" data-testid="logout">Logout</button>
+        </form>
+    </div>
+</header>
+
+<!-- ===== Mobile bottom nav bar (fixed, hidden on desktop) ===== -->
+<nav th:fragment="mobile-bottom-nav" class="bottom-nav" data-testid="nav-mobile-bottom">
+    <a th:href="@{/transactions}"
+       th:classappend="${activePage == 'transactions'} ? 'active'"
+       data-testid="bottom-nav-transactions">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        <span>Transactions</span>
+    </a>
+    <a th:href="@{/dashboard}"
+       th:classappend="${activePage == 'dashboard'} ? 'active'"
+       data-testid="bottom-nav-dashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+        <span>Dashboard</span>
+    </a>
+    <a th:href="@{/settings}"
+       th:classappend="${activePage == 'settings'} ? 'active'"
+       data-testid="bottom-nav-settings">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span>Settings</span>
+    </a>
+</nav>
+
+<!-- ===== Floating action button + shared modal (authenticated pages) ===== -->
+<div th:fragment="fab-modal">
+    <button hx-get="/transactions/form"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            onclick="openFormModal()"
+            class="fab-button"
+            aria-label="Add Transaction"
+            data-testid="fab">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="fab-icon" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span class="sr-only">Add Transaction</span>
+    </button>
+    <dialog id="modal" data-testid="modal">
+        <div id="modal-content"></div>
+    </dialog>
+    <dialog id="confirm-dialog" data-testid="confirm-dialog" class="confirm-dialog">
+        <div class="confirm-dialog-content">
+            <h2 class="modal-title" id="confirm-title">Confirm</h2>
+            <p class="confirm-message" id="confirm-message"></p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
+                <button type="button" class="btn-danger" id="confirm-ok" hx-swap="none">Delete</button>
+            </div>
+        </div>
+    </dialog>
+</div>
+
+<!-- ===== Toast container (OOB swap target) ===== -->
+<div th:fragment="toast-container" id="toast-container" data-testid="toast-container"></div>
+
+<!-- ===== Scripts ===== -->
+<div th:fragment="scripts">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/app.js" defer></script>
+    <script src="/js/alpine.min.js" defer></script>
+</div>
+
+</body>
+</html>

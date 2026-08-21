@@ -1,0 +1,38 @@
+<div th:fragment="card" class="account-card" data-testid="account-card">
+    <div class="account-card-top">
+        <div class="account-card-title">
+            <h4 class="account-name" th:text="${account.name}">Name</h4>
+            <button type="button" class="icon-btn-sm" title="Edit Account"
+                    th:attr="aria-label='Edit ' + ${account.name}, data-id=${account.id}"
+                    onclick="openAccountEdit(this.dataset.id)">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon-xs" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                </svg>
+            </button>
+        </div>
+        <span class="type-badge" th:text="${#strings.replace(account.type.name(), '_', ' ')}">Type</span>
+    </div>
+
+    <div class="account-card-balance">
+        <p class="balance-amount"
+           th:text="${account.type.name() == 'CREDIT_CARD' ? 'Debt: ' + fmt.format(account.balance.abs()) : fmt.format(account.balance)}">₹0.00</p>
+        <p th:if="${account.type.name() == 'FRIEND_LENDING'}"
+           class="lending-note"
+           th:classappend="${account.balance.signum() >= 0} ? 'amount-positive' : 'amount-negative'"
+           th:text="${account.balance.signum() >= 0} ? 'They owe you' : 'You owe them'">Note</p>
+    </div>
+
+    <div th:if="${account.type.name() == 'CREDIT_CARD' and account.creditLimit != null}" class="utilization">
+        <div class="utilization-row">
+            <span>Utilization</span>
+            <span th:text="${#numbers.formatDecimal((account.balance.abs().doubleValue() * 100) / account.creditLimit.doubleValue(), 0, 'COMMA', 1, 'POINT')} + '%'">0%</span>
+        </div>
+        <div class="utilization-bar">
+            <div class="utilization-fill"
+                 th:attr="style='width:' + ${((account.balance.abs().doubleValue() * 100) / account.creditLimit.doubleValue() > 100.0) ? 100.0 : ((account.balance.abs().doubleValue() * 100) / account.creditLimit.doubleValue())} + '%'"
+                 th:classappend="${(account.balance.abs().doubleValue() * 100) / account.creditLimit.doubleValue() > 80} ? 'utilization-fill-high'">
+            </div>
+        </div>
+        <p class="utilization-limit">Limit: <span th:text="${fmt.format(account.creditLimit)}">₹0.00</span></p>
+    </div>
+</div>

@@ -1,0 +1,38 @@
+<div id="dashboard-content" th:fragment="sections" class="dashboard-sections">
+    <div th:replace="~{fragments/account-list :: accounts-section}"></div>
+    <div th:replace="~{fragments/recent-transactions :: recent-section}"></div>
+
+    <section class="section" data-testid="insights-section">
+        <h2 class="section-title">Spending Insights</h2>
+        <div th:if="${insightLabels == null or #lists.isEmpty(insightLabels)}" class="empty-state">
+            <p class="text-sm text-muted">Add some expenses to see analytics.</p>
+        </div>
+        <div th:unless="${insightLabels == null or #lists.isEmpty(insightLabels)}"
+             class="grid grid-cols-1 lg:grid-cols-2 gap-8 insights-grid">
+            <div class="insight-card">
+                <h3 class="insight-card-title">Spending by Label</h3>
+                <ul class="insight-list">
+                    <li th:each="row : ${insightLabels}" class="insight-row">
+                        <span class="insight-label" th:text="${row.name}">Label</span>
+                        <span class="insight-bar-wrap" aria-hidden="true">
+                            <span class="insight-bar" th:style="'width:' + ${row.pct} + '%'"></span>
+                        </span>
+                        <span class="insight-value" th:text="${fmt.format(row.value)}">₹0.00</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="insight-card">
+                <h3 class="insight-card-title">Top Categories</h3>
+                <ul class="insight-list">
+                    <li th:each="row : ${insightCategories}" class="insight-row">
+                        <span class="insight-label" th:text="${row.name}">Category</span>
+                        <span class="insight-bar-wrap" aria-hidden="true">
+                            <span class="insight-bar" th:style="'width:' + ${row.pct} + '%'"></span>
+                        </span>
+                        <span class="insight-value" th:text="${fmt.format(row.value)}">₹0.00</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+</div>
