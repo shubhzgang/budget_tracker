@@ -5,6 +5,8 @@ import com.budget.tracker.model.AccountType;
 import com.budget.tracker.payload.response.ActivityResponse;
 import com.budget.tracker.service.AccountService;
 import com.budget.tracker.service.ActivityService;
+import com.budget.tracker.service.ExpenditureSummaryService;
+import com.budget.tracker.util.ExpenditurePeriods;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -32,16 +34,20 @@ public class DashboardViewController {
 
     private final AccountService accountService;
     private final ActivityService activityService;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
-    public DashboardViewController(AccountService accountService, ActivityService activityService) {
+    public DashboardViewController(AccountService accountService, ActivityService activityService,
+                                   ExpenditureSummaryService expenditureSummaryService) {
         this.accountService = accountService;
         this.activityService = activityService;
+        this.expenditureSummaryService = expenditureSummaryService;
     }
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         model.addAttribute("activePage", "dashboard");
         addAccountAttributes(model);
+        addPeriodAttributes(model);
         addRecentAttributes(model);
         addInsightsAttributes(model);
         return "dashboard";
@@ -50,9 +56,15 @@ public class DashboardViewController {
     @GetMapping("/dashboard/sections")
     public String sections(Model model) {
         addAccountAttributes(model);
+        addPeriodAttributes(model);
         addRecentAttributes(model);
         addInsightsAttributes(model);
         return "fragments/dashboard-sections";
+    }
+
+    private void addPeriodAttributes(Model model) {
+        model.addAttribute("expenditureSummary", expenditureSummaryService.getSummary());
+        model.addAttribute("periodRanges", ExpenditurePeriods.all());
     }
 
     @GetMapping("/dashboard/accounts")

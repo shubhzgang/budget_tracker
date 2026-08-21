@@ -117,24 +117,24 @@ Step-by-step plan to execute `frontend-rewrite-plan.md`. Work on branch `feature
 
 ## Phase 2: Expenditure Dashboard
 
-### Step 12 — Spending limits (Flyway + entity)
-- [ ] 12.1 `V2__add_spending_limits.sql`: add nullable `weekly_limit`, `monthly_limit` to `user_preferences`
-- [ ] 12.2 `UserPreference` entity: add fields; update DTO/request in `UserPreferenceController` if limits are settable
-- [ ] 12.3 Verify: `./gradlew test` + `make test-int` green (migration runs on fresh DB); manual: set limits via settings defaults form (add fields there in Step 12.4)
-- [ ] 12.4 `defaults-form.html`: weekly/monthly limit inputs
+**Decisions (user):** Step 12 (spending limits) dropped — no limits for now. Weeks/months are **stored in DB** for fast historical access; **days are computed live**. Stored totals are maintained **eagerly on every transaction create/update/delete** (no on-demand recompute; bulk backup import + fresh-DB migration backfill instead). **Asia/Kolkata is the app timezone everywhere** (`TimeZones.APP_ZONE`), fixing previous `ZoneOffset.UTC` day-boundary handling.
 
-### Step 13 — expenditure-summary endpoint
-- [ ] 13.1 `ExpenditureSummaryResponse` DTO (6 BigDecimal fields)
-- [ ] 13.2 `TransactionRepository`: native query, conditional aggregation, `type IN ('EXPENSE','LEND')`, ISO weeks
-- [ ] 13.3 `TransactionService.getExpenditureSummary()` + `GET /api/v1/transactions/expenditure-summary`
-- [ ] 13.4 Unit test (mock repo), `@WebMvcTest` for endpoint, `@DataJpaTest` with data across periods (today, yesterday, week boundaries, month boundaries, first day of week/month, empty)
-- [ ] 13.5 Verify: `./gradlew test` green; curl endpoint against demo data, spot-check totals
+### Step 12 — Spending limits
+- [x] DROPPED per user decision (2026-08-21) — no weekly/monthly limits, no progress bars.
+
+### Step 13 — expenditure-summary endpoint + stored period totals
+- [x] 13.1 `ExpenditureSummaryResponse` DTO (6 BigDecimal fields) in `payload/response`
+- [x] 13.2 `expenditure_period_totals` table (V2 Flyway migration w/ historical backfill via `AT TIME ZONE 'Asia/Kolkata'` ISO-week/month keys) + `ExpenditurePeriodTotalRepository` (JPQL conditional aggregation for live day totals, `findExpenditureDateAmounts` for recompute)
+- [x] 13.3 `ExpenditureSummaryService` (record/remove/recompute/clear + `getSummary`) + `GET /api/v1/transactions/expenditure-summary`; eager hooks in `TransactionService` create/update/delete (update moves totals when date/type/amount change), `BackupService` import → `recomputeForUser`, `clearUserData` → `clearUser`, DataSeeder covered via service hooks; `ExpenditurePeriods` util = single source of truth for the 6 ranges + week/month keys
+- [x] 13.4 Tests: `ExpenditureSummaryServiceTest` (Mockito), endpoint test in `TransactionControllerTest`, `ExpenditurePeriodTotalRepositoryTest` (@DataJpaTest, boundary precision at µs, user scoping, type filtering, empty)
+- [x] 13.5 Verify: `./gradlew test` green; live check — create/update/date-move/delete keeps thisWeek/thisMonth/lastMonth totals exact; API returns correct 6 totals (INCOME/BORROW excluded)
+- [x] Timezone: `TimeZones.APP_ZONE = Asia/Kolkata`; fixed `TransactionsViewController` day-boundary parsing (was UTC) + form default date; `#temporals.format` now renders via `appZone` request attribute (PageContextInterceptor) so dates display in IST
 
 ### Step 14 — Period cards UI
-- [ ] 14.1 `fragments/period-cards.html`: 6 cards (Yesterday, Today, Last Week, This Week, Last Month, This Month) linking to `/transactions?startDate=...&endDate=...`; progress bar on This Week / This Month when limit set ("₹3,200 of ₹5,000")
-- [ ] 14.2 `dashboard.html`: include period cards above transaction list
-- [ ] 14.3 `DashboardViewController`: fetch summary + preferences, pass to template
-- [ ] 14.4 Verify: `make run-demo` → cards show seeded totals; click each card → transactions list filtered correctly; limit over/under display correct; E2E still green (`make test-e2e`)
+- [x] 14.1 `fragments/period-cards.html`: 6 cards (Yesterday, Today, Last Week, This Week, Last Month, This Month) linking to `/transactions?startDate=...&endDate=...` (plain totals — no progress bars, limits dropped)
+- [x] 14.2 `dashboard-sections.html`: period cards between accounts and the transactions list (refreshed with `/dashboard/sections`)
+- [x] 14.3 `DashboardViewController`: `addPeriodAttributes` passes `expenditureSummary` + `periodRanges` to both `/dashboard` and `/dashboard/sections`
+- [x] 14.4 Verify: cards show correct totals (INCOME excluded); card click → transactions list filtered by that period; `make test-e2e` 81 green; `make test-int` green
 
 ### Step 15 — Final full verification
 - [ ] 15.1 `./gradlew test` green

@@ -5,6 +5,7 @@ import com.budget.tracker.model.User;
 import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.service.UserPreferenceService;
+import com.budget.tracker.util.TimeZones;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,6 +40,7 @@ public class PageContextInterceptor implements HandlerInterceptor {
             }
         }
         request.setAttribute("theme", theme);
+        request.setAttribute("appZone", TimeZones.APP_ZONE);
 
         if (AuthContext.getUserId() != null) {
             User user = userRepository.findById(AuthContext.getUserId()).orElse(null);

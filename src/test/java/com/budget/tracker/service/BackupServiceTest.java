@@ -45,6 +45,8 @@ class BackupServiceTest {
     private UserPreferenceRepository userPreferenceRepository;
     @Mock
     private EntityManager entityManager;
+    @Mock
+    private ExpenditureSummaryService expenditureSummaryService;
 
     private BackupService backupService;
     private UUID userId;
@@ -63,7 +65,8 @@ class BackupServiceTest {
                 transferRepository,
                 backupRecordRepository,
                 userPreferenceRepository,
-                entityManager
+                entityManager,
+                expenditureSummaryService
         );
         userId = UUID.randomUUID();
         ReflectionTestUtils.setField(backupService, "backupDirectory", tempDir.toString());

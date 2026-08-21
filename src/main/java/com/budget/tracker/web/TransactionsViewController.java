@@ -16,6 +16,7 @@ import com.budget.tracker.service.LabelService;
 import com.budget.tracker.service.TransactionService;
 import com.budget.tracker.service.TransferService;
 import com.budget.tracker.service.UserPreferenceService;
+import com.budget.tracker.util.TimeZones;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,7 +35,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -312,7 +312,7 @@ public class TransactionsViewController {
     }
 
     private OffsetDateTime parseDate(String date) {
-        return LocalDate.parse(date).atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+        return LocalDate.parse(date).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
     }
 
     private String formNumber(BigDecimal value) {
@@ -341,8 +341,8 @@ public class TransactionsViewController {
 
     private void addListAttributes(Model model, String search, String type, UUID accountId,
                                    LocalDate startDate, LocalDate endDate, int page) {
-        OffsetDateTime start = startDate == null ? null : startDate.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
-        OffsetDateTime end = endDate == null ? null : endDate.atTime(LocalTime.of(23, 59, 59)).atOffset(ZoneOffset.UTC);
+        OffsetDateTime start = startDate == null ? null : startDate.atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+        OffsetDateTime end = endDate == null ? null : endDate.atTime(LocalTime.of(23, 59, 59)).atZone(TimeZones.APP_ZONE).toOffsetDateTime();
         Page<ActivityResponse> items = activityService.getActivity(
                 search, type, accountId, start, end,
                 PageRequest.of(page, LIST_PAGE_SIZE, Sort.by(Sort.Direction.DESC, "transactionDate")));
@@ -432,7 +432,7 @@ public class TransactionsViewController {
         model.addAttribute("isTransferEdit", isTransfer);
         model.addAttribute("showTransferOption", item == null || isTransfer);
         model.addAttribute("formDate", item == null
-                ? LocalDate.now().toString()
-                : item.getTransactionDate().toLocalDate().toString());
+                ? LocalDate.now(TimeZones.APP_ZONE).toString()
+                : item.getTransactionDate().atZoneSameInstant(TimeZones.APP_ZONE).toLocalDate().toString());
     }
 }

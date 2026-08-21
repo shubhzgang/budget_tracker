@@ -34,6 +34,7 @@ public class BackupService {
     private final BackupRecordRepository backupRecordRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final EntityManager entityManager;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
     @Value("${app.backup.directory:backups}")
     private String backupDirectory;
@@ -181,6 +182,7 @@ public class BackupService {
             }
             entityManager.createNativeQuery(statement).executeUpdate();
         }
+        expenditureSummaryService.recomputeForUser(userId);
     }
 
     @Transactional
@@ -252,6 +254,7 @@ public class BackupService {
                 transactionRepository.save(t);
             }
         }
+        expenditureSummaryService.recomputeForUser(userId);
     }
 
     public List<BackupRecord> getBackupHistory(UUID userId) {
@@ -281,6 +284,7 @@ public class BackupService {
         categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
         labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
         userPreferenceRepository.findByUserId(userId).ifPresent(userPreferenceRepository::delete);
+        expenditureSummaryService.clearUser(userId);
     }
 
     private BackupRecord createRecord(UUID userId, String filename, String format, long size) {

@@ -43,6 +43,9 @@ class TransactionServiceTest {
     @Mock
     private LabelRepository labelRepository;
 
+    @Mock
+    private ExpenditureSummaryService expenditureSummaryService;
+
     private TransactionService transactionService;
 
     private UUID userId;
@@ -56,7 +59,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        transactionService = new TransactionService(transactionRepository, accountRepository, categoryRepository, labelRepository);
+        transactionService = new TransactionService(transactionRepository, accountRepository, categoryRepository, labelRepository, expenditureSummaryService);
         userId = UUID.randomUUID();
         transactionId = UUID.randomUUID();
         accountId = UUID.randomUUID();

@@ -6,7 +6,7 @@
             <p class="activity-title font-semibold"
                th:text="${item.kind == 'TRANSFER' ? (item.description != null and !item.description.isEmpty() ? item.description : 'Transfer') : (item.description != null and !item.description.isEmpty() ? item.description : (item.category != null ? item.category.name : 'No description'))}">Title</p>
             <div class="activity-meta">
-                <span class="meta-text" th:text="${#temporals.format(item.transactionDate, 'MMM d, yyyy')}">date</span>
+                <span class="meta-text" th:text="${#temporals.format(item.transactionDate.atZoneSameInstant(appZone), 'MMM d, yyyy')}">date</span>
                 <span class="meta-dot">•</span>
                 <span class="meta-text" th:text="${item.account.name + (item.kind == 'TRANSFER' ? ' → ' + item.toAccount.name : '')}">account</span>
                 <span class="meta-dot" th:each="label : ${item.labels}">•</span>

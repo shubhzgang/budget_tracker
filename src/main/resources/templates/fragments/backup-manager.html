@@ -53,7 +53,7 @@
                 </thead>
                 <tbody>
                 <tr th:each="b : ${backups}">
-                    <td th:text="${#temporals.format(b.createdAt, 'MMM d, yyyy h:mm a')}">date</td>
+                    <td th:text="${#temporals.format(b.createdAt.atZoneSameInstant(appZone), 'MMM d, yyyy h:mm a')}">date</td>
                     <td class="mono" th:text="${b.filename}">file.sql</td>
                     <td><span class="format-badge" th:text="${b.format}">SQL</span></td>
                     <td class="muted" th:text="${b.sizeBytes}">0</td>

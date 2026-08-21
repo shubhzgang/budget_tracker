@@ -3,6 +3,8 @@ package com.budget.tracker.controller;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.payload.request.TransactionRequest;
+import com.budget.tracker.payload.response.ExpenditureSummaryResponse;
+import com.budget.tracker.service.ExpenditureSummaryService;
 import com.budget.tracker.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -21,9 +23,17 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService,
+                                 ExpenditureSummaryService expenditureSummaryService) {
         this.transactionService = transactionService;
+        this.expenditureSummaryService = expenditureSummaryService;
+    }
+
+    @GetMapping("/expenditure-summary")
+    public ExpenditureSummaryResponse getExpenditureSummary() {
+        return expenditureSummaryService.getSummary();
     }
 
     @GetMapping
