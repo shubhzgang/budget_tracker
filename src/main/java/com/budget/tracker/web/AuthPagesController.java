@@ -29,6 +29,8 @@ public class AuthPagesController {
 
     @Value("${app.auth.register-enabled:false}")
     private boolean registerEnabled;
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -110,7 +112,7 @@ public class AuthPagesController {
     private ResponseCookie jwtCookie(String jwt) {
         return ResponseCookie.from("jwt", jwt)
                 .httpOnly(true)
-                .secure(false) // set true in production
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ofSeconds(86400))
                 .sameSite("Lax")

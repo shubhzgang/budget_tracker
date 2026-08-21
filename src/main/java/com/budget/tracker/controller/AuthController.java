@@ -31,6 +31,8 @@ import java.time.OffsetDateTime;
 public class AuthController {
     @Value("${app.auth.register-enabled:false}")
     private boolean registerEnabled;
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
@@ -68,7 +70,7 @@ public class AuthController {
     private ResponseCookie jwtCookie(String jwt) {
         return ResponseCookie.from("jwt", jwt)
                 .httpOnly(true)
-                .secure(false) // set true in production
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ofSeconds(86400))
                 .sameSite("Lax")

@@ -3,7 +3,7 @@
  * make test-e2e
  */
 import { test, expect } from '@playwright/test';
-import { testPassword, uniqueEmail } from './helpers';
+import { registerAndLogin, testPassword, uniqueEmail } from './helpers';
 
 test.describe('Authentication Flow', () => {
   test('should show error message on invalid login', async ({ page }) => {
@@ -16,6 +16,17 @@ test.describe('Authentication Flow', () => {
     // Should stay on login page and show error
     await expect(page).toHaveURL(/.*login/);
     await expect(page.getByText('Bad credentials')).toBeVisible();
+  });
+
+  test('should set the JWT cookie with HttpOnly, Secure, and Lax flags', async ({ page }) => {
+    await registerAndLogin(page, uniqueEmail('cookie-flags'), testPassword);
+
+    const jwt = (await page.context().cookies()).find((c) => c.name === 'jwt');
+    expect(jwt).toBeDefined();
+    expect(jwt?.httpOnly).toBe(true);
+    expect(jwt?.secure).toBe(true);
+    expect(jwt?.sameSite).toBe('Lax');
+    expect(jwt?.path).toBe('/');
   });
 
   test('should show the register page when registration is enabled', async ({ page }) => {
