@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -34,8 +36,17 @@ class ExpenditurePeriodTotalRepositoryTest {
     @Autowired
     private ExpenditurePeriodTotalRepository periodRepository;
 
+    @Autowired
+    private Environment environment;
+
     private UUID userId;
     private Account account;
+
+    private void assumePostgres() {
+        String url = environment.getProperty("spring.datasource.url", "");
+        assumeTrue(url.startsWith("jdbc:postgresql"),
+                "adjustTotal uses PostgreSQL ON CONFLICT, unsupported by H2; skipped on: " + url);
+    }
 
     @BeforeEach
     void setUp() {
@@ -154,5 +165,39 @@ class ExpenditurePeriodTotalRepositoryTest {
                 .orElseThrow();
 
         assertThat(found.getTotal()).isEqualByComparingTo("12.50");
+    }
+
+    @Test
+    void adjustTotal_upsertsAndAccumulates() {
+        assumePostgres();
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        String weekKey = ExpenditurePeriods.weekKey(today);
+        String monthKey = ExpenditurePeriods.monthKey(today);
+
+        periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, new BigDecimal("30.00"));
+        periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, new BigDecimal("12.50"));
+        periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_MONTH, monthKey, new BigDecimal("7.25"));
+
+        assertThat(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey))
+                .hasValueSatisfying(row -> assertThat(row.getTotal()).isEqualByComparingTo("42.50"));
+        assertThat(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_MONTH, monthKey))
+                .hasValueSatisfying(row -> assertThat(row.getTotal()).isEqualByComparingTo("7.25"));
+        assertThat(periodRepository.findAllByUserId(userId)).hasSize(2);
+    }
+
+    @Test
+    void deleteZeroed_removesOnlyMatchingZeroRow() {
+        assumePostgres();
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        String weekKey = ExpenditurePeriods.weekKey(today);
+
+        periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, new BigDecimal("10.00"));
+
+        periodRepository.deleteZeroed(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey);
+        assertThat(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey)).isPresent();
+
+        periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, new BigDecimal("-10.00"));
+        periodRepository.deleteZeroed(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey);
+        assertThat(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey)).isEmpty();
     }
 }

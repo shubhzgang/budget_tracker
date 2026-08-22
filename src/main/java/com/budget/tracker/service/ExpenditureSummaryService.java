@@ -7,6 +7,7 @@ import com.budget.tracker.payload.response.ExpenditureSummaryResponse;
 import com.budget.tracker.repository.ExpenditurePeriodTotalRepository;
 import com.budget.tracker.util.ExpenditurePeriods;
 import com.budget.tracker.util.TimeZones;
+import com.github.f4b6a3.uuid.UuidCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -120,22 +121,11 @@ public class ExpenditureSummaryService {
     }
 
     private void adjust(UUID userId, String periodType, String periodKey, BigDecimal delta) {
-        ExpenditurePeriodTotal row = periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, periodType, periodKey)
-                .orElseGet(() -> {
-                    ExpenditurePeriodTotal fresh = new ExpenditurePeriodTotal();
-                    fresh.setUserId(userId);
-                    fresh.setPeriodType(periodType);
-                    fresh.setPeriodKey(periodKey);
-                    fresh.setTotal(BigDecimal.ZERO);
-                    return fresh;
-                });
-        BigDecimal newTotal = row.getTotal().add(delta);
-        if (newTotal.compareTo(BigDecimal.ZERO) == 0) {
-            periodRepository.delete(row);
-        } else {
-            row.setTotal(newTotal);
-            periodRepository.save(row);
-        }
+        // Atomic DB-side upsert: concurrent adjustments for the same user+period
+        // serialize on the row lock instead of racing through a read-modify-write.
+        periodRepository.adjustTotal(UuidCreator.getTimeOrderedEpoch(), userId, periodType, periodKey, delta);
+        // Keep the table free of zero-total rows; readers already treat absent as ZERO.
+        periodRepository.deleteZeroed(userId, periodType, periodKey);
     }
 
     private void saveRow(UUID userId, String periodType, String periodKey, BigDecimal total) {

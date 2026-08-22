@@ -60,21 +60,18 @@ class ExpenditureSummaryServiceTest {
     // -- recordExpenditure --
 
     @Test
-    void recordExpenditure_expense_savesWeekAndMonthRows() {
+    void recordExpenditure_expense_upsertsWeekAndMonthRows() {
         OffsetDateTime date = LocalDate.now(TimeZones.APP_ZONE).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
 
         service.recordExpenditure(userId, date, TransactionType.EXPENSE, new BigDecimal("42.00"));
 
         LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
-        verify(periodRepository, org.mockito.Mockito.times(2)).save(any(ExpenditurePeriodTotal.class));
-        verify(periodRepository).save(org.mockito.ArgumentMatchers.argThat(r ->
-                r.getPeriodType().equals(ExpenditurePeriodTotal.PERIOD_WEEK)
-                        && r.getPeriodKey().equals(ExpenditurePeriods.weekKey(today))
-                        && r.getTotal().compareTo(new BigDecimal("42.00")) == 0));
-        verify(periodRepository).save(org.mockito.ArgumentMatchers.argThat(r ->
-                r.getPeriodType().equals(ExpenditurePeriodTotal.PERIOD_MONTH)
-                        && r.getPeriodKey().equals(ExpenditurePeriods.monthKey(today))
-                        && r.getTotal().compareTo(new BigDecimal("42.00")) == 0));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_WEEK), eq(ExpenditurePeriods.weekKey(today)),
+                eq(new BigDecimal("42.00")));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_MONTH), eq(ExpenditurePeriods.monthKey(today)),
+                eq(new BigDecimal("42.00")));
     }
 
     @Test
@@ -83,47 +80,42 @@ class ExpenditureSummaryServiceTest {
 
         service.recordExpenditure(userId, date, TransactionType.INCOME, new BigDecimal("42.00"));
 
-        verify(periodRepository, never()).save(any(ExpenditurePeriodTotal.class));
-        verify(periodRepository, never()).delete(any(ExpenditurePeriodTotal.class));
+        verify(periodRepository, never()).adjustTotal(any(UUID.class), any(UUID.class), any(), any(), any());
+        verify(periodRepository, never()).deleteZeroed(any(UUID.class), any(), any());
     }
 
     @Test
-    void recordExpenditure_addsToExistingRow() {
+    void recordExpenditure_lend_passesPositiveDeltaPerPeriodKey() {
         OffsetDateTime date = LocalDate.now(TimeZones.APP_ZONE).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
         LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
-        String weekKey = ExpenditurePeriods.weekKey(today);
-        when(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey))
-                .thenReturn(java.util.Optional.of(row(ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "10.00")));
-        when(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_MONTH, ExpenditurePeriods.monthKey(today)))
-                .thenReturn(java.util.Optional.empty());
 
         service.recordExpenditure(userId, date, TransactionType.LEND, new BigDecimal("5.00"));
 
-        verify(periodRepository).save(org.mockito.ArgumentMatchers.argThat(r ->
-                r.getPeriodType().equals(ExpenditurePeriodTotal.PERIOD_WEEK)
-                        && r.getTotal().compareTo(new BigDecimal("15.00")) == 0));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_WEEK), eq(ExpenditurePeriods.weekKey(today)),
+                eq(new BigDecimal("5.00")));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_MONTH), eq(ExpenditurePeriods.monthKey(today)),
+                eq(new BigDecimal("5.00")));
     }
 
     // -- removeExpenditure --
 
     @Test
-    void removeExpenditure_deletesRowWhenTotalReachesZero() {
+    void removeExpenditure_appliesNegatedDeltaAndCleansUpZeroRows() {
         OffsetDateTime date = LocalDate.now(TimeZones.APP_ZONE).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
         LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
         String weekKey = ExpenditurePeriods.weekKey(today);
         String monthKey = ExpenditurePeriods.monthKey(today);
-        when(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey))
-                .thenReturn(java.util.Optional.of(row(ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "25.00")));
-        when(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_MONTH, monthKey))
-                .thenReturn(java.util.Optional.of(row(ExpenditurePeriodTotal.PERIOD_MONTH, monthKey, "100.00")));
 
         service.removeExpenditure(userId, date, TransactionType.EXPENSE, new BigDecimal("25.00"));
 
-        verify(periodRepository).delete(org.mockito.ArgumentMatchers.argThat(r ->
-                r.getPeriodType().equals(ExpenditurePeriodTotal.PERIOD_WEEK) && r.getPeriodKey().equals(weekKey)));
-        verify(periodRepository).save(org.mockito.ArgumentMatchers.argThat(r ->
-                r.getPeriodType().equals(ExpenditurePeriodTotal.PERIOD_MONTH)
-                        && r.getTotal().compareTo(new BigDecimal("75.00")) == 0));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_WEEK), eq(weekKey), eq(new BigDecimal("-25.00")));
+        verify(periodRepository).adjustTotal(any(UUID.class), eq(userId),
+                eq(ExpenditurePeriodTotal.PERIOD_MONTH), eq(monthKey), eq(new BigDecimal("-25.00")));
+        verify(periodRepository).deleteZeroed(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey);
+        verify(periodRepository).deleteZeroed(userId, ExpenditurePeriodTotal.PERIOD_MONTH, monthKey);
     }
 
     // -- recomputeForUser --
