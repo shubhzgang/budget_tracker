@@ -108,7 +108,7 @@ test-e2e: build
 # Launch the entire stack for local use
 run-stack: build
 	@echo "Launching Budget Tracker stack..."
-	docker compose up --build -d
+	docker compose up --build -d --remove-orphans
 
 # Stop the stack and remove volumes
 stop-stack:
