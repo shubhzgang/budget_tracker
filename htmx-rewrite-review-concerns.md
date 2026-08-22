@@ -58,3 +58,23 @@ Constant in Java (`TimeZones.APP_ZONE`), literal in the V2 Flyway SQL backfill, 
 ## 9. Test coverage regression
 
 ~2k lines of frontend unit tests deleted with no JS test runner replacement — the Playwright e2e suite is now the only frontend safety net and cannot cover the edge cases vitest did.
+
+---
+
+## Deployment upgrade verification (master → branch, live simulation)
+
+Simulated a real upgrade: wiped Docker state, deployed master on a fresh volume, seeded data via API (3 accounts, 7 transactions incl. transfer, custom category/label, SQL+CSV backups exported), then deployed this branch over the same volume.
+
+**Results — all verified working:**
+- Flyway V2 applies cleanly to existing V1 data; backfilled week/month totals are exact (verified against hand-computed Asia/Kolkata expectations, e.g. W34=2350.50, Jul=75.00).
+- All reads identical post-upgrade: accounts / activity / categories / labels / preferences byte-identical vs master baseline.
+- Old Bearer tokens remain valid (same JWT secret) — API clients unaffected.
+- Writes work on branch build: transaction create/edit/delete and transfers update stored totals correctly at every step.
+- Web layer works: `/` redirect logic, unauth → `/login?expired=true`, form login sets HttpOnly cookie, dashboard renders.
+- **Rollback is safe:** deploying master back over a V2 database boots fine (Flyway tolerates the applied-but-absent V2; extra table ignored), reads/writes still work.
+
+**Breakage found & fixed during this test — backup import failed on any account with existing totals:**
+- `BackupService.restoreBackup` → `ExpenditureSummaryService.recomputeForUser()` used a derived `deleteAllByUserId` (entity-by-entity removes queued in Hibernate's action queue). Hibernate flushes **inserts before deletes**, so re-inserting recomputed rows hit `uq_expenditure_period_totals` while old rows were still present. This is pre-existing on the branch tip (unrelated to the upsert fix) and broke every SQL/CSV restore for live accounts.
+- **Fix:** replaced with an immediate bulk JPQL delete (`@Modifying(flushAutomatically = true)`); verified by importing a master-generated SQL backup and CSV round-trip into the upgraded app — restore succeeds, totals/accounts/activity return exactly to baseline.
+
+**Pre-existing quirk confirmed (not a branch regression):** CSV import duplicates transactions when imported into a populated account (master's `importCsv` only adds, never clears); stored totals faithfully reflect the doubled data.

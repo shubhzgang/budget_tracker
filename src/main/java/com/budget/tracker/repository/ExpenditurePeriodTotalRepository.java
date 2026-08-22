@@ -39,7 +39,9 @@ public interface ExpenditurePeriodTotalRepository extends JpaRepository<Expendit
 
     List<ExpenditurePeriodTotal> findAllByUserId(UUID userId);
 
-    void deleteAllByUserId(UUID userId);
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM ExpenditurePeriodTotal t WHERE t.userId = :userId")
+    void deleteAllByUserId(@Param("userId") UUID userId);
 
     @Query("SELECT t.transactionDate, t.amount FROM Transaction t WHERE t.userId = :userId AND t.type IN (:types)")
     List<Object[]> findExpenditureDateAmounts(@Param("userId") UUID userId, @Param("types") List<TransactionType> types);
