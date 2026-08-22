@@ -362,6 +362,7 @@ public class TransactionsViewController {
     }
 
     private void appendParam(StringBuilder qs, String name, String value) {
+        if (value == null) return;
         if (qs.length() > 0) qs.append('&');
         qs.append(name).append('=').append(java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8));
     }
