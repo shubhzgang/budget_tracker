@@ -1,0 +1,70 @@
+<div id="backup-manager" class="card pad space-y-8" xmlns:th="http://www.thymeleaf.org">
+    <div>
+        <h3 class="section-title">Data Management</h3>
+        <p class="muted">Export your data for backup or restore it from a previous file.</p>
+
+        <div class="backup-actions">
+            <button type="button" class="btn-primary"
+                    hx-post="/backups/export?format=SQL"
+                    hx-target="#backup-manager"
+                    hx-swap="outerHTML"
+                    hx-disabled hx-disabled-swapping>
+                Export SQL (Full)
+            </button>
+            <button type="button" class="btn-secondary"
+                    hx-post="/backups/export?format=CSV"
+                    hx-target="#backup-manager"
+                    hx-swap="outerHTML"
+                    hx-disabled hx-disabled-swapping>
+                Export CSV (Transactions)
+            </button>
+            <div class="backup-restore">
+                <input type="file" name="file" id="restore-upload" class="hidden-input" accept=".sql,.csv"
+                       hx-post="/backups/import"
+                       hx-trigger="change"
+                       hx-encoding="multipart/form-data"
+                       hx-target="#backup-manager"
+                       hx-swap="outerHTML">
+                <label for="restore-upload" class="btn-secondary btn-label">Restore from Backup</label>
+            </div>
+            <button type="button" class="btn-danger"
+                    hx-delete="/backups/clear"
+                    hx-confirm="Are you sure you want to delete ALL your data? This cannot be undone."
+                    hx-target="#backup-manager"
+                    hx-swap="outerHTML">
+                Delete All Data
+            </button>
+        </div>
+
+        <h4 class="subsection-title">Backup History (on server)</h4>
+        <th:block th:if="${#lists.isEmpty(backups)}">
+            <p class="muted italic">No backups found.</p>
+        </th:block>
+        <div class="backup-table-wrap" th:unless="${#lists.isEmpty(backups)}">
+            <table class="backup-table">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Filename</th>
+                    <th>Format</th>
+                    <th>Size</th>
+                    <th class="text-right">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="b : ${backups}">
+                    <td th:text="${#temporals.format(b.createdAt.atZoneSameInstant(appZone), 'MMM d, yyyy h:mm a')}">date</td>
+                    <td class="mono" th:text="${b.filename}">file.sql</td>
+                    <td><span class="format-badge" th:text="${b.format}">SQL</span></td>
+                    <td class="muted" th:text="${b.sizeBytes}">0</td>
+                    <td class="text-right">
+                        <button type="button" class="backup-download"
+                                th:attr="data-url='/backups/' + ${b.id} + '/download'"
+                                onclick="window.location.href = this.dataset.url">Download</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

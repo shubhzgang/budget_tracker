@@ -11,6 +11,8 @@ import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -28,6 +31,8 @@ import java.time.OffsetDateTime;
 public class AuthController {
     @Value("${app.auth.register-enabled:false}")
     private boolean registerEnabled;
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
@@ -55,9 +60,21 @@ public class AuthController {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                userDetails.getId(),
-                userDetails.getUsername()));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtCookie(jwt).toString())
+                .body(new JwtResponse(jwt,
+                        userDetails.getId(),
+                        userDetails.getUsername()));
+    }
+
+    private ResponseCookie jwtCookie(String jwt) {
+        return ResponseCookie.from("jwt", jwt)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(Duration.ofSeconds(86400))
+                .sameSite("Lax")
+                .build();
     }
 
     @PostMapping("/register")
@@ -84,6 +101,14 @@ public class AuthController {
         categoryService.initializeDefaultCategories(savedUser.getId());
         labelService.initializeDefaultLabels(savedUser.getId());
 
-        return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+        // Auto-login: set the JWT cookie like /login does
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(signUpRequest.getEmail(), signUpRequest.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtils.generateJwtToken(authentication.getName());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtCookie(jwt).toString())
+                .body(new MessageResponse("User registered successfully!"));
     }
 }

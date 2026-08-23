@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — BudgetTracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header th:replace="~{layout :: desktop-nav}"></header>
+<header th:replace="~{layout :: mobile-header}"></header>
+<main class="page-main">
+    <h2 class="page-title">Settings</h2>
+
+    <div class="settings-tabs">
+        <button type="button" class="settings-tab active" data-tab="categories">Categories</button>
+        <button type="button" class="settings-tab" data-tab="labels">Labels</button>
+        <button type="button" class="settings-tab" data-tab="defaults">Defaults</button>
+        <button type="button" class="settings-tab" data-tab="data">Data &amp; Backup</button>
+    </div>
+
+    <div id="settings-panels" data-active="categories">
+        <section class="settings-panel" data-panel="categories">
+            <div th:replace="~{fragments/category-manager}"></div>
+        </section>
+    </div>
+    <!-- Panels stay in <template> while inactive (not rendered, like React conditional tabs) -->
+    <template data-panel-src="categories">
+        <div th:replace="~{fragments/category-manager}"></div>
+    </template>
+    <template data-panel-src="labels">
+        <div th:replace="~{fragments/label-manager}"></div>
+    </template>
+    <template data-panel-src="defaults">
+        <div th:replace="~{fragments/defaults-form}"></div>
+    </template>
+    <template data-panel-src="data">
+        <div th:replace="~{fragments/backup-manager}"></div>
+    </template>
+</main>
+<nav th:replace="~{layout :: mobile-bottom-nav}"></nav>
+<div th:replace="~{layout :: fab-modal}"></div>
+<div th:replace="~{layout :: toast-container}"></div>
+<span th:replace="~{layout :: scripts}"></span>
+</body>
+</html>

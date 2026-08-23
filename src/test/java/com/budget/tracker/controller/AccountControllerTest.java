@@ -86,6 +86,7 @@ public class AccountControllerTest {
 
         mockMvc.perform(post("/api/v1/accounts")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(account)))
                 .andExpect(status().isOk())
@@ -137,6 +138,7 @@ public class AccountControllerTest {
 
         mockMvc.perform(put("/api/v1/accounts/" + accountId)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(details)))
                 .andExpect(status().isOk())
@@ -146,7 +148,8 @@ public class AccountControllerTest {
     @Test
     void shouldDeleteAccount() throws Exception {
         mockMvc.perform(delete("/api/v1/accounts/" + accountId)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
     }
 }

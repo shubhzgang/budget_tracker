@@ -1,0 +1,37 @@
+<div class="emoji-picker-wrap" x-data="emojiPicker()" xmlns:th="http://www.thymeleaf.org">
+    <div class="emoji-trigger">
+        <input type="text" name="icon" x-model="value"
+               placeholder="🍔" aria-label="Emoji"
+               class="emoji-input" @input="onEmojiInput($event)">
+        <button type="button" class="emoji-toggle" @click="toggle()">Pick emoji</button>
+    </div>
+    <div class="emoji-popover" x-show="open" x-cloak>
+        <div class="emoji-search-wrap">
+            <input type="text" x-model="search" placeholder="Search emoji…">
+        </div>
+        <div class="emoji-tabs" x-show="!search.trim()" x-cloak>
+            <template x-for="(sec, i) in sections" :key="sec.label">
+                <button type="button" class="emoji-tab"
+                        :class="activeSection === i ? 'active' : ''"
+                        :title="sec.label" x-text="sec.emoji"
+                        @click="selectSection(i)"></button>
+            </template>
+        </div>
+        <div class="emoji-grid-wrap" x-ref="grid">
+            <template x-for="sec in visibleSections()" :key="sec.label">
+                <div class="emoji-section">
+                    <p class="emoji-section-label" x-text="sec.label"></p>
+                    <div class="emoji-grid">
+                        <template x-for="it in sec.items" :key="it.emoji">
+                            <button type="button" class="emoji-btn"
+                                    :class="value === it.emoji ? 'ring-primary' : ''"
+                                    x-text="it.emoji" :title="it.emoji"
+                                    @click="pick(it.emoji)"></button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <p class="emoji-empty" x-show="visibleSections().length > 0 && visibleSections()[0].items.length === 0">No emoji found</p>
+        </div>
+    </div>
+</div>

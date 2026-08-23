@@ -57,6 +57,16 @@ public class ActivityService {
         return new PageImpl<>(responses, pageable, items.getTotalElements());
     }
 
+    public ActivityResponse getActivityById(UUID id) {
+        UUID userId = getCurrentUserId();
+        ActivityItem item = activityRepository.findByIdWithRelations(id, userId);
+        if (item == null) {
+            throw new RuntimeException("Transaction not found or access denied");
+        }
+        populateLabels(List.of(item));
+        return mapToResponse(item);
+    }
+
     public List<ActivityResponse> getActivityForAccount(UUID accountId) {
         UUID userId = getCurrentUserId();
         List<ActivityItem> items = activityRepository.findByAccountId(userId, accountId);

@@ -4,7 +4,9 @@ import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.payload.request.TransactionRequest;
+import com.budget.tracker.payload.response.ExpenditureSummaryResponse;
 import com.budget.tracker.security.UserDetailsImpl;
+import com.budget.tracker.service.ExpenditureSummaryService;
 import com.budget.tracker.service.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +47,9 @@ public class TransactionControllerTest {
     @MockBean
     private TransactionService transactionService;
 
+    @MockBean
+    private ExpenditureSummaryService expenditureSummaryService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -84,6 +89,7 @@ public class TransactionControllerTest {
 
         mockMvc.perform(post("/api/v1/transactions")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -110,6 +116,7 @@ public class TransactionControllerTest {
 
         mockMvc.perform(put("/api/v1/transactions/" + tid)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -135,7 +142,30 @@ public class TransactionControllerTest {
     void shouldDeleteTransaction() throws Exception {
         UUID tid = UUID.randomUUID();
         mockMvc.perform(delete("/api/v1/transactions/" + tid)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldGetExpenditureSummary() throws Exception {
+        ExpenditureSummaryResponse summary = new ExpenditureSummaryResponse();
+        summary.setYesterday(new BigDecimal("1.00"));
+        summary.setToday(new BigDecimal("2.00"));
+        summary.setLastWeek(new BigDecimal("3.00"));
+        summary.setThisWeek(new BigDecimal("4.00"));
+        summary.setLastMonth(new BigDecimal("5.00"));
+        summary.setThisMonth(new BigDecimal("6.00"));
+        when(expenditureSummaryService.getSummary()).thenReturn(summary);
+
+        mockMvc.perform(get("/api/v1/transactions/expenditure-summary")
+                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.yesterday").value(1.00))
+                .andExpect(jsonPath("$.today").value(2.00))
+                .andExpect(jsonPath("$.lastWeek").value(3.00))
+                .andExpect(jsonPath("$.thisWeek").value(4.00))
+                .andExpect(jsonPath("$.lastMonth").value(5.00))
+                .andExpect(jsonPath("$.thisMonth").value(6.00));
     }
 }

@@ -91,7 +91,7 @@ test.describe('Transaction and Transfer Update Bug Fixes', () => {
 
     // Check account balance updated (1000 - 120 = 880)
     await page.click('nav >> text=Dashboard');
-    const card = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Checking' }) });
+    const card = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Checking' }) });
     await expect(card.getByText('₹880.00')).toBeVisible();
   });
 
@@ -112,8 +112,8 @@ test.describe('Transaction and Transfer Update Bug Fixes', () => {
 
     // Verify initial balances (Alpha: 800, Beta: 500)
     await page.click('nav >> text=Dashboard');
-    const cardAlpha = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Bank Alpha' }) });
-    const cardBeta = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Bank Beta' }) });
+    const cardAlpha = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Bank Alpha' }) });
+    const cardBeta = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Bank Beta' }) });
     await expect(cardAlpha.getByText('₹800.00')).toBeVisible();
     await expect(cardBeta.getByText('₹500.00')).toBeVisible();
 
@@ -174,8 +174,8 @@ test.describe('Transaction and Transfer Update Bug Fixes', () => {
 
     // Verify balances (Account X: 1000, Account Y: 350)
     await page.click('nav >> text=Dashboard');
-    const cardX = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Account X' }) });
-    const cardY = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Account Y' }) });
+    const cardX = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Account X' }) });
+    const cardY = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Account Y' }) });
     await expect(cardX.getByText('₹1,000.00')).toBeVisible();
     await expect(cardY.getByText('₹350.00')).toBeVisible();
   });
@@ -229,8 +229,8 @@ test.describe('Transaction and Transfer Update Bug Fixes', () => {
 
     // Verify balances (Source: 600, Target: 600)
     await page.click('nav >> text=Dashboard');
-    const cardSrc = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Source Account' }) });
-    const cardTgt = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Target Account' }) });
+    const cardSrc = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Source Account' }) });
+    const cardTgt = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Target Account' }) });
     await expect(cardSrc.getByText('₹600.00')).toBeVisible();
     await expect(cardTgt.getByText('₹600.00')).toBeVisible();
   });
@@ -280,8 +280,8 @@ test.describe('Transaction and Transfer Update Bug Fixes', () => {
 
     // Verify balances (Acc 1: 700, Acc 2: 400)
     await page.click('nav >> text=Dashboard');
-    const card1 = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Acc 1' }) });
-    const card2 = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Acc 2' }) });
+    const card1 = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Acc 1' }) });
+    const card2 = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Acc 2' }) });
     await expect(card1.getByText('₹700.00')).toBeVisible();
     await expect(card2.getByText('₹400.00')).toBeVisible();
   });

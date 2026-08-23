@@ -1,0 +1,43 @@
+<div th:fragment="row" class="activity-row group" data-testid="activity-row">
+    <div class="activity-row-main">
+        <div class="activity-icon"
+             th:text="${(item.category != null and item.category.icon != null and !item.category.icon.isEmpty()) ? item.category.icon : (item.kind == 'TRANSFER' ? '🔄' : '💸')}">💸</div>
+        <div class="activity-row-text">
+            <p class="activity-title font-semibold"
+               th:text="${item.kind == 'TRANSFER' ? (item.description != null and !item.description.isEmpty() ? item.description : 'Transfer') : (item.description != null and !item.description.isEmpty() ? item.description : (item.category != null ? item.category.name : 'No description'))}">Title</p>
+            <div class="activity-meta">
+                <span class="meta-text" th:text="${#temporals.format(item.transactionDate.atZoneSameInstant(appZone), 'MMM d, yyyy')}">date</span>
+                <span class="meta-dot">•</span>
+                <span class="meta-text" th:text="${item.account.name + (item.kind == 'TRANSFER' ? ' → ' + item.toAccount.name : '')}">account</span>
+                <span class="meta-dot" th:each="label : ${item.labels}">•</span>
+                <span class="label-chip bg-accent" th:each="label : ${item.labels}" th:text="${label.name}">label</span>
+            </div>
+        </div>
+    </div>
+    <div class="activity-row-actions">
+        <button type="button" class="icon-btn-sm" title="Edit"
+                th:attr="aria-label='Edit ' + (${item.description != null and !item.description.isEmpty() ? item.description : 'transaction'}), data-kind=${item.kind}, data-id=${item.id}, data-description=${item.description != null and !item.description.isEmpty() ? item.description : ''}"
+                onclick="openItemEdit(this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon-xs" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+            </svg>
+        </button>
+        <button type="button" class="icon-btn-sm" title="Delete"
+                th:attr="aria-label='Delete ' + (${item.description != null and !item.description.isEmpty() ? item.description : 'transaction'}), data-kind=${item.kind}, data-id=${item.id}, data-description=${item.description != null and !item.description.isEmpty() ? item.description : ''}"
+                onclick="openItemDelete(this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon-xs" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+        </button>
+        <div class="activity-amount-wrap">
+            <p class="amount"
+               th:classappend="${item.type == 'INCOME' or item.type == 'BORROW' ? 'amount-positive' : (item.kind == 'TRANSFER' ? '' : 'amount-negative')}"
+               th:text="${((item.type == 'INCOME' or item.type == 'BORROW') ? '+' : '-') + fmt.format((item.kind == 'TRANSFER' ? item.fromAmount : item.amount).abs())}">-₹0.00</p>
+            <p th:if="${item.kind == 'TRANSFER' and item.adjustment != null and item.adjustment.signum() > 0}"
+               class="adjustment-badge"
+               th:text="${'+' + fmt.format(item.adjustment.abs()) + ' adj'}">adj</p>
+            <p th:unless="${item.kind == 'TRANSFER' and item.adjustment != null and item.adjustment.signum() > 0}"
+                class="activity-type-label" th:text="${item.type}">EXPENSE</p>
+        </div>
+    </div>
+</div>

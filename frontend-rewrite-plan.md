@@ -7,10 +7,10 @@
 | Backend | Java 21, Spring Boot 3.5, JPA, PostgreSQL 18, Flyway | Well-structured, proper pagination via Spring Data `Page` |
 | Frontend | React 19 + Vite 8 + TypeScript 6 + Tailwind 4 + Recharts 3 | **Heavyweight for the use case** |
 | Auth | JWT (Bearer token in localStorage) → migrating to HttpOnly cookie | See Phase 1 auth section |
-| API | `/api/v1/*` prefix, ~9 controllers | RESTful with DTOs in some places |
+| API | `/api/v1/*` prefix, 9 controllers | RESTful, uses `TransactionRequest` / `TransferRequest` DTOs |
 | Deployment | Docker Compose (Postgres + Backend + Nginx-served frontend) | Clean |
 
-The frontend has **~28 React components** across 4 pages (Login, Dashboard, Transactions, Settings) with **5 Context providers** (Auth, Preferences, Theme, Toast, UI). Most pages follow the same pattern: `useEffect` → fetch data → `useState` → render.
+The frontend has **~30 React components** across 4 pages (Login, Dashboard, Transactions, Settings) with **5 Context providers** (Auth, Preferences, Theme, Toast, UI). Key features added since the initial plan: inline category creation inside the transaction form, auto-logout on 401 with session-expired notice, unique category name enforcement (case-insensitive), and `TransactionRequest` DTO for create/update. Most pages follow the same pattern: `useEffect` → fetch data → `useState` → render.
 
 ---
 
@@ -101,14 +101,64 @@ Key points:
 
 With JWT in HttpOnly cookie (stateless, no session), CSRF is **disabled** — same as the current API. The cookie is HttpOnly so XSS cannot read the token. For any future session-based features, CSRF can be added at that point.
 
+#### AuthEntryPointJwt: You Must Add Dual Behavior
+
+The current `AuthEntryPointJwt.java` returns a `401 Unauthorized` JSON error for **all** unauthenticated requests. Once Thymeleaf pages exist, this is wrong — if a user hits `/dashboard` without a valid JWT, they should be **redirected to the login page**, not shown a JSON error.
+
+Update `AuthEntryPointJwt.commence()` to check the request path:
+
+```java
+@Override
+public void commence(HttpServletRequest request, HttpServletResponse response,
+                     AuthenticationException authException) throws IOException {
+    String path = request.getRequestURI();
+    if (path.startsWith("/api/")) {
+        // API clients (MCP, mobile apps) expect a 401 JSON response
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Error: Unauthorized");
+    } else {
+        // Browser users get redirected to login with a notice
+        response.sendRedirect("/login?expired=true");
+    }
+}
+```
+
+Then in `login.html`, read the `expired` query parameter and show a banner: _"Your session has expired. Please sign in again."_ This matches the current React behavior in `Login.tsx` which uses `sessionStorage` for the same purpose.
+
+#### SecurityConfig: Permit Static Assets and Public Pages
+
+The current `SecurityConfig.java` only permits `/actuator/health` and `/api/v1/auth/**`. You **must** add permits for Thymeleaf's needs, or unauthenticated users won't be able to load the login page CSS or JS libraries:
+
+```java
+.requestMatchers("/", "/login", "/register", "/error", "/css/**", "/js/**", "/favicon.ico").permitAll()
+```
+
+Do this **before** the `.anyRequest().authenticated()` rule.
+
+> **Note (verified 2026-08-21):** `/error` must be permitted. `sendError()` and 404s forward to `/error`, which itself passes through the security chain — if it isn't permitted, the entry point fires on the error dispatch and the client receives a 302 to `/login?expired=true` instead of the intended 401 JSON / error page.
+
+#### HTMX 401 Handling (Client-Side Fallback)
+
+For HTMX fragment requests (e.g., `hx-get="/transactions/list"`), the server may return a 401 if the JWT cookie expires mid-session. HTMX does **not** follow 302 redirects on fragment requests the way a full page navigation does. You need a client-side event listener in `app.js`:
+
+```javascript
+// app.js — redirect to login if any HTMX request gets a 401
+document.addEventListener('htmx:responseError', function(event) {
+  if (event.detail.xhr.status === 401) {
+    window.location.href = '/login?expired=true';
+  }
+});
+```
+
+This ensures that expired sessions during HTMX interactions redirect the user cleanly.
+
 #### New Thymeleaf Controllers
 
 Create a new set of controllers that return Thymeleaf views/fragments instead of JSON. These live alongside the existing API controllers:
 
 | Route | Purpose | Returns |
 |---|---|---|
-| `GET /register` | Registration page | Full page |
-| `POST /register` | Create account → sets JWT cookie | Redirect to `/dashboard` |
+| `GET /register` | Registration page (only if `app.auth.register-enabled=true`) | Full page |
+| `POST /register` | Create account → sets JWT cookie (guard with register-enabled flag) | Redirect to `/dashboard` |
 | `GET /login` | Login page | Full page |
 | `POST /login` | Authenticate → sets JWT cookie | Redirect to `/dashboard` |
 | `POST /logout` | Clear JWT cookie | Redirect to `/login` |
@@ -135,8 +185,13 @@ Create a new set of controllers that return Thymeleaf views/fragments instead of
 | `GET /settings` | Settings page | Full page |
 | `GET /settings/categories` | Categories tab fragment | HTML fragment |
 | `GET /settings/labels` | Labels tab fragment | HTML fragment |
-| `GET /settings/preferences` | Preferences tab fragment | HTML fragment |
-| `GET /settings/backup` | Backup tab fragment | HTML fragment |
+| `GET /settings/defaults` | Defaults tab fragment (**not** "Preferences" — match the current UI label) | HTML fragment |
+| `GET /settings/data` | Data & Backup tab fragment (**not** "Backup" — match the current UI label) | HTML fragment |
+| `GET /backups` | Backup history list (table of server-stored backups with download links) | HTML fragment |
+| `POST /backups/export` | Trigger server-side backup generation (`?format=SQL` or `?format=CSV`) | HX-Trigger header + refresh backup list |
+| `POST /backups/import` | Restore database from file upload (use `hx-encoding="multipart/form-data"`) | HX-Trigger header + toast |
+| `GET /backups/{id}/download` | Download a backup file | Binary blob (use a plain `<a href>` link, **not** HTMX) |
+| `DELETE /backups/clear` | Delete all user data (requires confirmation dialog first) | HX-Trigger header + redirect to `/dashboard` |
 
 #### Keep JSON API
 
@@ -150,7 +205,7 @@ The existing `/api/v1/*` JSON endpoints remain unchanged for:
 ```
 src/main/resources/
 ├── templates/
-│   ├── layout.html              # Base layout (nav, footer, HTMX/Alpine includes)
+│   ├── layout.html              # Base layout (desktop top-nav, mobile bottom-nav, FAB, modal, HTMX/Alpine includes)
 │   ├── login.html               # Login page
 │   ├── register.html            # Registration page
 │   ├── dashboard.html           # Dashboard page
@@ -162,11 +217,11 @@ src/main/resources/
 │       ├── account-list.html    # Grouped account cards
 │       ├── transaction-card.html # Single transaction/activity row
 │       ├── transaction-list.html # Paginated transaction list
-│       ├── transaction-form.html # Transaction/transfer create/edit form
+│       ├── transaction-form.html # Transaction/transfer create/edit form (includes inline category creation)
 │       ├── category-manager.html # Category CRUD
 │       ├── label-manager.html   # Label CRUD
-│       ├── preference-form.html # Preferences form
-│       ├── backup-manager.html  # Backup section
+│       ├── defaults-form.html   # User defaults form (renamed from preference-form)
+│       ├── backup-manager.html  # Backup section (export, import, download, delete-all, history table)
 │       ├── confirm-dialog.html  # Delete confirmation modal
 │       ├── toast.html           # Toast notification (OOB swap)
 │       └── period-cards.html    # Expenditure period cards (Phase 2)
@@ -181,6 +236,34 @@ src/main/resources/
 
 > **Note:** Charts (Recharts/Chart.js) are **not included** in this migration. Analytics/spending charts will be added back in a future phase if needed.
 
+#### `layout.html` — Responsive Nav + Floating Action Button
+
+The base layout must match the current React `Layout.tsx` behavior. It has **three** responsive sections you need to implement:
+
+1. **Desktop top nav** (hidden below `md` breakpoint): Brand logo link, text nav links (Dashboard · Transactions · Settings), theme toggle, user email display, logout button.
+2. **Mobile top header** (hidden on desktop): Brand logo, theme toggle, logout button.
+3. **Mobile bottom nav bar** (`position: fixed; bottom: 0`, hidden on desktop): Three icon+label buttons for Dashboard, Transactions, Settings. Highlight the active page.
+
+Additionally, every page has a **Floating Action Button (FAB)** — a round `+` button fixed to the bottom-right that opens the transaction creation modal from anywhere. This is a key UX feature; do not skip it.
+
+```html
+<!-- In layout.html: the FAB + shared modal -->
+<button hx-get="/transactions/form"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        onclick="document.getElementById('modal').showModal()"
+        class="fab-button"
+        aria-label="Add Transaction">
+  <span aria-hidden="true">+</span>
+</button>
+
+<dialog id="modal">
+  <div id="modal-content"><!-- loaded by HTMX --></div>
+</dialog>
+```
+
+On mobile, position the FAB above the bottom nav (`bottom: 6rem`). On desktop, position it at `bottom: 2rem; right: 2rem`.
+
 ### Key HTMX Patterns to Use
 
 #### Search with debounce
@@ -189,7 +272,7 @@ src/main/resources/
        hx-get="/transactions/list"
        hx-trigger="input changed delay:300ms"
        hx-target="#transaction-list"
-       hx-include="[name='type'], [name='accountId']"
+       hx-include="[name='type'], [name='accountId'], [name='startDate'], [name='endDate']"
        placeholder="Search transactions...">
 ```
 
@@ -202,13 +285,33 @@ The account filter dropdown is populated server-side on page load. When the sele
         hx-get="/transactions/list"
         hx-trigger="change"
         hx-target="#transaction-list"
-        hx-include="[name='search'], [name='type']">
+        hx-include="[name='search'], [name='type'], [name='startDate'], [name='endDate']">
   <option value="">All Accounts</option>
   <option th:each="a : ${accounts}" th:value="${a.id}" th:text="${a.name}"></option>
 </select>
 ```
 
 The first request to `/transactions/list?accountId=X&page=0` starts fresh. The sentinel incrementally adds pages from there. Changing the filter triggers a full swap (page 0), so the old sentinel is replaced.
+
+#### Date range filters
+
+The React Transactions page has start date and end date pickers, and the backend `ActivityController` already accepts `startDate` and `endDate` query params. **You must include these in Phase 1** — they are not optional, because Phase 2's expenditure period cards link to `/transactions?startDate=...&endDate=...`.
+
+```html
+<input type="date" name="startDate"
+       hx-get="/transactions/list"
+       hx-trigger="change"
+       hx-target="#transaction-list"
+       hx-include="[name='search'], [name='type'], [name='accountId'], [name='endDate']">
+
+<input type="date" name="endDate"
+       hx-get="/transactions/list"
+       hx-trigger="change"
+       hx-target="#transaction-list"
+       hx-include="[name='search'], [name='type'], [name='accountId'], [name='startDate']">
+```
+
+**Important:** Every filter input's `hx-include` must reference **all other** filter inputs. If you forget one, changing that filter will silently drop the others from the request and the user will see unexpected results.
 
 #### Infinite scroll
 
@@ -352,7 +455,7 @@ The initial `x-data` reads from the already-correct `data-theme` attribute (set 
 
 #### Emoji picker (Alpine.js)
 
-Emoji data stored as a static JSON file (`/js/emojis.json`) mapping keywords → emoji characters. Alpine.js component with instant client-side filtering:
+Emoji data stored as a static JSON file (`/js/emojis.json`) mapping keywords → emoji characters. Alpine.js component with instant client-side filtering. **Important:** You must also support direct emoji paste — the current React `EmojiPicker` has an `<input aria-label="Emoji">` text field where users can type or paste any emoji character without using the grid. The E2E tests (`inline-category.spec.ts`) verify this. Include both the paste input and the grid picker:
 
 ```html
 <div x-data="{
@@ -379,6 +482,124 @@ Instead of React's `PreferenceContext` formatting client-side, pass `currencySym
 ```
 
 Or create a Thymeleaf utility (`#currency.format(amount)`) registered as a dialect bean for cleaner usage across all templates.
+
+#### Preference defaults in transaction forms
+
+The React `TransactionForm` reads the user's saved preferences (`UserPreference`) and pre-populates the account, transaction type, category, and label fields. You must replicate this in the Thymeleaf form fragments.
+
+When the controller serves `GET /transactions/form` (the create form), it must:
+
+1. Fetch the user's `UserPreference` from the database
+2. Set the `selected` attribute on the correct `<option>` elements:
+
+```html
+<select name="accountId">
+  <option th:each="a : ${accounts}"
+          th:value="${a.id}"
+          th:text="${a.name}"
+          th:selected="${a.id == preference.defaultAccountId}"></option>
+</select>
+```
+
+Do this for all four defaults: `defaultAccountId`, `defaultTransactionType`, `defaultCategoryId`, `defaultLabelId`. The edit form (`GET /transactions/{id}/edit`) pre-populates from the existing transaction data instead, not from preferences.
+
+#### Inline category creation in transaction form
+
+The React `TransactionForm` now has a “**+ New category…**” option at the bottom of the category `<select>`. When selected, an inline form appears with a name input, an emoji picker (both paste-in and grid), an “Add” button, and a “Cancel” button. On success, the new category is appended to the `<select>` and auto-selected — **without closing the transaction form**.
+
+The backend enforces unique category names per user (case-insensitive via `CategoryRepository.existsByUserIdAndNameIgnoreCase`). If the user tries a duplicate, the server returns `"A category named \"Food\" already exists"` — you must display this error message.
+
+In the HTMX/Alpine.js version, use Alpine.js to toggle the inline form and `fetch()` to call the JSON API directly (you need the new category’s ID back to populate the `<option>`):
+
+```html
+<div x-data="{ creating: false, newName: '', newIcon: '😀', submitting: false }">
+  <select name="categoryId" x-show="!creating"
+          @change="if ($event.target.value === '__new__') { creating = true; }">
+    <option th:each="c : ${categories}" th:value="${c.id}"
+            th:text="${c.icon + ' ' + c.name}"></option>
+    <option value="__new__">+ New category…</option>
+  </select>
+
+  <div x-show="creating" x-cloak class="inline-category-row">
+    <input type="text" x-model="newName" placeholder="Category name"
+           aria-label="New category name">
+    <input type="text" x-model="newIcon" placeholder="😀"
+           aria-label="Emoji" class="emoji-paste-input">
+    <!-- Optionally embed the full emoji picker grid here too -->
+    <button type="button" :disabled="!newName.trim() || submitting"
+            @click="
+              submitting = true;
+              fetch('/api/v1/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName, icon: newIcon })
+              })
+              .then(r => {
+                if (!r.ok) return r.json().then(d => { throw new Error(d.message); });
+                return r.json();
+              })
+              .then(cat => {
+                const sel = $el.closest('div').querySelector('select');
+                const opt = new Option(cat.icon + ' ' + cat.name, cat.id, true, true);
+                sel.insertBefore(opt, sel.querySelector('[value=__new__]'));
+                creating = false; newName = ''; newIcon = '😀';
+              })
+              .catch(e => alert(e.message))
+              .finally(() => submitting = false);
+            ">Add</button>
+    <button type="button" @click="creating = false">Cancel</button>
+  </div>
+</div>
+```
+
+This calls the JSON API (`/api/v1/categories`) directly rather than using an HTMX Thymeleaf route, because you need the response JSON to dynamically build the `<option>` element client-side.
+
+#### Multi-label selection (Alpine.js)
+
+The React `TransactionForm` has a multi-select label picker with checkboxes in a portal dropdown. Labels are submitted as `labelIds: List<UUID>`. You need an Alpine.js equivalent since HTML `<select multiple>` has poor UX:
+
+```html
+<div x-data="{ open: false, selected: [] }" @click.outside="open = false">
+  <button type="button" @click="open = !open" class="label-select-toggle">
+    <template x-if="selected.length === 0">
+      <span class="placeholder">Select labels...</span>
+    </template>
+    <template x-for="id in selected" :key="id">
+      <span class="label-chip"
+            x-text="labels.find(l => l.id === id)?.name"
+            @click.stop="selected = selected.filter(s => s !== id)"></span>
+    </template>
+  </button>
+
+  <div x-show="open" x-cloak class="label-dropdown">
+    <template x-for="label in labels" :key="label.id">
+      <label class="label-option">
+        <input type="checkbox" :value="label.id"
+               :checked="selected.includes(label.id)"
+               @change="selected.includes(label.id)
+                 ? (selected = selected.filter(s => s !== label.id))
+                 : (selected = [...selected, label.id])">
+        <span x-text="label.name"></span>
+      </label>
+    </template>
+  </div>
+
+  <!-- Hidden inputs for form submission -->
+  <template x-for="id in selected" :key="id">
+    <input type="hidden" name="labelIds" :value="id">
+  </template>
+</div>
+```
+
+Pass the labels list from Thymeleaf to Alpine.js as a JavaScript variable:
+
+```html
+<script th:inline="javascript">
+  const labels = /*[[${labels}]]*/ [];
+</script>
+```
+
+Each selected label generates a hidden `<input name="labelIds">`. Spring Boot automatically binds multiple inputs with the same `name` attribute to a `List<UUID>` parameter.
 
 #### Validation error rendering
 
@@ -436,10 +657,10 @@ Without `hx-push-url`, HTMX fragment swaps (search, filter, paginate) don't upda
        hx-trigger="input changed delay:300ms"
        hx-target="#transaction-list">
 
-<!-- Pagination sentinel: push URL for each page -->
+<!-- Pagination sentinel: loads next page when scrolled into view -->
+<!-- Do NOT use hx-push-url here — it floods browser history on every scroll page load -->
 <div th:if="${hasMore}"
      hx-get="/transactions/list?page=1"
-     hx-push-url="true"
      hx-trigger="revealed"
      hx-swap="outerHTML">
   Loading more...
@@ -470,7 +691,7 @@ frontend/                    # Entire React frontend directory
 └── ...
 ```
 
-The `docker-compose.yml` frontend service also gets removed. E2E tests in `e2e/` are preserved — they test user flows against the rendered HTML, not the implementation.
+The `docker-compose.yml` frontend service also gets removed. E2E tests in `e2e/` are preserved — they test user flows against the rendered HTML, not the implementation. **Important:** All E2E selectors that use Tailwind utility classes (e.g., `span.bg-accent`) will break since Tailwind is being dropped. Add `data-testid` attributes to your Thymeleaf templates from the start so selectors don't depend on CSS class names. There are now 21 spec files (including `inline-category.spec.ts` and `update-transaction-transfer.spec.ts` added after the initial plan).
 
 ---
 
@@ -587,7 +808,7 @@ When a weekly/monthly limit is set on `UserPreference`, the "This Week" and "Thi
 
 ### Phase 1 (HTMX Rewrite)
 - **Per-page manual verification**: After migrating each page, visually compare with the React version
-- **Playwright E2E tests**: After migrating each page, update corresponding E2E tests to target new Thymeleaf selectors (incremental — don't let all 19 specs break at once). Run `make test-e2e` for the migrated pages.
+- **Playwright E2E tests**: After migrating each page, update the corresponding E2E tests to target new Thymeleaf selectors (incremental — don't let all 21 specs break at once, including the newer `inline-category.spec.ts` and `update-transaction-transfer.spec.ts`). Add `data-testid` attributes to templates so selectors don't depend on CSS class names. Run `make test-e2e` for the migrated pages.
 - **Backend unit tests**: `./gradlew test` — ensure no regressions from Thymeleaf controller additions
 
 ### Phase 2 (Expenditure Dashboard)

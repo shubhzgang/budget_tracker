@@ -41,14 +41,14 @@ public class AccountService {
     }
 
     public Account getAccountById(UUID accountId) {
-        return accountRepository.findAllByUserId(getCurrentUserId()).stream()
+        return accountRepository.findAllByUserIdOrderByIdAsc(getCurrentUserId()).stream()
                 .filter(account -> account.getId().equals(accountId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Account not found or access denied"));
     }
 
     public List<Account> getAllAccountsForUser() {
-        return accountRepository.findAllByUserId(getCurrentUserId());
+        return accountRepository.findAllByUserIdOrderByIdAsc(getCurrentUserId());
     }
 
     public Account updateAccount(UUID accountId, Account accountDetails) {

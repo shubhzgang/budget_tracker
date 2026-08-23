@@ -34,6 +34,7 @@ public class BackupService {
     private final BackupRecordRepository backupRecordRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final EntityManager entityManager;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
     @Value("${app.backup.directory:backups}")
     private String backupDirectory;
@@ -78,7 +79,7 @@ public class BackupService {
         }
 
         // Accounts
-        List<Account> accounts = accountRepository.findAllByUserId(userId);
+        List<Account> accounts = accountRepository.findAllByUserIdOrderByIdAsc(userId);
         for (Account account : accounts) {
             sql.append(String.format("INSERT INTO accounts (id, user_id, name, type, initial_balance, balance, credit_limit, created_at) VALUES ('%s', '%s', '%s', '%s', %s, %s, %s, '%s');\n",
                     account.getId(), userId, escapeSql(account.getName()), account.getType(), account.getInitialBalance(), account.getBalance(), account.getCreditLimit(), account.getCreatedAt()));
@@ -168,7 +169,7 @@ public class BackupService {
         if (content.contains("INSERT INTO")) {
             transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
             transferRepository.findAllByUserId(userId).forEach(transferRepository::delete);
-            accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
+            accountRepository.findAllByUserIdOrderByIdAsc(userId).forEach(accountRepository::delete);
             categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
             labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
             userPreferenceRepository.findByUserId(userId).ifPresent(userPreferenceRepository::delete);
@@ -181,6 +182,7 @@ public class BackupService {
             }
             entityManager.createNativeQuery(statement).executeUpdate();
         }
+        expenditureSummaryService.recomputeForUser(userId);
     }
 
     @Transactional
@@ -192,7 +194,7 @@ public class BackupService {
             String[] nextLine;
 
             Map<String, Account> accountMap = new HashMap<>();
-            accountRepository.findAllByUserId(userId).forEach(a -> accountMap.put(a.getName(), a));
+            accountRepository.findAllByUserIdOrderByIdAsc(userId).forEach(a -> accountMap.put(a.getName(), a));
             
             Map<String, Category> categoryMap = new HashMap<>();
             categoryRepository.findAllByUserId(userId).forEach(c -> categoryMap.put(c.getName(), c));
@@ -252,6 +254,7 @@ public class BackupService {
                 transactionRepository.save(t);
             }
         }
+        expenditureSummaryService.recomputeForUser(userId);
     }
 
     public List<BackupRecord> getBackupHistory(UUID userId) {
@@ -277,10 +280,11 @@ public class BackupService {
     public void clearUserData(UUID userId) {
         transactionRepository.findAllByUserId(userId).forEach(transactionRepository::delete);
         transferRepository.findAllByUserId(userId).forEach(transferRepository::delete);
-        accountRepository.findAllByUserId(userId).forEach(accountRepository::delete);
+        accountRepository.findAllByUserIdOrderByIdAsc(userId).forEach(accountRepository::delete);
         categoryRepository.findAllByUserId(userId).forEach(categoryRepository::delete);
         labelRepository.findAllByUserId(userId).forEach(labelRepository::delete);
         userPreferenceRepository.findByUserId(userId).ifPresent(userPreferenceRepository::delete);
+        expenditureSummaryService.clearUser(userId);
     }
 
     private BackupRecord createRecord(UUID userId, String filename, String format, long size) {

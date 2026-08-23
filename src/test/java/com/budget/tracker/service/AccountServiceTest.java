@@ -70,7 +70,7 @@ class AccountServiceTest {
         details.setInitialBalance(new BigDecimal("1200")); // Increase initial by 200
         details.setName("Updated Name");
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(existing));
         when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
 
         Account updated = accountService.updateAccount(accountId, details);
@@ -94,7 +94,7 @@ class AccountServiceTest {
         details.setInitialBalance(new BigDecimal("1200")); // Increase initial by 200
         details.setName("Updated Name");
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(existing));
         when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
 
         Account updated = accountService.updateAccount(accountId, details);
@@ -110,7 +110,7 @@ class AccountServiceTest {
         account.setId(accountId);
         account.setUserId(userId);
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(account));
 
         Account found = accountService.getAccountById(accountId);
 
@@ -120,7 +120,7 @@ class AccountServiceTest {
 
     @Test
     void getAccountById_shouldThrow_whenNotFound() {
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of());
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of());
 
         assertThrows(RuntimeException.class, () -> accountService.getAccountById(accountId));
     }
@@ -132,7 +132,7 @@ class AccountServiceTest {
         Account account2 = new Account();
         account2.setUserId(userId);
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account1, account2));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(account1, account2));
 
         List<Account> accounts = accountService.getAllAccountsForUser();
 
@@ -148,7 +148,7 @@ class AccountServiceTest {
         account.setCreditLimit(new BigDecimal("5000"));
         account.setBalance(new BigDecimal("1000"));
 
-        when(accountRepository.findAllByUserId(userId)).thenReturn(List.of(account));
+        when(accountRepository.findAllByUserIdOrderByIdAsc(userId)).thenReturn(List.of(account));
 
         BigDecimal available = accountService.calculateAvailableCredit(accountId);
 

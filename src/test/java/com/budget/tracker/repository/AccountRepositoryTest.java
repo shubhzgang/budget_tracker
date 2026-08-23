@@ -60,8 +60,8 @@ class AccountRepositoryTest {
         accountRepository.save(account1);
         accountRepository.save(account2);
 
-        List<Account> user1Accounts = accountRepository.findAllByUserId(userId1);
-        List<Account> user2Accounts = accountRepository.findAllByUserId(userId2);
+        List<Account> user1Accounts = accountRepository.findAllByUserIdOrderByIdAsc(userId1);
+        List<Account> user2Accounts = accountRepository.findAllByUserIdOrderByIdAsc(userId2);
 
         assertThat(user1Accounts).hasSize(1);
         assertThat(user1Accounts.getFirst().getName()).isEqualTo("User1 Account");
@@ -82,7 +82,7 @@ class AccountRepositoryTest {
         account1.setUserId(userId1);
         accountRepository.save(account1);
 
-        List<Account> user2Accounts = accountRepository.findAllByUserId(userId2);
+        List<Account> user2Accounts = accountRepository.findAllByUserIdOrderByIdAsc(userId2);
 
         assertThat(user2Accounts).isEmpty();
     }

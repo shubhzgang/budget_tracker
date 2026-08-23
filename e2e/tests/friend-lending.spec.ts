@@ -38,7 +38,7 @@ test.describe('Friend/Lending Accounts & Net Worth', () => {
   test('"They owe me" creates positive balance and shows correct label', async ({ page }) => {
     await createFriendAccount(page, 'Bob', '500', 'THEY_OWE_ME');
 
-    const card = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Bob' }) });
+    const card = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Bob' }) });
     await expect(card).toBeVisible();
     await expect(card.getByText('₹500.00')).toBeVisible();
     await expect(card.getByText('They owe you')).toBeVisible();
@@ -47,7 +47,7 @@ test.describe('Friend/Lending Accounts & Net Worth', () => {
   test('"I owe them" creates negative balance and shows correct label', async ({ page }) => {
     await createFriendAccount(page, 'Alice', '300', 'I_OWE_THEM');
 
-    const card = page.locator('div.p-4', { has: page.getByRole('heading', { name: 'Alice' }) });
+    const card = page.locator('div[data-testid="account-card"]', { has: page.getByRole('heading', { name: 'Alice' }) });
     await expect(card).toBeVisible();
     await expect(card.getByText('-₹300.00')).toBeVisible();
     await expect(card.getByText('You owe them')).toBeVisible();

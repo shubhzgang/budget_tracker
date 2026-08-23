@@ -1,0 +1,84 @@
+<div id="defaults-manager" class="card pad" xmlns:th="http://www.thymeleaf.org">
+    <h3 class="section-title">Transaction Defaults</h3>
+    <p class="muted">Pre-populate the transaction form with these values to save time.</p>
+
+    <form class="defaults-form" th:action="@{/settings/preferences}" method="post"
+          hx-put="/settings/preferences"
+          hx-target="#defaults-manager"
+          hx-swap="outerHTML"
+          novalidate>
+        <div class="defaults-grid">
+            <div class="field">
+                <label for="pref-account" class="field-label">Default Account</label>
+                <select id="pref-account" name="defaultAccountId" class="input">
+                    <option value="" th:selected="${prefs.defaultAccountId == null}">None (No default)</option>
+                    <option th:each="a : ${accounts}"
+                            th:value="${a.id}" th:text="${a.name}"
+                            th:selected="${prefs.defaultAccountId != null and prefs.defaultAccountId == a.id}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="pref-type" class="field-label">Default Type</label>
+                <select id="pref-type" name="defaultTransactionType" class="input">
+                    <option value="" th:selected="${prefs.defaultTransactionType == null}">None (No default)</option>
+                    <option th:each="t : ${typeOptions}"
+                            th:value="${t}" th:text="${#strings.capitalize(t.toLowerCase())}"
+                            th:selected="${prefs.defaultTransactionType != null and prefs.defaultTransactionType.name() == t}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="pref-category" class="field-label">Default Category</label>
+                <select id="pref-category" name="defaultCategoryId" class="input">
+                    <option value="" th:selected="${prefs.defaultCategoryId == null}">None (No default)</option>
+                    <option th:each="c : ${categories}"
+                            th:value="${c.id}"
+                            th:text="${(c.icon != null and !c.icon.isEmpty()) ? c.icon + ' ' + c.name : c.name}"
+                            th:selected="${prefs.defaultCategoryId != null and prefs.defaultCategoryId == c.id}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="pref-label" class="field-label">Default Label</label>
+                <select id="pref-label" name="defaultLabelId" class="input">
+                    <option value="" th:selected="${prefs.defaultLabelId == null}">None (No default)</option>
+                    <option th:each="l : ${labels}"
+                            th:value="${l.id}" th:text="${l.name}"
+                            th:selected="${prefs.defaultLabelId != null and prefs.defaultLabelId == l.id}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="pref-currency" class="field-label">Currency Symbol</label>
+                <input type="text" id="pref-currency" name="currencySymbol" maxlength="5"
+                       th:value="${prefs.currencySymbol}" placeholder="e.g. ₹, $, €" class="input">
+            </div>
+        </div>
+
+        <div class="backup-settings" th:x-data="'{ enabled: ' + ${prefs.autoBackupEnabled} + ' }'">
+            <div class="field-row">
+                <input type="checkbox" id="auto-backup" name="autoBackupEnabled" value="true" x-model="enabled">
+                <label for="auto-backup" class="field-label">Enable Automatic Backups</label>
+            </div>
+            <div class="defaults-grid" x-show="enabled" x-cloak>
+                <div class="field">
+                    <label for="backup-frequency" class="field-label">Frequency</label>
+                    <select id="backup-frequency" name="autoBackupFrequency" class="input">
+                        <option value="DAILY" th:selected="${prefs.autoBackupFrequency == null or prefs.autoBackupFrequency == 'DAILY'}">Daily</option>
+                        <option value="WEEKLY" th:selected="${prefs.autoBackupFrequency == 'WEEKLY'}">Weekly</option>
+                        <option value="MONTHLY" th:selected="${prefs.autoBackupFrequency == 'MONTHLY'}">Monthly</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="backup-format" class="field-label">Format</label>
+                    <select id="backup-format" name="autoBackupFormat" class="input">
+                        <option value="SQL" th:selected="${prefs.autoBackupFormat == null or prefs.autoBackupFormat == 'SQL'}">SQL (Full Restore)</option>
+                        <option value="CSV" th:selected="${prefs.autoBackupFormat == 'CSV'}">CSV (Transaction Export)</option>
+                        <option value="BOTH" th:selected="${prefs.autoBackupFormat == 'BOTH'}">Both</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary" hx-disabled hx-disabled-swapping>Save Preferences</button>
+        </div>
+    </form>
+</div>

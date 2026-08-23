@@ -81,6 +81,7 @@ public class LabelControllerTest {
 
         mockMvc.perform(post("/api/v1/labels")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(label)))
                 .andExpect(status().isOk())
@@ -131,6 +132,7 @@ public class LabelControllerTest {
 
         mockMvc.perform(put("/api/v1/labels/" + labelId)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(details)))
                 .andExpect(status().isOk())
@@ -140,7 +142,8 @@ public class LabelControllerTest {
     @Test
     void shouldDeleteLabel() throws Exception {
         mockMvc.perform(delete("/api/v1/labels/" + labelId)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
     }
 }

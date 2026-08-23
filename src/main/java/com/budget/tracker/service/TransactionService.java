@@ -30,6 +30,7 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final LabelRepository labelRepository;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
     private enum BalanceAction {
         APPLY, REVERT
@@ -38,11 +39,13 @@ public class TransactionService {
     public TransactionService(TransactionRepository transactionRepository,
                               AccountRepository accountRepository,
                               CategoryRepository categoryRepository,
-                              LabelRepository labelRepository) {
+                              LabelRepository labelRepository,
+                              ExpenditureSummaryService expenditureSummaryService) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.labelRepository = labelRepository;
+        this.expenditureSummaryService = expenditureSummaryService;
     }
 
     private UUID getCurrentUserId() {
@@ -91,7 +94,9 @@ public class TransactionService {
         transaction.setLabels(labels);
 
         updateBalance(account.getId(), userId, transaction.getType(), transaction.getAmount(), BalanceAction.APPLY);
-        return transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        return saved;
     }
 
     @Transactional
@@ -108,7 +113,9 @@ public class TransactionService {
         transaction.setAccount(account);
 
         updateBalance(account.getId(), userId, transaction.getType(), transaction.getAmount(), BalanceAction.APPLY);
-        return transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        return saved;
     }
 
     public Transaction getTransactionById(UUID transactionId) {
@@ -136,6 +143,10 @@ public class TransactionService {
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Transaction amount must be greater than zero");
         }
+
+        OffsetDateTime oldDate = existing.getTransactionDate();
+        TransactionType oldType = existing.getType();
+        BigDecimal oldAmount = existing.getAmount();
 
         // Revert balance on existing account with old type and amount
         updateBalance(existing.getAccount().getId(), userId, existing.getType(), existing.getAmount(), BalanceAction.REVERT);
@@ -175,7 +186,10 @@ public class TransactionService {
             }
         }
 
-        return transactionRepository.save(existing);
+        expenditureSummaryService.removeExpenditure(userId, oldDate, oldType, oldAmount);
+        Transaction saved = transactionRepository.save(existing);
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        return saved;
     }
 
     @Transactional
@@ -185,6 +199,7 @@ public class TransactionService {
         TransactionType type = transaction.getType();
 
         updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT);
+        expenditureSummaryService.removeExpenditure(userId, transaction.getTransactionDate(), type, transaction.getAmount());
         transactionRepository.delete(transaction);
     }
 

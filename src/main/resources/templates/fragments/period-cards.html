@@ -1,0 +1,29 @@
+<section class="section" th:fragment="period-cards" data-testid="period-section">
+    <h2 class="section-title">Expenditure</h2>
+    <div class="period-grid">
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.yesterday.startDate}, endDate=${periodRanges.yesterday.endDate})}">
+            <span class="period-card-label">Yesterday</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.yesterday)}">₹0.00</span>
+        </a>
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.today.startDate}, endDate=${periodRanges.today.endDate})}">
+            <span class="period-card-label">Today</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.today)}">₹0.00</span>
+        </a>
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.lastWeek.startDate}, endDate=${periodRanges.lastWeek.endDate})}">
+            <span class="period-card-label">Last Week</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.lastWeek)}">₹0.00</span>
+        </a>
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.thisWeek.startDate}, endDate=${periodRanges.thisWeek.endDate})}">
+            <span class="period-card-label">This Week</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.thisWeek)}">₹0.00</span>
+        </a>
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.lastMonth.startDate}, endDate=${periodRanges.lastMonth.endDate})}">
+            <span class="period-card-label">Last Month</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.lastMonth)}">₹0.00</span>
+        </a>
+        <a class="period-card" th:href="@{/transactions(startDate=${periodRanges.thisMonth.startDate}, endDate=${periodRanges.thisMonth.endDate})}">
+            <span class="period-card-label">This Month</span>
+            <span class="period-card-value" th:text="${fmt.format(expenditureSummary.thisMonth)}">₹0.00</span>
+        </a>
+    </div>
+</section>

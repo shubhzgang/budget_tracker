@@ -1,0 +1,16 @@
+<div th:fragment="list">
+    <div th:if="${txPage == null or #lists.isEmpty(txPage.content)}" class="empty-state">
+        <p class="text-sm text-muted">No transactions yet.</p>
+    </div>
+    <div th:each="item : ${txPage?.content}">
+        <div th:replace="~{fragments/activity-row :: row}"></div>
+    </div>
+    <div th:if="${nextListUrl != null}"
+         class="list-sentinel"
+         th:hx-get="${nextListUrl}"
+         hx-trigger="revealed"
+         hx-swap="outerHTML">
+        <span class="sentinel-spinner" aria-hidden="true"></span>
+        Loading…
+    </div>
+</div>

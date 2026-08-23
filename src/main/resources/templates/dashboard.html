@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — BudgetTracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header th:replace="~{layout :: desktop-nav}"></header>
+<header th:replace="~{layout :: mobile-header}"></header>
+<main class="page-main">
+    <div th:replace="~{fragments/dashboard-sections :: sections}"></div>
+</main>
+<nav th:replace="~{layout :: mobile-bottom-nav}"></nav>
+<div th:replace="~{layout :: fab-modal}"></div>
+<div th:replace="~{layout :: toast-container}"></div>
+<span th:replace="~{layout :: scripts}"></span>
+</body>
+</html>

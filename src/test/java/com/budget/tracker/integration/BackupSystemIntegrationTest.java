@@ -10,6 +10,7 @@ import com.budget.tracker.repository.LabelRepository;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.CategoryService;
+import com.budget.tracker.service.ExpenditureSummaryService;
 import com.budget.tracker.service.LabelService;
 import com.budget.tracker.service.TransactionService;
 import com.budget.tracker.service.TransferService;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -79,6 +81,9 @@ public class BackupSystemIntegrationTest {
 
     @Autowired
     private UserPreferenceService userPreferenceService;
+
+    @MockBean
+    private ExpenditureSummaryService expenditureSummaryService;
 
     private static final UUID DEMO_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final String DEMO_EMAIL = "test@example.com";
@@ -139,7 +144,8 @@ public class BackupSystemIntegrationTest {
         // 2. Export to SQL
         MvcResult exportResult = mockMvc.perform(post("/api/v1/backups/export")
                 .param("format", "SQL")
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andReturn();
         
@@ -162,7 +168,8 @@ public class BackupSystemIntegrationTest {
 
         // 4. Delete All Data
         mockMvc.perform(delete("/api/v1/backups/clear")
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
 
         // Verify data is gone
@@ -180,7 +187,8 @@ public class BackupSystemIntegrationTest {
         MockMultipartFile file = new MockMultipartFile("file", "backup.sql", "text/plain", backupContent);
         mockMvc.perform(multipart("/api/v1/backups/import")
                 .file(file)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isOk());
 
         // 6. Verify data is restored

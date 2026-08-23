@@ -76,21 +76,14 @@ java-test:
 OS_NAME := $(shell uname -s)
 
 # Main target: Run the full E2E test suite
-test-e2e: build build-frontend
+test-e2e: build
 	@echo "Starting full stack for E2E tests..."
 	@-docker volume rm budget_tracker_pgdata_test_e2e 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
-	@echo "Waiting for frontend and backend to be healthy..."
+	@echo "Waiting for backend to be healthy..."
 	@n=0; until [ $$(docker inspect --format='{{.State.Health.Status}}' budget-tracker-backend) = 'healthy' ] || [ $$n -ge 30 ]; do sleep 2; n=$$(($$n + 1)); done; \
 	if [ $$n -ge 30 ]; then \
 	  echo "Error: Backend failed to become healthy"; \
-	  docker compose down; \
-	  exit 1; \
-	fi
-	@echo "Waiting for frontend to respond on port 3300..."
-	@n=0; until curl -sf http://localhost:3300 >/dev/null || [ $$n -ge 15 ]; do sleep 2; n=$$(($$n + 1)); done; \
-	if [ $$n -ge 15 ]; then \
-	  echo "Error: Frontend failed to respond on port 3300"; \
 	  docker compose down; \
 	  exit 1; \
 	fi
@@ -113,13 +106,9 @@ test-e2e: build build-frontend
 	exit $$EXIT_CODE
 
 # Launch the entire stack for local use
-run-stack: build build-frontend
+run-stack: build
 	@echo "Launching Budget Tracker stack..."
-	docker compose up --build -d
-
-# Build frontend locally (avoids ARM npm issues in Docker)
-build-frontend:
-	cd frontend && npm install && npm run build && cd ..
+	docker compose up --build -d --remove-orphans
 
 # Stop the stack and remove volumes
 stop-stack:
@@ -127,7 +116,7 @@ stop-stack:
 	docker compose down
 
 # Launch the stack with a pre-seeded test account
-run-demo: build build-frontend
+run-demo: build
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
 	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down

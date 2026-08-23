@@ -83,6 +83,7 @@ public class CategoryControllerTest {
 
         mockMvc.perform(post("/api/v1/categories")
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(category)))
                 .andExpect(status().isOk())
@@ -136,6 +137,7 @@ public class CategoryControllerTest {
 
         mockMvc.perform(put("/api/v1/categories/" + categoryId)
                 .with(user(userDetails))
+                .header("HX-Request", "true")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(details)))
                 .andExpect(status().isOk())
@@ -146,7 +148,8 @@ public class CategoryControllerTest {
     @Test
     void shouldDeleteCategory() throws Exception {
         mockMvc.perform(delete("/api/v1/categories/" + categoryId)
-                .with(user(userDetails)))
+                .with(user(userDetails))
+                .header("HX-Request", "true"))
                 .andExpect(status().isNoContent());
     }
 }
