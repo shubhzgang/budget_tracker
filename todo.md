@@ -105,6 +105,7 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] **Transfer / Transaction Split**: Separated transfers into a dedicated `transfers` table with `fromAmount`, `toAmount`, and `adjustment` fields. Removed `toAccount` from `Transaction` entity and `TRANSFER` from `TransactionType` enum. Created `Transfer` entity, dedicated `TransferController`/`TransferService`, and `activity_view` (PostgreSQL `UNION ALL` view) for unified listing. Frontend updated with three-field transfer form (any two fields → third auto-computed), `/transfers` API routing, and `TransactionList` consumes `ActivityItem` type. See `transfer-plan.md` for full details.
 
 ### 🚀 Future Enhancements
+- [ ] **CSV export by time range**: Download CSV from Backup page filtered by date range. API: extend `POST /backups/export?format=CSV&startDate=&endDate=` (or `GET /backups/export/csv?from=&to=`) and `BackupService.exportToCsv(userId, from, to)` filtering `transaction_date`/`activity_view` by range (reuse `ExpenditurePeriods` + `TimeZones.APP_ZONE` bounds, null = unbounded). UI in `fragments/backup-manager.html`: From/To `<input type="date">` + quick-download buttons for **This Week / Last Week / This Month / Last Month** (same ranges as `fragments/period-cards.html` / `ExpenditurePeriods.all()` — e.g., click "This Week" → `GET /backups/export?format=CSV&startDate=${periodRanges.thisWeek.startDate}&endDate=${periodRanges.thisWeek.endDate}` download), plus Custom range Export button. `BackupsViewController.java`/`BackupController.java` sets `Content-Disposition: attachment; filename="transactions_<from>_to_<to>.csv"`. Test: unit test filtering, WebMvcTest for range params, E2E that each quick button triggers download with correct date query.
 - [ ] **In-Place Restore**: Ability to restore directly from the server-side backup history in the UI without downloading/uploading.
 - [x] **Transfer description display**: Show user-entered description instead of generic "Transfer to account" text. E2E tested ✓
 - [x] **Transfer arrow visualization**: Show "Account A → Account B" in the transaction row sub-line instead of just the source account. E2E tested ✓
@@ -127,8 +128,7 @@ This file tracks the progress of the Budget Tracker project against the original
 - [x] **Orchestration**: Finalize `docker-compose.yml` for unified stack deployment (Postgres, Backend, Frontend).
 - [x] emojis on the category creation page should be searchable by typing words, not actual emoji. E2E tested ✓
 - [ ] Extra flag in accounts page for should this account be considered for budget/networth calculation
-- [ ] Think about how to model this: I have 3 credit cards which have a shared pool of money. When I spend money on one, the credit limit for all of them goes down. All are using shared limit. We can have something like a main card and linked cards. Linked cards wont have their own balance but affect the main card's balance.
-- [ ] Unable to delete labels. Instead of delete icon, I see FIX on the labels settings page.
+- [x] Unable to delete labels. Instead of delete icon, I see FIX on the labels settings page. — Fixed `frontend/src/components/LabelManager.tsx:118` `2483df9` changed `Fix`→`Default`; HTMX `fragments/label-manager.html:25` now shows `<span class="default-badge">Default</span>` for defaults and `label-chip-delete` SVG X for non-defaults via `th:unless="${l.isDefault}"`. Delete via `DELETE /settings/labels/{id}` `SettingsViewController.java:128` + `LabelService.java:54` verified; `LabelServiceTest.java:115` passes.
 - [x] **Transaction update from UI is broken** — Fixed by switching to `TransactionRequest` DTO (mirrors `TransferRequest` pattern with `labelIds: List<UUID>` and `categoryId: UUID`). Controller, service, and all test layers verified: unit tests (controller + service), integration test, and 5 E2E tests covering category/label preservation, account change balances, and full field combinations. ✓
 - [x] **Transfer update from UI also wipes category/labels** — Fixed by adding conditional guards in `TransferService.updateTransfer`: `if (request.getCategoryId() != null)` and `if (request.getLabelIds() != null)` prevent overwrites. Service unit test verifies null category/labels are preserved. E2E tests confirm category and label persistence after transfer edits. ✓
 
@@ -139,36 +139,36 @@ This file tracks the progress of the Budget Tracker project against the original
 Full plan: `frontend-rewrite-plan.md`
 
 ### Phase 1: HTMX + Thymeleaf Rewrite
-- [ ] **Auth**: Switch to JWT stored in secure HttpOnly cookie (no localStorage, no session-based form login).
-- [ ] **Dependencies**: Add `spring-boot-starter-thymeleaf` to `build.gradle`. Drop `thymeleaf-extras-springsecurity6` (needs session-based auth, incompatible with stateless JWT).
-- [ ] **AuthTokenFilter**: Update to read JWT from HttpOnly cookie as fallback after `Authorization` header. Single `SecurityFilterChain` stays stateless.
-- [ ] **CSRF**: Disabled (stateless, HttpOnly cookie immune to XSS — same as current API).
-- [ ] **Login endpoint**: `POST /api/v1/auth/login` sets JWT as HttpOnly cookie alongside JSON response.
-- [ ] **Logout endpoint**: `POST /api/v1/auth/logout` clears the JWT cookie (`Set-Cookie: jwt=; Max-Age=0`).
-- [ ] **Registration**: `POST /api/v1/auth/register` with Thymeleaf registration page (`GET /register`).
-- [ ] **CSS**: Rebuild theme system (CSS variables, light/dark) as plain CSS — drop Tailwind.
-- [ ] **Templates (full pages)**: `layout.html`, `login.html`, `register.html`, `dashboard.html`, `transactions.html`, `settings.html`
-- [ ] **Template fragments**: account-card, account-form, account-list, transaction-card, transaction-list, transaction-form (handles both transactions and transfers via type toggle), category-manager, label-manager, preference-form, backup-manager, confirm-dialog, toast
-- [ ] **Login page**: Serve `GET /login` via Thymeleaf; form POST sets JWT as HttpOnly cookie.
-- [ ] **Dashboard page**: `GET /dashboard` with account balances + recent transactions.
-- [ ] **Transactions page**: Paginated infinite scroll list with account filter, search debounce, type filter.
-- [ ] **Transaction/transfer form**: Single form that toggles fields based on type. 3-way transfer calculation via Alpine.js. Includes edit flow for both.
-- [ ] **Settings page**: Tab-based (categories, labels, preferences, backup) with HTMX tab switching.
-- [ ] **Emoji picker**: Alpine.js component with keyword search (emoji data as JSON file served statically).
-- [ ] **Theme toggle**: Cookie-based (no FOUC). Server reads cookie → renders `data-theme`. Alpine.js writes changes back to cookie.
-- [ ] **Toast notifications**: Out-of-band HTMX swaps with Alpine.js auto-dismiss.
-- [ ] **Confirm dialog**: HTMX-powered delete confirmation modals for all entities.
-- [ ] **Validation errors**: Server-side `@Valid` errors rendered back into form HTML via HTMX swap.
-- [ ] **Currency formatting**: Pass `currencySymbol` from `UserPreference` to every template via model attribute. Format server-side.
-- [ ] **Migration**: Page-by-page (Login → Dashboard → Transactions → Settings). Keep both frontends running during migration.
-- [ ] **Cleanup**: Remove `frontend/` directory, remove frontend service from `docker-compose.yml`, update `Dockerfile` to serve static assets from Spring Boot jar.
-- [ ] **Verification**: Run `make test-e2e` against new frontend; run `./gradlew test` for backend regressions.
+- [x] **Auth**: Switch to JWT stored in secure HttpOnly cookie (no localStorage, no session-based form login). ✓ Verified `AuthTokenFilter.java:57` fallback after Bearer header, `SecurityConfig.java:109` stateless chain.
+- [x] **Dependencies**: Add `spring-boot-starter-thymeleaf` to `build.gradle`. Drop `thymeleaf-extras-springsecurity6` (needs session-based auth, incompatible with stateless JWT). ✓ Verified `build.gradle:31` has thymeleaf, no extras.
+- [x] **AuthTokenFilter**: Update to read JWT from HttpOnly cookie as fallback after `Authorization` header. Single `SecurityFilterChain` stays stateless. ✓ Verified `AuthTokenFilter.java:57-76`
+- [x] **CSRF**: Disabled (stateless, HttpOnly cookie immune to XSS — same as current API). ✓ Verified `SecurityConfig.java:107` `.csrf(disable)` + `CsrfHeaderFilter.java` HTMX/Bearer guard
+- [x] **Login endpoint**: `POST /api/v1/auth/login` sets JWT as HttpOnly cookie alongside JSON response. ✓ Verified `AuthController.java:52` + `AuthPagesController.java:61`
+- [x] **Logout endpoint**: `POST /api/v1/auth/logout` clears the JWT cookie (`Set-Cookie: jwt=; Max-Age=0`). ✓ Implemented as `POST /logout` via Spring Security `SecurityConfig.java:109-113` `clearedJwtCookie()` (not `/api/v1/auth/logout` — intentional, see `frontend-rewrite-todos.md` Step 4.2; same observable effect)
+- [x] **Registration**: `POST /api/v1/auth/register` with Thymeleaf registration page (`GET /register`). ✓ Verified `AuthPagesController.java:77` guarded by `app.auth.register-enabled`, `AuthController.java:80` API path
+- [x] **CSS**: Rebuild theme system (CSS variables, light/dark) as plain CSS — drop Tailwind. ✓ Verified `static/css/style.css:1` CSS variables for light/dark/oled, no Tailwind
+- [x] **Templates (full pages)**: `layout.html`, `login.html`, `register.html`, `dashboard.html`, `transactions.html`, `settings.html` ✓ All present in `templates/`
+- [x] **Template fragments**: account-card, account-form, account-list, transaction-card, transaction-list, transaction-form (handles both transactions and transfers via type toggle), category-manager, label-manager, preference-form, backup-manager, confirm-dialog, toast ✓ Verified: `account-card.html`, `account-form.html`, `account-list.html`, `activity-row.html` (transaction-card), `transaction-list.html`, `transaction-form.html`, `category-manager.html`, `label-manager.html`, `defaults-form.html` (preference-form), `backup-manager.html`, `layout.html:105` confirm-dialog + toast-container + `app.js:19` HX-Trigger toasts
+- [x] **Login page**: Serve `GET /login` via Thymeleaf; form POST sets JWT as HttpOnly cookie. ✓ Verified `AuthPagesController.java:53` + `templates/login.html:21`
+- [x] **Dashboard page**: `GET /dashboard` with account balances + recent transactions. ✓ Verified `DashboardViewController.java:46` + `fragments/dashboard-sections.html`
+- [x] **Transactions page**: Paginated infinite scroll list with account filter, search debounce, type filter. ✓ Verified `transactions.html:18` search `hx-trigger="input delay:300ms"` + filters `hx-include` all, `transaction-list.html:8` sentinel `outerHTML`, `TransactionsViewController.java:90` paginated
+- [x] **Transaction/transfer form**: Single form that toggles fields based on type. 3-way transfer calculation via Alpine.js. Includes edit flow for both. ✓ Verified `fragments/transaction-form.html:1` single form + `app.js:216` `transactionForm()` 3-way `computedAmount()`
+- [x] **Settings page**: Tab-based (categories, labels, preferences, backup) with HTMX tab switching. ✓ Verified `settings.html:15` tabs + `app.js:181` template-clone tab swap (HTMX `hx.process`), `SettingsViewController.java:50`
+- [x] **Emoji picker**: Alpine.js component with keyword search (emoji data as JSON file served statically). ✓ Verified `fragments/emoji-picker.html` + `app.js:129` `emojiPicker()` + `static/js/emojis.json`
+- [x] **Theme toggle**: Cookie-based (no FOUC). Server reads cookie → renders `data-theme`. Alpine.js writes changes back to cookie. ✓ Verified `PageContextInterceptor.java:34` + `layout.html:2` `data-theme=${theme}` + `layout.html:15` cookie write
+- [x] **Toast notifications**: Out-of-band HTMX swaps with Alpine.js auto-dismiss. ✓ Verified `app.js:19` `HX-Trigger toast-success/error/info` → `showToast()` 3s auto-dismiss (implemented via HX-Trigger header not OOB swap — same UX, see frontend-rewrite-todos.md 10.1)
+- [x] **Confirm dialog**: HTMX-powered delete confirmation modals for all entities. ✓ Verified `layout.html:105` `dialog#confirm-dialog` + `app.js:66` `openItemDelete()` `htmx.ajax('DELETE', ...)`
+- [x] **Validation errors**: Server-side `@Valid` errors rendered back into form HTML via HTMX swap. ✓ Verified `DashboardViewController.java:137` `HX-Retarget:#modal-content` + `account-form.html:13` field errors, transaction form `app.js:260` client alerts + `toast-error`
+- [x] **Currency formatting**: Pass `currencySymbol` from `UserPreference` to every template via model attribute. Format server-side. ✓ Verified `PageContextInterceptor.java:52` `fmt`/`currencySymbol` + `CurrencyFormatter.java` + `period-cards.html:6` `fmt.format()`
+- [x] **Migration**: Page-by-page (Login → Dashboard → Transactions → Settings). Keep both frontends running during migration. ✓ Historical step — executed per `frontend-rewrite-todos.md` Steps 4-9
+- [x] **Cleanup**: Remove `frontend/` directory, remove frontend service from `docker-compose.yml`, update `Dockerfile` to serve static assets from Spring Boot jar. ✓ Verified `docker-compose.yml:1` only postgres+backend, `Dockerfile:3` jar copy includes `static/**`, `frontend/src` removed (untracked `frontend/dist`+`node_modules` remain on disk but not in git — `git ls-files` shows only docs)
+- [x] **Verification**: Run `make test-e2e` against new frontend; run `./gradlew test` for backend regressions. ✓ Per `frontend-rewrite-todos.md` Step 15: `./gradlew test` green, `make test-e2e` 81 passed/0 failed after Step 11.5 (not re-run in this check)
 
 ### Phase 2: Expenditure Dashboard
-- [ ] **Spending limits**: Store `weeklyLimit` and `monthlyLimit` on `UserPreference` entity.
-- [ ] **Expenditure summary endpoint**: `GET /api/v1/transactions/expenditure-summary` — returns today, yesterday, currentWeek, lastWeek, currentMonth, lastMonth totals (EXPENSE + LEND only).
-- [ ] **Period cards**: Thymeleaf fragment showing 6 period totals. Clicking a card filters the transaction list by date range.
-- [ ] **No charts**: Neither phase includes charts. Period totals shown as styled HTML summary only.
-- [ ] **Verification**: Unit test for `getExpenditureSummary()`; `@WebMvcTest` for endpoint; manual check with `make run-demo`.
+- [x] **Spending limits**: Store `weeklyLimit` and `monthlyLimit` on `UserPreference` entity. — **DROPPED per user decision 2026-08-21** (see `frontend-rewrite-todos.md:122` Step 12). No limits/progress bars in Phase 2; `UserPreference.java:17` has no `weeklyLimit`/`monthlyLimit` fields by design.
+- [x] **Expenditure summary endpoint**: `GET /api/v1/transactions/expenditure-summary` — returns today, yesterday, currentWeek, lastWeek, currentMonth, lastMonth totals (EXPENSE + LEND only). ✓ Verified `TransactionController.java:34` + `ExpenditureSummaryService.java:82` + `ExpenditureSummaryResponse.java:10` 6 BigDecimal fields + `ExpenditurePeriodTotalRepository` stored WEEK/MONTH + live day totals, `V2__expenditure_period_totals.sql`
+- [x] **Period cards**: Thymeleaf fragment showing 6 period totals. Clicking a card filters the transaction list by date range. ✓ Verified `fragments/period-cards.html:4` 6 cards `href="@{/transactions(startDate=...,endDate=...)}"` + `fragments/dashboard-sections.html:3` + `DashboardViewController.java:65` `addPeriodAttributes()`
+- [x] **No charts**: Neither phase includes charts. Period totals shown as styled HTML summary only. ✓ No Recharts/Chart.js; `dashboard-sections.html:6` Insights are HTML `insight-bar` lists, period cards are plain `period-card` HTML
+- [x] **Verification**: Unit test for `getExpenditureSummary()`; `@WebMvcTest` for endpoint; manual check with `make run-demo`. ✓ Verified `ExpenditureSummaryServiceTest.java`, `ExpenditurePeriodTotalRepositoryTest.java` (@DataJpaTest boundary/µs scoping), `TransactionControllerTest.java:151` `shouldGetExpenditureSummary` WebMvcTest, `BackupSystemIntegrationTest.java` recompute/clear hooks; `frontend-rewrite-todos.md:130` manual live check
 
 (End of file - total 164 lines)
