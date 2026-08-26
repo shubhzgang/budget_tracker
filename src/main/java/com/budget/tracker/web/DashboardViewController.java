@@ -2,7 +2,6 @@ package com.budget.tracker.web;
 
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.AccountType;
-import com.budget.tracker.payload.response.ActivityResponse;
 import com.budget.tracker.service.AccountService;
 import com.budget.tracker.service.ActivityService;
 import com.budget.tracker.service.ExpenditureSummaryService;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +47,6 @@ public class DashboardViewController {
         addAccountAttributes(model);
         addPeriodAttributes(model);
         addRecentAttributes(model);
-        addInsightsAttributes(model);
         return "dashboard";
     }
 
@@ -58,7 +55,6 @@ public class DashboardViewController {
         addAccountAttributes(model);
         addPeriodAttributes(model);
         addRecentAttributes(model);
-        addInsightsAttributes(model);
         return "fragments/dashboard-sections";
     }
 
@@ -188,55 +184,5 @@ public class DashboardViewController {
         model.addAttribute("activity", activityService.getActivity(
                 null, null, null, null, null,
                 PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "transactionDate"))));
-    }
-
-    private void addInsightsAttributes(Model model) {
-        List<ActivityResponse> items = activityService.getActivity(
-                null, null, null, null, null,
-                PageRequest.of(0, 1000, Sort.by(Sort.Direction.DESC, "transactionDate"))).getContent();
-
-        Map<String, BigDecimal> byLabel = new LinkedHashMap<>();
-        Map<String, BigDecimal> byCategory = new LinkedHashMap<>();
-        for (ActivityResponse item : items) {
-            if (!"EXPENSE".equals(item.getType()) && !"LEND".equals(item.getType())) continue;
-            BigDecimal amount = item.getAmount() == null ? BigDecimal.ZERO : item.getAmount().abs();
-            if (item.getLabels() == null || item.getLabels().isEmpty()) {
-                byLabel.merge("Unlabeled", amount, BigDecimal::add);
-            } else {
-                for (com.budget.tracker.model.Label label : item.getLabels()) {
-                    byLabel.merge(label.getName(), amount, BigDecimal::add);
-                }
-            }
-            String category = item.getCategory() != null && item.getCategory().getName() != null
-                    ? item.getCategory().getName() : "Uncategorized";
-            byCategory.merge(category, amount, BigDecimal::add);
-        }
-
-        List<Map.Entry<String, BigDecimal>> labelEntries = byLabel.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry<String, BigDecimal>::getValue, Comparator.reverseOrder()))
-                .toList();
-        List<Map.Entry<String, BigDecimal>> categoryEntries = byCategory.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry<String, BigDecimal>::getValue, Comparator.reverseOrder()))
-                .limit(8)
-                .toList();
-
-        BigDecimal total = labelEntries.stream().map(Map.Entry::getValue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        model.addAttribute("insightLabels", toInsightRows(labelEntries, total));
-        model.addAttribute("insightCategories", toInsightRows(categoryEntries, total));
-    }
-
-    private List<Map<String, Object>> toInsightRows(List<Map.Entry<String, BigDecimal>> entries, BigDecimal total) {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map.Entry<String, BigDecimal> entry : entries) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("name", entry.getKey());
-            row.put("value", entry.getValue());
-            int pct = total.signum() == 0 ? 0
-                    : entry.getValue().multiply(BigDecimal.valueOf(100))
-                        .divide(total, 0, java.math.RoundingMode.HALF_UP).intValue();
-            row.put("pct", pct);
-            rows.add(row);
-        }
-        return rows;
     }
 }
