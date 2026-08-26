@@ -221,7 +221,7 @@ test.describe('Transaction Management', () => {
     await expect(visaCard.getByText('14.0%')).toBeVisible(); // 700/5000 = 14%
   });
 
-  test('should display spending insights on the dashboard', async ({ page }) => {
+  test('should not display spending insights on the dashboard (removed)', async ({ page }) => {
     // 1. Create a Bank Account with initial balance
     await page.click('button:has-text("Add Account")');
     await page.fill('input[id="account-name"]', 'Insight Account');
@@ -236,14 +236,14 @@ test.describe('Transaction Management', () => {
     await page.click('button[type="submit"]:has-text("Add Transaction")');
     await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
 
-    // 3. Verify Analytics heading is visible
-    await expect(page.getByRole('heading', { name: 'Spending Insights' })).toBeVisible();
-    
-    // 4. Verify that charts are rendered (indirectly by checking for chart-related elements if possible, 
-    // but the heading itself confirms the section is present).
-    // Given recharts might be hard to select in E2E without specific attributes, 
-    // we just ensure the container exists.
-    await expect(page.locator('div.grid.grid-cols-1.lg\\:grid-cols-2.gap-8')).toBeVisible();
+    // 3. Verify Spending Insights section is NOT present (removed)
+    await expect(page.getByRole('heading', { name: 'Spending Insights' })).toBeHidden();
+    await expect(page.locator('[data-testid="insights-section"]')).toHaveCount(0);
+    await expect(page.locator('.insight-card')).toHaveCount(0);
+    await expect(page.locator('.insight-bar')).toHaveCount(0);
+
+    // 4. Dashboard core sections should still be present
+    await expect(page.locator('#dashboard-content')).toBeVisible();
   });
 
   test('should handle LEND and BORROW transactions correctly', async ({ page }) => {
