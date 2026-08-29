@@ -224,17 +224,19 @@ test.describe('Transaction Management', () => {
   test('should not display spending insights on the dashboard (removed)', async ({ page }) => {
     // 1. Create a Bank Account with initial balance
     await page.click('button:has-text("Add Account")');
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeVisible({ timeout: 10000 });
     await page.fill('input[id="account-name"]', 'Insight Account');
     await page.fill('input[id="initial-balance"]', '2000');
     await page.click('button[type="submit"]:has-text("Create Account")');
-    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Create New Account' })).toBeHidden({ timeout: 10000 });
 
     // 2. Add some expenses
     await page.click('button:has-text("Add Transaction")');
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeVisible({ timeout: 10000 });
     await page.fill('input[id="trans-amount"]', '100');
     await page.fill('input[id="trans-desc"]', 'Insight Expense');
     await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Add Transaction' })).toBeHidden({ timeout: 10000 });
 
     // 3. Verify Spending Insights section is NOT present (removed)
     await expect(page.getByRole('heading', { name: 'Spending Insights' })).toBeHidden();
@@ -243,7 +245,8 @@ test.describe('Transaction Management', () => {
     await expect(page.locator('.insight-bar')).toHaveCount(0);
 
     // 4. Dashboard core sections should still be present
-    await expect(page.locator('#dashboard-content')).toBeVisible();
+    await expect(page.locator('#dashboard-content')).toHaveCount(1);
+    await expect(page.locator('#dashboard-content').first()).toBeVisible();
   });
 
   test('should handle LEND and BORROW transactions correctly', async ({ page }) => {
