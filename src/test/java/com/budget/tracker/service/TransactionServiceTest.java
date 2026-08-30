@@ -319,6 +319,40 @@ class TransactionServiceTest {
     }
 
     @Test
+    void updateTransaction_crossingPeriodBoundary_revertsOldThenRecordsNew() {
+        OffsetDateTime oldDate = OffsetDateTime.now().minusDays(40); // prior week AND prior month
+        Transaction existing = buildTransaction(TransactionType.EXPENSE, sourceAccount);
+        existing.setId(transactionId);
+        existing.setAmount(new BigDecimal("100"));
+        existing.setTransactionDate(oldDate);
+
+        OffsetDateTime newDate = OffsetDateTime.now(); // current week/month
+        TransactionRequest req = new TransactionRequest();
+        req.setAccountId(accountId);
+        req.setAmount(new BigDecimal("100"));
+        req.setType(TransactionType.EXPENSE);
+        req.setDescription("Date moved to current period");
+        req.setTransactionDate(newDate);
+
+        when(transactionRepository.findByIdAndUserId(transactionId, userId)).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        transactionService.updateTransaction(transactionId, req);
+
+        // Old period must be decremented (oldDate, old amount)
+        verify(expenditureSummaryService).removeExpenditure(eq(userId), eq(oldDate),
+                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")));
+        // New period must be incremented (newDate, new amount)
+        verify(expenditureSummaryService).recordExpenditure(eq(userId), eq(newDate),
+                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")));
+        verify(expenditureSummaryService, never())
+                .removeExpenditure(eq(userId), eq(newDate), any(), any());
+        verify(expenditureSummaryService, never())
+                .recordExpenditure(eq(userId), eq(oldDate), any(), any());
+    }
+
+    @Test
     void updateTransaction_withNullCategoryAndLabels_shouldPreserveExisting() {
         Category existingCategory = new Category();
         existingCategory.setId(UUID.randomUUID());
