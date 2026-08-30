@@ -172,4 +172,57 @@ public class ActivityIntegrationTest {
         assertEquals(1, searchContent.size());
         assertEquals("Dinner at restaurant", searchContent.get(0).get("description").asText());
     }
+
+    @Test
+    void testSearchByLabelOnly_returnsCorrectCountAndContent() throws Exception {
+        // 1. Create a label whose name will never appear in a description/category
+        String labelJson = "{\"name\":\"ZomatoPlatinum\"}";
+        HttpRequest createLabelRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/labels"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(labelJson))
+                .build();
+        HttpResponse<String> labelResponse = client.send(createLabelRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, labelResponse.statusCode());
+        String labelId = mapper.readTree(labelResponse.body()).get("id").asText();
+
+        // An EXPENSE whose description/category do NOT contain the label term
+        String txJson = String.format("{" +
+                "\"amount\":20.00," +
+                "\"transactionDate\":\"2026-05-21T09:00:00Z\"," +
+                "\"description\":\"Uber Eats order\"," +
+                "\"type\":\"EXPENSE\"," +
+                "\"accountId\":\"%s\"," +
+                "\"labelIds\":[\"%s\"]" +
+                "}", fromAccountId, labelId);
+
+        HttpRequest createTxRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/transactions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(txJson))
+                .build();
+        HttpResponse<String> txResponse = client.send(createTxRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, txResponse.statusCode());
+
+        // 2. Search by the label name: only the label matches (not desc/category).
+        HttpRequest searchRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/activity?search=ZomatoPlatinum&size=100"))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> searchResponse = client.send(searchRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, searchResponse.statusCode());
+
+        JsonNode page = mapper.readTree(searchResponse.body());
+        // Regression guard for label-search count parity: total must reflect the label-matched row.
+        assertEquals(1, page.get("totalElements").asInt());
+        JsonNode content = page.get("content");
+        assertEquals(1, content.size());
+        JsonNode hit = content.get(0);
+        assertEquals("Uber Eats order", hit.get("description").asText());
+        assertTrue(hit.get("labels") != null && hit.get("labels").size() == 1);
+        assertEquals("ZomatoPlatinum", hit.get("labels").get(0).get("name").asText());
+    }
 }

@@ -33,7 +33,9 @@ public interface ActivityRepository extends JpaRepository<ActivityItem, UUID> {
             countQuery = "SELECT count(DISTINCT a) FROM ActivityItem a WHERE a.userId = :userId " +
             "AND (cast(:searchTerm as string) IS NULL OR :searchTerm = '' " +
             "OR LOWER(a.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-            "OR LOWER(a.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+            "OR LOWER(a.category.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+            "OR EXISTS (SELECT 1 FROM Transaction t JOIN t.labels lbl WHERE t.id = a.id AND LOWER(lbl.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+            "OR EXISTS (SELECT 1 FROM Transfer tr JOIN tr.labels lbl WHERE tr.id = a.id AND LOWER(lbl.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))) " +
             "AND (cast(:type as string) IS NULL OR a.type = :type) " +
             "AND (cast(:accountId as string) IS NULL OR a.account.id = :accountId OR a.toAccount.id = :accountId) " +
             "AND (cast(:startDate as string) IS NULL OR a.transactionDate >= :startDate) " +

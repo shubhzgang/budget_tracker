@@ -179,6 +179,86 @@ class TransferServiceTest {
     }
 
     @Test
+    void updateTransfer_sameAccount_shouldThrow() {
+        Transfer existing = new Transfer();
+        existing.setId(UUID.randomUUID());
+        existing.setFromAccount(fromAccount);
+        existing.setToAccount(toAccount);
+        existing.setFromAmount(new BigDecimal("100.00"));
+        existing.setToAmount(new BigDecimal("100.00"));
+        existing.setAdjustment(BigDecimal.ZERO);
+        existing.setUserId(userId);
+
+        TransferRequest req = new TransferRequest();
+        req.setFromAccountId(fromAccountId);
+        req.setToAccountId(fromAccountId); // same account
+        req.setFromAmount(new BigDecimal("200.00"));
+        req.setToAmount(new BigDecimal("200.00"));
+
+        when(transferRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(fromAccountId)).thenReturn(Optional.of(fromAccount));
+        when(accountRepository.findById(toAccountId)).thenReturn(Optional.of(toAccount));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> transferService.updateTransfer(existing.getId(), req));
+    }
+
+    @Test
+    void createTransfer_creditCardSource_debtIncreases() {
+        fromAccount.setType(AccountType.CREDIT_CARD);
+        fromAccount.setBalance(new BigDecimal("500.00")); // represents ₹500 outstanding debt
+        toAccount.setBalance(new BigDecimal("1000.00"));
+
+        TransferRequest req = new TransferRequest();
+        req.setFromAccountId(fromAccountId);
+        req.setToAccountId(toAccountId);
+        req.setFromAmount(new BigDecimal("100.00"));
+        req.setAdjustment(BigDecimal.ZERO);
+        req.setTransactionDate(OffsetDateTime.now());
+        req.setDescription("Cash advance from CC");
+
+        when(accountRepository.findById(fromAccountId)).thenReturn(Optional.of(fromAccount));
+        when(accountRepository.findById(toAccountId)).thenReturn(Optional.of(toAccount));
+        when(transferRepository.save(any(Transfer.class))).thenAnswer(i -> i.getArgument(0));
+
+        Transfer result = transferService.createTransfer(req);
+
+        assertNotNull(result);
+        assertEquals(new BigDecimal("100.00"), result.getToAmount());
+        // Source CC debt should INCREASE by fromAmount (100): 500 + 100 = 600
+        verify(accountRepository).save(argThat(a -> a.getId().equals(fromAccountId) && a.getBalance().compareTo(new BigDecimal("600.00")) == 0));
+        // Destination BANK should increase by toAmount (100): 1000 + 100 = 1100
+        verify(accountRepository).save(argThat(a -> a.getId().equals(toAccountId) && a.getBalance().compareTo(new BigDecimal("1100.00")) == 0));
+    }
+
+    @Test
+    void deleteTransfer_creditCardDestination_revertsDebtUpward() {
+        toAccount.setType(AccountType.CREDIT_CARD);
+        toAccount.setBalance(new BigDecimal("400.00")); // debt after the payment was applied
+
+        Transfer existing = new Transfer();
+        existing.setId(UUID.randomUUID());
+        existing.setFromAccount(fromAccount);
+        existing.setToAccount(toAccount);
+        existing.setFromAmount(new BigDecimal("100.00"));
+        existing.setToAmount(new BigDecimal("100.00"));
+        existing.setAdjustment(BigDecimal.ZERO);
+        existing.setUserId(userId);
+
+        when(transferRepository.findById(any())).thenReturn(Optional.of(existing));
+        when(accountRepository.findById(fromAccountId)).thenReturn(Optional.of(fromAccount));
+        when(accountRepository.findById(toAccountId)).thenReturn(Optional.of(toAccount));
+
+        transferService.deleteTransfer(existing.getId());
+
+        // Reverting a CC payment increases debt back up: 400 + 100 = 500
+        verify(accountRepository).save(argThat(a -> a.getId().equals(toAccountId) && a.getBalance().compareTo(new BigDecimal("500.00")) == 0));
+        // Bank gets its fromAmount back: 1000 + 100 = 1100
+        verify(accountRepository).save(argThat(a -> a.getId().equals(fromAccountId) && a.getBalance().compareTo(new BigDecimal("1100.00")) == 0));
+        verify(transferRepository).delete(existing);
+    }
+
+    @Test
     void createTransfer_creditCardDestination_debtDecreases() {
         toAccount.setType(AccountType.CREDIT_CARD);
         toAccount.setBalance(new BigDecimal("500.00")); // represents ₹500 outstanding debt
