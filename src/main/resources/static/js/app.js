@@ -107,7 +107,7 @@ document.addEventListener('htmx:beforeRequest', function (e) {
 document.addEventListener('refreshAfterSave', function () {
   const path = window.location.pathname;
   if (path === '/dashboard' || path.indexOf('/dashboard') === 0) {
-    htmx.ajax('GET', '/dashboard/sections', '#dashboard-content');
+    htmx.ajax('GET', '/dashboard/sections', {target: '#dashboard-content', swap: 'outerHTML'});
   } else if (path.indexOf('/transactions') === 0) {
     htmx.ajax('GET', '/transactions/list' + window.location.search, '#transactions-list');
   }
