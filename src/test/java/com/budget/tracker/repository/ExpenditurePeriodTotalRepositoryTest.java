@@ -3,6 +3,7 @@ package com.budget.tracker.repository;
 import com.budget.tracker.model.Account;
 import com.budget.tracker.model.AccountType;
 import com.budget.tracker.model.ExpenditurePeriodTotal;
+import com.budget.tracker.model.Label;
 import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.util.ExpenditurePeriods;
@@ -32,6 +33,9 @@ class ExpenditurePeriodTotalRepositoryTest {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private LabelRepository labelRepository;
 
     @Autowired
     private ExpenditurePeriodTotalRepository periodRepository;
@@ -69,6 +73,17 @@ class ExpenditurePeriodTotalRepositoryTest {
         t.setAccount(account);
         t.setUserId(userId);
         return t;
+    }
+
+    private Label savedLabel(String name) {
+        Label label = new Label();
+        label.setName(name);
+        label.setUserId(userId);
+        return labelRepository.save(label);
+    }
+
+    private void labelTransaction(Transaction t, Label label) {
+        t.getLabels().add(label);
     }
 
     @Test
@@ -199,5 +214,135 @@ class ExpenditurePeriodTotalRepositoryTest {
         periodRepository.adjustTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, new BigDecimal("-10.00"));
         periodRepository.deleteZeroed(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey);
         assertThat(periodRepository.findByUserIdAndPeriodTypeAndPeriodKey(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey)).isEmpty();
+    }
+
+    @Test
+    void adjustLabelTotal_upsertsAndAccumulatesPerLabel() {
+        assumePostgres();
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        String weekKey = ExpenditurePeriods.weekKey(today);
+        String monthKey = ExpenditurePeriods.monthKey(today);
+
+        periodRepository.adjustLabelTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "NEEDS", new BigDecimal("30.00"));
+        periodRepository.adjustLabelTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "NEEDS", new BigDecimal("12.50"));
+        periodRepository.adjustLabelTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "WANTS", new BigDecimal("6.00"));
+        periodRepository.adjustLabelTotal(UUID.randomUUID(), userId, ExpenditurePeriodTotal.PERIOD_MONTH, monthKey, "NEEDS", new BigDecimal("7.25"));
+
+        List<ExpenditurePeriodTotal> rows = periodRepository.findAllByUserId(userId);
+        assertThat(rows).hasSize(3);
+        assertThat(rows).anySatisfy(r -> {
+            assertThat(r.getLabelName()).isEqualTo("NEEDS");
+            assertThat(r.getPeriodType()).isEqualTo(ExpenditurePeriodTotal.PERIOD_WEEK);
+            assertThat(r.getTotal()).isEqualByComparingTo("42.50");
+        });
+    }
+
+    @Test
+    void deleteLabelZeroed_removesOnlyMatchingLabelZeroRow() {
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        String weekKey = ExpenditurePeriods.weekKey(today);
+
+        ExpenditurePeriodTotal zeroRow = new ExpenditurePeriodTotal();
+        zeroRow.setUserId(userId);
+        zeroRow.setPeriodType(ExpenditurePeriodTotal.PERIOD_WEEK);
+        zeroRow.setPeriodKey(weekKey);
+        zeroRow.setLabelName("NEEDS");
+        zeroRow.setTotal(BigDecimal.ZERO);
+        periodRepository.save(zeroRow);
+
+        periodRepository.deleteLabelZeroed(userId, ExpenditurePeriodTotal.PERIOD_WEEK, weekKey, "NEEDS");
+
+        assertThat(periodRepository.findAllByUserId(userId)).isEmpty();
+    }
+
+    @Test
+    void sumDayTotalsByLabel_returnsPerLabelDayTotals() {
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        OffsetDateTime todayStart = today.atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+        OffsetDateTime todayEnd = today.plusDays(1).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+        OffsetDateTime yesterdayStart = today.minusDays(1).atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+
+        Label needs = savedLabel("NEEDS");
+        Label wants = savedLabel("WANTS");
+
+        Transaction t1 = expenseAt(todayStart, "10.00", TransactionType.EXPENSE);
+        labelTransaction(t1, needs);
+        transactionRepository.save(t1);
+
+        Transaction t2 = expenseAt(todayStart, "20.00", TransactionType.EXPENSE);
+        labelTransaction(t2, wants);
+        transactionRepository.save(t2);
+
+        Transaction t3 = expenseAt(yesterdayStart, "5.00", TransactionType.EXPENSE);
+        labelTransaction(t3, needs);
+        transactionRepository.save(t3);
+
+        List<Object[]> rows = periodRepository.sumDayTotalsByLabel(userId, List.of(TransactionType.EXPENSE, TransactionType.LEND),
+                yesterdayStart, todayStart, todayEnd);
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows).anySatisfy(r -> {
+            assertThat(r[0]).isEqualTo("NEEDS");
+            assertThat(((BigDecimal) r[1])).isEqualByComparingTo("5.00");
+            assertThat(((BigDecimal) r[2])).isEqualByComparingTo("10.00");
+        });
+        assertThat(rows).anySatisfy(r -> {
+            assertThat(r[0]).isEqualTo("WANTS");
+            assertThat(((BigDecimal) r[2])).isEqualByComparingTo("20.00");
+        });
+    }
+
+    @Test
+    void sumDayTotalsUnlabelled_returnsOnlyUnlabelled() {
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        OffsetDateTime todayStart = today.atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+
+        Label needs = savedLabel("NEEDS");
+        Transaction labelled = expenseAt(todayStart, "10.00", TransactionType.EXPENSE);
+        labelTransaction(labelled, needs);
+        transactionRepository.save(labelled);
+
+        transactionRepository.save(expenseAt(todayStart, "25.00", TransactionType.EXPENSE));
+
+        Object[] totals = periodRepository.sumDayTotalsUnlabelled(userId, List.of(TransactionType.EXPENSE, TransactionType.LEND),
+                todayStart.minusDays(1), todayStart, todayStart.plusDays(1)).get(0);
+
+        assertThat(((BigDecimal) totals[1])).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    void findExpenditureDateAmountsWithLabels_returnsLabelNamePerRow() {
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        OffsetDateTime date = today.atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+
+        Label needs = savedLabel("NEEDS");
+        Label wants = savedLabel("WANTS");
+        Transaction t = expenseAt(date, "10.00", TransactionType.EXPENSE);
+        labelTransaction(t, needs);
+        labelTransaction(t, wants);
+        transactionRepository.save(t);
+
+        List<Object[]> rows = periodRepository.findExpenditureDateAmountsWithLabels(userId, List.of(TransactionType.EXPENSE, TransactionType.LEND));
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows).anySatisfy(r -> assertThat(r[2]).isEqualTo("NEEDS"));
+        assertThat(rows).anySatisfy(r -> assertThat(r[2]).isEqualTo("WANTS"));
+    }
+
+    @Test
+    void findExpenditureDateAmountsUnlabelled_omitsLabelled() {
+        LocalDate today = LocalDate.now(TimeZones.APP_ZONE);
+        OffsetDateTime date = today.atStartOfDay(TimeZones.APP_ZONE).toOffsetDateTime();
+
+        Label needs = savedLabel("NEEDS");
+        Transaction labelled = expenseAt(date, "10.00", TransactionType.EXPENSE);
+        labelTransaction(labelled, needs);
+        transactionRepository.save(labelled);
+        transactionRepository.save(expenseAt(date, "25.00", TransactionType.EXPENSE));
+
+        List<Object[]> rows = periodRepository.findExpenditureDateAmountsUnlabelled(userId, List.of(TransactionType.EXPENSE, TransactionType.LEND));
+
+        assertThat(rows).hasSize(1);
+        assertThat(((BigDecimal) rows.get(0)[1])).isEqualByComparingTo("25.00");
     }
 }

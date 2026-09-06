@@ -14,9 +14,11 @@ import java.util.UUID;
 public class LabelService {
 
     private final LabelRepository labelRepository;
+    private final ExpenditureSummaryService expenditureSummaryService;
 
-    public LabelService(LabelRepository labelRepository) {
+    public LabelService(LabelRepository labelRepository, ExpenditureSummaryService expenditureSummaryService) {
         this.labelRepository = labelRepository;
+        this.expenditureSummaryService = expenditureSummaryService;
     }
 
     private UUID getCurrentUserId() {
@@ -48,12 +50,15 @@ public class LabelService {
         validateLabelName(labelDetails.getName());
         Label label = getLabelById(labelId);
         label.setName(labelDetails.getName());
-        return labelRepository.save(label);
+        labelRepository.save(label);
+        expenditureSummaryService.recomputeForUser(getCurrentUserId());
+        return label;
     }
 
     public void deleteLabel(UUID labelId) {
         Label label = getLabelById(labelId);
         labelRepository.delete(label);
+        expenditureSummaryService.recomputeForUser(getCurrentUserId());
     }
 
     private void validateLabelName(String name) {

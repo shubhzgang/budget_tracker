@@ -5,6 +5,7 @@ import com.budget.tracker.model.Transaction;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.payload.request.TransactionRequest;
 import com.budget.tracker.payload.response.ExpenditureSummaryResponse;
+import com.budget.tracker.payload.response.LabelPeriodTotal;
 import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.ExpenditureSummaryService;
 import com.budget.tracker.service.TransactionService;
@@ -156,6 +157,7 @@ public class TransactionControllerTest {
         summary.setThisWeek(new BigDecimal("4.00"));
         summary.setLastMonth(new BigDecimal("5.00"));
         summary.setThisMonth(new BigDecimal("6.00"));
+        summary.setTodayByLabel(List.of(new LabelPeriodTotal("NEEDS", new BigDecimal("1.00"))));
         when(expenditureSummaryService.getSummary()).thenReturn(summary);
 
         mockMvc.perform(get("/api/v1/transactions/expenditure-summary")
@@ -166,6 +168,8 @@ public class TransactionControllerTest {
                 .andExpect(jsonPath("$.lastWeek").value(3.00))
                 .andExpect(jsonPath("$.thisWeek").value(4.00))
                 .andExpect(jsonPath("$.lastMonth").value(5.00))
-                .andExpect(jsonPath("$.thisMonth").value(6.00));
+                .andExpect(jsonPath("$.thisMonth").value(6.00))
+                .andExpect(jsonPath("$.todayByLabel[0].labelName").value("NEEDS"))
+                .andExpect(jsonPath("$.todayByLabel[0].amount").value(1.00));
     }
 }

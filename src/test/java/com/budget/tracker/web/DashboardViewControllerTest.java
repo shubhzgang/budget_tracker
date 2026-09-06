@@ -6,6 +6,7 @@ import com.budget.tracker.model.AccountType;
 import com.budget.tracker.model.User;
 import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.payload.response.ExpenditureSummaryResponse;
+import com.budget.tracker.payload.response.LabelPeriodTotal;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.UserDetailsImpl;
 import com.budget.tracker.service.AccountService;
@@ -180,6 +181,48 @@ public class DashboardViewControllerTest {
                 pageable.getPageSize() == 10));
         verify(activityService, never()).getActivity(any(), any(), any(), any(), any(), argThat(pageable ->
                 pageable.getPageSize() == 1000));
+    }
+
+    @Test
+    void dashboard_shouldRenderLabelBreakdownRows() throws Exception {
+        ExpenditureSummaryResponse summary = new ExpenditureSummaryResponse();
+        summary.setToday(BigDecimal.TEN);
+        summary.setThisWeek(BigDecimal.ZERO);
+        summary.setThisMonth(BigDecimal.ZERO);
+        summary.setTodayByLabel(List.of(new LabelPeriodTotal("NEEDS", new BigDecimal("6.00")),
+                new LabelPeriodTotal("WANTS", new BigDecimal("4.00"))));
+        when(expenditureSummaryService.getSummary()).thenReturn(summary);
+
+        mockMvc.perform(get("/dashboard").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("period-breakdown")))
+                .andExpect(content().string(containsString("breakdown-row")))
+                .andExpect(content().string(containsString("NEEDS")))
+                .andExpect(content().string(containsString("WANTS")));
+    }
+
+    @Test
+    void dashboard_shouldRenderUnlabelledRow() throws Exception {
+        ExpenditureSummaryResponse summary = new ExpenditureSummaryResponse();
+        summary.setToday(BigDecimal.TEN);
+        summary.setThisWeek(BigDecimal.ZERO);
+        summary.setThisMonth(BigDecimal.ZERO);
+        summary.setTodayByLabel(List.of(new LabelPeriodTotal("Unlabelled", new BigDecimal("10.00"))));
+        when(expenditureSummaryService.getSummary()).thenReturn(summary);
+
+        mockMvc.perform(get("/dashboard").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("period-breakdown")))
+                .andExpect(content().string(containsString("Unlabelled")));
+    }
+
+    @Test
+    void dashboard_shouldNotRenderBreakdownWhenNoLabels() throws Exception {
+        when(expenditureSummaryService.getSummary()).thenReturn(new ExpenditureSummaryResponse());
+
+        mockMvc.perform(get("/dashboard").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("period-breakdown"))));
     }
 
     @Test
