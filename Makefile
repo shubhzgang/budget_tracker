@@ -115,9 +115,17 @@ stop-stack:
 	@echo "Stopping stack (keeping volumes)..."
 	docker compose down
 
-# Launch the stack with a pre-seeded test account
+# Launch the stack with a pre-seeded test account (pass fresh_setup=1 to wipe demo data first)
 run-demo: build
 	@echo "Launching Budget Tracker in DEMO mode (test@example.com / password)..."
-	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+ifneq ($(strip $(fresh_setup)),)
+	@echo "fresh_setup: removing demo volume..."
+	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
+endif
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build -d
+
+# Stop the demo stack (keeping the demo volume)
+stop-demo:
+	@echo "Stopping demo stack (keeping demo volume, use 'make run-demo fresh_setup=1' to reset)..."
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
