@@ -27,10 +27,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @Profile("demo")
@@ -107,8 +113,8 @@ public class DataSeeder implements CommandLineRunner {
             // 4. Create Accounts
             Account mainBank = createAccount(DEMO_USER_ID, "Main Bank", AccountType.BANK, new BigDecimal("2500.00"), null);
             Account cash = createAccount(DEMO_USER_ID, "Cash", AccountType.CASH, new BigDecimal("120.50"), null);
-            createAccount(DEMO_USER_ID, "Visa Credit", AccountType.CREDIT_CARD, new BigDecimal("450.00"), new BigDecimal("5000.00"));
-            createAccount(DEMO_USER_ID, "Bob (Lend)", AccountType.FRIEND_LENDING, new BigDecimal("50.00"), null);
+            Account visa = createAccount(DEMO_USER_ID, "Visa Credit", AccountType.CREDIT_CARD, new BigDecimal("450.00"), new BigDecimal("5000.00"));
+            Account bob = createAccount(DEMO_USER_ID, "Bob (Lend)", AccountType.FRIEND_LENDING, new BigDecimal("50.00"), null);
 
             // 5. Create Transactions
 
@@ -150,6 +156,9 @@ public class DataSeeder implements CommandLineRunner {
             }
             transferService.createTransfer(transferReq);
 
+            // 6. Backfill ~3 months of history (30 transactions)
+            seedHistory(List.of(mainBank, cash, visa, bob));
+
             System.out.println("Demo data seeded successfully.");
         } finally {
             AuthContext.clear();
@@ -166,5 +175,97 @@ public class DataSeeder implements CommandLineRunner {
         account.setCreditLimit(creditLimit);
         account.setCreatedAt(OffsetDateTime.now());
         return accountRepository.save(account);
+    }
+
+    private record SeedTx(TransactionType type, String accountName, String categoryName, String description,
+                          double amount, String... labelNames) {
+        SeedTx scale(double factor) {
+            return new SeedTx(type, accountName, categoryName, description,
+                    Math.round(amount * factor * 100.0) / 100.0, labelNames);
+        }
+    }
+
+    private static SeedTx expense(String account, String category, String description, double amount, String... labelNames) {
+        return new SeedTx(TransactionType.EXPENSE, account, category, description, amount, labelNames);
+    }
+
+    private static SeedTx income(String account, String description, double amount, String... labelNames) {
+        return new SeedTx(TransactionType.INCOME, account, null, description, amount, labelNames);
+    }
+
+    private static final List<SeedTx> RECURRING = List.of(
+            expense("Cash", "Food", "Dinner with friends", 55.00, "WANTS", "FUN"),
+            expense("Visa Credit", "Entertainment", "Movie night", 42.00, "WANTS"),
+            expense("Main Bank", "Food", "Weekly groceries", 118.00, "NEEDS", "BILLS"),
+            expense("Main Bank", "Utilities", "Electricity bill", 68.00, "NEEDS", "BILLS"),
+            income("Main Bank", "Salary credit", 2200.00, "SAVINGS"),
+            expense("Main Bank", "Travel", "Fuel top-up", 82.00, "NEEDS"),
+            expense("Visa Credit", "Shopping", "New running shoes", 95.00, "WANTS"),
+            expense("Cash", "Health", "Pharmacy", 26.00, "NEEDS"),
+            expense("Main Bank", "Rent", "Monthly rent", 900.00, "NEEDS", "BILLS"));
+
+    private void seedHistory(List<Account> accounts) {
+        for (String[] extra : List.of(new String[]{"Rent", "🏠"}, new String[]{"Entertainment", "🎬"},
+                new String[]{"Shopping", "🛍️"}, new String[]{"Utilities", "💡"}, new String[]{"Health", "💊"})) {
+            Category category = new Category();
+            category.setName(extra[0]);
+            category.setIcon(extra[1]);
+            category.setDefault(false);
+            category.setUserId(DEMO_USER_ID);
+            categoryRepository.save(category);
+        }
+        for (String name : List.of("BILLS", "FUN")) {
+            Label label = new Label();
+            label.setName(name);
+            label.setDefault(false);
+            label.setUserId(DEMO_USER_ID);
+            labelRepository.save(label);
+        }
+
+        Map<String, Account> accountsByName = accounts.stream()
+                .collect(Collectors.toMap(Account::getName, Function.identity()));
+        Map<String, Category> categoriesByName = categoryRepository.findAllByUserId(DEMO_USER_ID).stream()
+                .collect(Collectors.toMap(Category::getName, Function.identity()));
+        Map<String, Label> labelsByName = labelRepository.findAllByUserId(DEMO_USER_ID).stream()
+                .collect(Collectors.toMap(Label::getName, Function.identity()));
+
+        List<SeedTx> rows = new ArrayList<>();
+        for (int cycle = 0; cycle < 3; cycle++) {
+            double factor = 1.0 + cycle * 0.08;
+            for (SeedTx tx : RECURRING) {
+                rows.add(tx.scale(factor));
+            }
+            rows.add(switch (cycle) {
+                case 0 -> income("Main Bank", "Freelance payment", 350.00);
+                case 1 -> new SeedTx(TransactionType.LEND, "Bob (Lend)", null, "Lent to Alex", 45.00);
+                default -> new SeedTx(TransactionType.BORROW, "Cash", null, "Borrowed from Mia", 150.00);
+            });
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        int[] daysBack = {28, 25, 22, 19, 16, 13, 10, 7, 4, 2};
+        for (int i = 0; i < rows.size(); i++) {
+            SeedTx row = rows.get(i);
+            int cycle = i / 10;
+            int dayIdx = i % 10;
+            OffsetDateTime date;
+            if (cycle == 0) {
+                date = now.minusDays(dayIdx).withHour(13).withMinute(30);
+                if (date.isAfter(now)) {
+                    date = now.minusMinutes(dayIdx + 1);
+                }
+            } else {
+                date = now.minusMonths(cycle).withDayOfMonth(daysBack[dayIdx]).withHour(13).withMinute(30);
+            }
+            Transaction transaction = new Transaction();
+            transaction.setType(row.type());
+            transaction.setAmount(BigDecimal.valueOf(row.amount()).setScale(2, RoundingMode.HALF_UP));
+            transaction.setDescription(row.description());
+            transaction.setTransactionDate(date);
+            transaction.setAccount(accountsByName.get(row.accountName()));
+            transaction.setCategory(row.categoryName() == null ? null : categoriesByName.get(row.categoryName()));
+            transaction.setLabels(Arrays.stream(row.labelNames()).map(labelsByName::get).collect(Collectors.toSet()));
+            transactionService.createTransaction(transaction);
+        }
     }
 }
