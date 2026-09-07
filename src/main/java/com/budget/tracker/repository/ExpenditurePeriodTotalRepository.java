@@ -20,9 +20,9 @@ public interface ExpenditurePeriodTotalRepository extends JpaRepository<Expendit
     Optional<ExpenditurePeriodTotal> findByUserIdAndPeriodTypeAndPeriodKey(UUID userId, String periodType, String periodKey);
 
     @Modifying
-    @Query(value = "INSERT INTO expenditure_period_totals (id, user_id, period_type, period_key, total) " +
-            "VALUES (CAST(:id AS uuid), CAST(:userId AS uuid), :periodType, :periodKey, :delta) " +
-            "ON CONFLICT (user_id, period_type, period_key) " +
+    @Query(value = "INSERT INTO expenditure_period_totals (id, user_id, period_type, period_key, label_name, total) " +
+            "VALUES (CAST(:id AS uuid), CAST(:userId AS uuid), :periodType, :periodKey, NULL, :delta) " +
+            "ON CONFLICT (user_id, period_type, period_key, COALESCE(label_name, '')) " +
             "DO UPDATE SET total = expenditure_period_totals.total + EXCLUDED.total", nativeQuery = true)
     void adjustTotal(@Param("id") UUID id,
                      @Param("userId") UUID userId,
@@ -31,11 +31,31 @@ public interface ExpenditurePeriodTotalRepository extends JpaRepository<Expendit
                      @Param("delta") BigDecimal delta);
 
     @Modifying
+    @Query(value = "INSERT INTO expenditure_period_totals (id, user_id, period_type, period_key, label_name, total) " +
+            "VALUES (CAST(:id AS uuid), CAST(:userId AS uuid), :periodType, :periodKey, :labelName, :delta) " +
+            "ON CONFLICT (user_id, period_type, period_key, COALESCE(label_name, '')) " +
+            "DO UPDATE SET total = expenditure_period_totals.total + EXCLUDED.total", nativeQuery = true)
+    void adjustLabelTotal(@Param("id") UUID id,
+                          @Param("userId") UUID userId,
+                          @Param("periodType") String periodType,
+                          @Param("periodKey") String periodKey,
+                          @Param("labelName") String labelName,
+                          @Param("delta") BigDecimal delta);
+
+    @Modifying
     @Query("DELETE FROM ExpenditurePeriodTotal t WHERE t.userId = :userId AND t.periodType = :periodType " +
-            "AND t.periodKey = :periodKey AND t.total = 0")
+            "AND t.periodKey = :periodKey AND t.labelName IS NULL AND t.total = 0")
     void deleteZeroed(@Param("userId") UUID userId,
                       @Param("periodType") String periodType,
                       @Param("periodKey") String periodKey);
+
+    @Modifying
+    @Query("DELETE FROM ExpenditurePeriodTotal t WHERE t.userId = :userId AND t.periodType = :periodType " +
+            "AND t.periodKey = :periodKey AND t.labelName = :labelName AND t.total = 0")
+    void deleteLabelZeroed(@Param("userId") UUID userId,
+                           @Param("periodType") String periodType,
+                           @Param("periodKey") String periodKey,
+                           @Param("labelName") String labelName);
 
     List<ExpenditurePeriodTotal> findAllByUserId(UUID userId);
 
@@ -46,6 +66,14 @@ public interface ExpenditurePeriodTotalRepository extends JpaRepository<Expendit
     @Query("SELECT t.transactionDate, t.amount FROM Transaction t WHERE t.userId = :userId AND t.type IN (:types)")
     List<Object[]> findExpenditureDateAmounts(@Param("userId") UUID userId, @Param("types") List<TransactionType> types);
 
+    @Query("SELECT t.transactionDate, t.amount, l.name FROM Transaction t JOIN t.labels l " +
+            "WHERE t.userId = :userId AND t.type IN (:types)")
+    List<Object[]> findExpenditureDateAmountsWithLabels(@Param("userId") UUID userId, @Param("types") List<TransactionType> types);
+
+    @Query("SELECT t.transactionDate, t.amount FROM Transaction t " +
+            "WHERE t.userId = :userId AND t.type IN (:types) AND t.labels IS EMPTY")
+    List<Object[]> findExpenditureDateAmountsUnlabelled(@Param("userId") UUID userId, @Param("types") List<TransactionType> types);
+
     @Query("SELECT " +
             "SUM(CASE WHEN t.transactionDate >= :yesterdayStart AND t.transactionDate < :todayStart THEN t.amount ELSE 0 END), " +
             "SUM(CASE WHEN t.transactionDate >= :todayStart AND t.transactionDate < :todayEnd THEN t.amount ELSE 0 END) " +
@@ -55,4 +83,27 @@ public interface ExpenditurePeriodTotalRepository extends JpaRepository<Expendit
                                 @Param("yesterdayStart") OffsetDateTime yesterdayStart,
                                 @Param("todayStart") OffsetDateTime todayStart,
                                 @Param("todayEnd") OffsetDateTime todayEnd);
+
+    @Query("SELECT l.name, " +
+            "SUM(CASE WHEN t.transactionDate >= :yesterdayStart AND t.transactionDate < :todayStart THEN t.amount ELSE 0 END), " +
+            "SUM(CASE WHEN t.transactionDate >= :todayStart AND t.transactionDate < :todayEnd THEN t.amount ELSE 0 END) " +
+            "FROM Transaction t JOIN t.labels l " +
+            "WHERE t.userId = :userId AND t.type IN (:types) " +
+            "GROUP BY l.name")
+    List<Object[]> sumDayTotalsByLabel(@Param("userId") UUID userId,
+                                       @Param("types") List<TransactionType> types,
+                                       @Param("yesterdayStart") OffsetDateTime yesterdayStart,
+                                       @Param("todayStart") OffsetDateTime todayStart,
+                                       @Param("todayEnd") OffsetDateTime todayEnd);
+
+    @Query("SELECT " +
+            "SUM(CASE WHEN t.transactionDate >= :yesterdayStart AND t.transactionDate < :todayStart THEN t.amount ELSE 0 END), " +
+            "SUM(CASE WHEN t.transactionDate >= :todayStart AND t.transactionDate < :todayEnd THEN t.amount ELSE 0 END) " +
+            "FROM Transaction t " +
+            "WHERE t.userId = :userId AND t.type IN (:types) AND t.labels IS EMPTY")
+    List<Object[]> sumDayTotalsUnlabelled(@Param("userId") UUID userId,
+                                          @Param("types") List<TransactionType> types,
+                                          @Param("yesterdayStart") OffsetDateTime yesterdayStart,
+                                          @Param("todayStart") OffsetDateTime todayStart,
+                                          @Param("todayEnd") OffsetDateTime todayEnd);
 }

@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
+import java.util.stream.Collectors;
 @Service
 public class TransactionService {
 
@@ -95,7 +95,8 @@ public class TransactionService {
 
         updateBalance(account.getId(), userId, transaction.getType(), transaction.getAmount(), BalanceAction.APPLY);
         Transaction saved = transactionRepository.save(transaction);
-        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount(),
+                labelNamesOf(saved));
         return saved;
     }
 
@@ -114,7 +115,8 @@ public class TransactionService {
 
         updateBalance(account.getId(), userId, transaction.getType(), transaction.getAmount(), BalanceAction.APPLY);
         Transaction saved = transactionRepository.save(transaction);
-        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount(),
+                labelNamesOf(saved));
         return saved;
     }
 
@@ -186,9 +188,11 @@ public class TransactionService {
             }
         }
 
-        expenditureSummaryService.removeExpenditure(userId, oldDate, oldType, oldAmount);
+        Set<String> oldLabelNames = labelNamesOf(existing);
+        expenditureSummaryService.removeExpenditure(userId, oldDate, oldType, oldAmount, oldLabelNames);
         Transaction saved = transactionRepository.save(existing);
-        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount());
+        expenditureSummaryService.recordExpenditure(userId, saved.getTransactionDate(), saved.getType(), saved.getAmount(),
+                labelNamesOf(saved));
         return saved;
     }
 
@@ -199,8 +203,15 @@ public class TransactionService {
         TransactionType type = transaction.getType();
 
         updateBalance(transaction.getAccount().getId(), userId, type, transaction.getAmount(), BalanceAction.REVERT);
-        expenditureSummaryService.removeExpenditure(userId, transaction.getTransactionDate(), type, transaction.getAmount());
+        expenditureSummaryService.removeExpenditure(userId, transaction.getTransactionDate(), type, transaction.getAmount(),
+                labelNamesOf(transaction));
         transactionRepository.delete(transaction);
+    }
+
+    private Set<String> labelNamesOf(Transaction transaction) {
+        return transaction.getLabels() == null
+                ? Set.of()
+                : transaction.getLabels().stream().map(Label::getName).collect(Collectors.toSet());
     }
 
     private void updateBalance(UUID accountId, UUID userId, TransactionType type, BigDecimal amount, BalanceAction action) {

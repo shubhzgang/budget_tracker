@@ -21,6 +21,9 @@ class LabelServiceTest {
     @Mock
     private LabelRepository labelRepository;
 
+    @Mock
+    private ExpenditureSummaryService expenditureSummaryService;
+
     private LabelService labelService;
 
     private UUID userId;
@@ -29,7 +32,7 @@ class LabelServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        labelService = new LabelService(labelRepository);
+        labelService = new LabelService(labelRepository, expenditureSummaryService);
         userId = UUID.randomUUID();
         labelId = UUID.randomUUID();
         AuthContext.setUserId(userId);
@@ -109,6 +112,7 @@ class LabelServiceTest {
 
         assertEquals("New Label", updated.getName());
         verify(labelRepository, times(1)).save(existing);
+        verify(expenditureSummaryService).recomputeForUser(userId);
     }
 
     @Test
@@ -122,6 +126,7 @@ class LabelServiceTest {
         labelService.deleteLabel(labelId);
 
         verify(labelRepository, times(1)).delete(label);
+        verify(expenditureSummaryService).recomputeForUser(userId);
     }
 
     @Test

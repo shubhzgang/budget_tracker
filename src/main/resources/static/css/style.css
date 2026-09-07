@@ -679,13 +679,52 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 0.875rem 1rem;
-  text-decoration: none;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 .period-card:hover {
   border-color: var(--primary);
   transform: translateY(-1px);
+}
+
+.period-card-header {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.period-breakdown {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breakdown-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breakdown-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  flex-shrink: 0;
 }
 
 .period-card-label {
@@ -991,7 +1030,7 @@ input:focus, select:focus, textarea:focus {
 
 @media (min-width: 1024px) {
   .period-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 

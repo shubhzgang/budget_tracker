@@ -4,7 +4,7 @@
 Budget Tracker is a full-stack application for managing personal finances, featuring accounts, categories, labels, and transactions with support for different account types (e.g., Credit Cards, Bank, Friend Lending).
 
 ## Tech Stack
-- **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle. Schema migrations via Flyway (`V1__initial_schema.sql`, `V2__expenditure_period_totals.sql`).
+- **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle. Schema migrations via Flyway (`V1__initial_schema.sql`, `V2__expenditure_period_totals.sql`, `V3__expenditure_period_totals_by_label.sql`).
 - **Frontend**: HTMX + Thymeleaf server-rendered templates with Alpine.js for interactivity and plain CSS (CSS-variable theming: Light/Dark/OLED). The old React/Vite frontend has been fully removed (see `frontend-rewrite-plan.md`).
 - **Testing**: JUnit 5, Playwright (E2E), Testcontainers (Integration, via `make test-int`), contract tests in `src/test/java/com/budget/tracker/contract`.
 - **Infrastructure**: Docker, Docker Compose (Postgres + Backend only; Spring Boot serves the UI and static assets).
@@ -14,7 +14,7 @@ Budget Tracker is a full-stack application for managing personal finances, featu
 - **Primary Keys**: Uses UUIDv7 for all entities to ensure time-ordered, distributed ID generation and prevent B-Tree fragmentation.
 - **Security**: JWT stored in a secure HttpOnly cookie (set on login alongside the JSON response); `Authorization: Bearer` header also supported. Stateless filter chain; CSRF disabled with a bespoke `CsrfHeaderFilter` HTMX/Bearer guard. Registration can be toggled via `app.auth.register-enabled`.
 - **Transactions vs Transfers**: Split into separate tables. `transactions` holds INCOME/EXPENSE/LEND/BORROW; `transfers` is a dedicated table with `fromAmount`, `toAmount`, and `adjustment` (discount/savings) — any two fields auto-compute the third. A PostgreSQL `activity_view` (`UNION ALL`) provides unified listing/search.
-- **Expenditure Dashboard**: Hybrid computation — Today/Yesterday totals computed live; Week/Month totals eagerly maintained in `expenditure_period_totals` via atomic `ON CONFLICT DO UPDATE` upserts on every transaction write. Timezone pinned to `TimeZones.APP_ZONE` (Asia/Kolkata).
+- **Expenditure Dashboard**: Hybrid computation — Today/Yesterday totals computed live; Week/Month totals eagerly maintained in `expenditure_period_totals` via atomic `ON CONFLICT DO UPDATE` upserts on every transaction write. Timezone pinned to `TimeZones.APP_ZONE` (Asia/Kolkata). The same table also stores **per-label breakdown** rows via a nullable `label_name` column (V3): `NULL` = the overall period total, `__UNLABELLED__` = transactions with no labels, otherwise the label name (a write-time snapshot). A `COALESCE(label_name,'')` unique index keeps overall and per-label rows distinct. Multi-label transactions count the full amount under each label, so label subtotals may exceed the true total; the `NULL` row remains the authoritative total. `recomputeForUser` (which rebuilds all rows) also runs on **label rename/delete** so history reflects the change.
 - **Theming**: Cookie-based theme (`data-theme` rendered server-side, no FOUC) with CSS variables in `static/css/style.css`.
 
 ## Core Components
@@ -37,7 +37,7 @@ Budget Tracker is a full-stack application for managing personal finances, featu
 
 ## Current State & Next Steps
 - ✅ HTMX + Thymeleaf rewrite complete; React frontend removed; spending-insights section removed from dashboard.
-- ▶️ **Next up**: Implement label-wise expenditure breakdown on dashboard period cards — full plan in `label-wise-expenditure-breakdown-plan.md` (V3 migration adding `label_name` to `expenditure_period_totals`, per-label upserts, `*ByLabel` fields in `ExpenditureSummaryResponse`, `period-cards.html` UI). Not yet implemented.
+- ✅ **Label-wise expenditure breakdown shipped**: per-label + "Unlabelled" totals under each dashboard period card, always visible, sorted by amount desc. Full plan `label-wise-expenditure-breakdown-plan.md`; V3 migration `V3__expenditure_period_totals_by_label.sql`; recomputes on label rename/delete.
 - Backlog (`todo.md`): CSV export by time range, in-place restore from server-side backups, account flag to exclude from budget/net-worth.
 - Open review concerns (`htmx-rewrite-review-concerns.md`): expired-session handling for htmx requests, CSRF posture, token/CORS hygiene, hardcoded Asia/Kolkata, vendored JS, test coverage gaps.
 

@@ -342,14 +342,14 @@ class TransactionServiceTest {
 
         // Old period must be decremented (oldDate, old amount)
         verify(expenditureSummaryService).removeExpenditure(eq(userId), eq(oldDate),
-                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")));
+                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")), anySet());
         // New period must be incremented (newDate, new amount)
         verify(expenditureSummaryService).recordExpenditure(eq(userId), eq(newDate),
-                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")));
+                eq(TransactionType.EXPENSE), eq(new BigDecimal("100")), anySet());
         verify(expenditureSummaryService, never())
-                .removeExpenditure(eq(userId), eq(newDate), any(), any());
+                .removeExpenditure(eq(userId), eq(newDate), any(), any(), anySet());
         verify(expenditureSummaryService, never())
-                .recordExpenditure(eq(userId), eq(oldDate), any(), any());
+                .recordExpenditure(eq(userId), eq(oldDate), any(), any(), anySet());
     }
 
     @Test

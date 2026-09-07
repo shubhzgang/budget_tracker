@@ -9,14 +9,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(name = "expenditure_period_totals",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "period_type", "period_key"}))
+@Table(name = "expenditure_period_totals")
 @Getter
 @Setter
 public class ExpenditurePeriodTotal {
 
     public static final String PERIOD_WEEK = "WEEK";
     public static final String PERIOD_MONTH = "MONTH";
+    public static final String UNLABELLED = "__UNLABELLED__";
 
     @Id
     @Column(updatable = false, nullable = false)
@@ -30,6 +30,9 @@ public class ExpenditurePeriodTotal {
 
     @Column(name = "period_key", nullable = false)
     private String periodKey;
+
+    @Column(name = "label_name")
+    private String labelName;
 
     @Column(nullable = false)
     private BigDecimal total;
