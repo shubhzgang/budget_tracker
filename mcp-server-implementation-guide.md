@@ -36,7 +36,7 @@ An **MCP server** that lets AI assistants (Claude, Antigravity, Cursor, etc.) in
 **Key features:**
 - **Streamable HTTP transport**: The server is a remote HTTP service. Users configure it by entering a URL (e.g., `http://localhost:3001/mcp`) — that's it.
 - **OAuth 2.1 authentication with PKCE**: When an AI client connects for the first time, a browser opens with a login form. The user enters their Budget Tracker email + password. After that, everything is automatic.
-- **22 tools** covering accounts, transactions, transfers, activity feed, expenditure summary, categories, and labels.
+- **25 tools** covering accounts, transactions, transfers, activity feed, expenditure summary, categories, and labels.
 
 ---
 
@@ -102,8 +102,8 @@ An **MCP server** that lets AI assistants (Claude, Antigravity, Cursor, etc.) in
 
 The MCP spec requires OAuth 2.1 for remote servers. Since Budget Tracker uses simple email+password → JWT auth (not OAuth natively), our MCP server acts as a **thin OAuth wrapper**:
 
-1. MCP client connects → server says "you need auth" (401)
-2. MCP client discovers OAuth endpoints via `/.well-known/oauth-authorization-server`
+1. MCP client connects → server says "you need auth" (401 with `WWW-Authenticate` pointing at `/.well-known/oauth-protected-resource`)
+2. MCP client reads the Protected Resource Metadata → finds our authorization server → loads its OAuth metadata from `/.well-known/oauth-authorization-server`
 3. MCP client opens a browser → our custom login page at `/authorize`
 4. User enters Budget Tracker credentials → we call Budget Tracker's `/api/v1/auth/login` → get JWT
 5. We generate an OAuth authorization code → redirect browser back to MCP client
@@ -123,11 +123,10 @@ mcp-server/
     ├── index.ts                  # Express app entry point
     ├── oauth/
     │   ├── store.ts              # In-memory stores (clients, codes, tokens)
-    │   ├── metadata.ts           # GET /.well-known/oauth-authorization-server
+    │   ├── metadata.ts           # GET /.well-known/oauth-authorization-server + /.well-known/oauth-protected-resource
     │   ├── register.ts           # POST /register
-    │   ├── authorize.ts          # GET+POST /authorize
-    │   ├── token.ts              # POST /token
-    │   └── login.html            # Login form page
+    │   ├── authorize.ts          # GET+POST /authorize (login HTML embedded as a string template)
+    │   └── token.ts              # POST /token
     ├── api/
     │   └── client.ts             # Budget Tracker REST API client
     ├── mcp/
@@ -301,15 +300,17 @@ GET /api/v1/activity               → Page<ActivityResponse>
 ```
 GET    /api/v1/categories            → Category[]
 POST   /api/v1/categories            → Category  (body: { "name": "Food", "icon": "🍔" })
-DELETE /api/v1/categories/:id        → 204
+PUT    /api/v1/categories/:id        → Category  (body: { "name": ..., "icon": ... } — full replace: omitted icon erases the emoji; duplicate name → 400)
+DELETE /api/v1/categories/:id        → 204       (any category, incl. defaults/in-use — transactions are detached via ON DELETE SET NULL)
 ```
 
 ### 4.8 Labels
 
 ```
 GET    /api/v1/labels                → Label[]
-POST   /api/v1/labels                → Label     (body: { "name": "NEEDS" })
-DELETE /api/v1/labels/:id            → 204
+POST   /api/v1/labels                → Label     (body: { "name": "NEEDS" }; name may not contain '|')
+PUT    /api/v1/labels/:id            → Label     (rename; recomputes dashboard totals)
+DELETE /api/v1/labels/:id            → 204       (works on ALL labels incl. defaults; recomputes dashboard totals)
 ```
 
 ### 4.9 Pagination (Spring Data format)
@@ -349,7 +350,7 @@ Create `mcp-server/` directory at the project root.
     "dev": "tsc --watch & node --watch dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "express": "^5.1.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.0"
@@ -357,11 +358,12 @@ Create `mcp-server/` directory at the project root.
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
-    "@types/uuid": "^10.0.0",
     "typescript": "^5.8.0"
   }
 }
 ```
+
+> **Why `^1.30.0` and not an older pin:** `@modelcontextprotocol/sdk` publishes on the 1.x line, and the Node.js `StreamableHTTPServerTransport` was rebuilt mid-line (Web-Standard wrapper via `@hono/node-server`). On current 1.x the transport exposes **a single method `handleRequest(req, res, parsedBody?)`** — the older `handlePostMessage` / `handleGetMessage` / `handleDeleteMessage` methods **no longer exist**. Step 10 below is written for this current API. Also note the SDK peer-dependency on `zod` is `^3.25 || ^4.0`, so the zod pin above is fine.
 
 **`mcp-server/tsconfig.json`**
 ```json
@@ -453,6 +455,33 @@ Return JSON:
 
 > **Important:** The URLs must match your server's actual host/port. Read from an environment variable like `MCP_BASE_URL` (default: `http://localhost:3001`).
 
+**Also serve Protected Resource Metadata (MUST per MCP spec, RFC 9728).** This same file adds a second route:
+
+```
+GET /.well-known/oauth-protected-resource
+```
+
+Return JSON:
+```json
+{
+  "resource": "http://localhost:3001/mcp",
+  "authorization_servers": ["http://localhost:3001"],
+  "scopes_supported": ["mcp:tools"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+(Both values are derived from `MCP_BASE_URL`: `resource` = `${MCP_BASE_URL}/mcp`, `authorization_servers` = `[MCP_BASE_URL]`.)
+
+**And every 401 from the `/mcp` endpoint must point here (MUST per spec).** Clients discover auth *through the error response*: a bare `401` body is not enough — spec-compliant clients only auto-launch the OAuth flow when the response carries:
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="http://localhost:3001/.well-known/oauth-protected-resource"
+```
+
+Write a small `send401(res, message)` helper that sets this header (built from `MCP_BASE_URL`) and returns the 401 — reuse it in Steps 5, 6, and 10. Without this header, clients like Claude/Cursor will not re-authenticate, and the "OAuth flow triggers automatically" behaviour described in the Testing Guide will not happen.
+
 ---
 
 ### Step 4: Dynamic Client Registration
@@ -516,40 +545,65 @@ GET /authorize?
 ```
 
 **What to do:**
-1. Validate that `client_id` exists in your registered clients.
-2. Serve an HTML login form. The form must include hidden fields for all the OAuth params (client_id, redirect_uri, code_challenge, code_challenge_method, state).
-3. The form has email + password fields and a Submit button.
-4. The form POSTs to `/authorize`.
+1. Validate that `client_id` exists in your registered clients AND that `redirect_uri` **exactly matches** one of that client's stored `redirect_uris` (from Step 4). If either fails → `400`, do NOT render the form. This is the guard that stops an attacker from registering a client and then pointing the login page at a foreign redirect target (open-redirect → auth-code theft). "Be permissive" applies to *who* may register, never to where codes are redirected.
+2. Note that spec-compliant clients also send a `resource` parameter (RFC 8707, the canonical URL of your MCP server). Accept and ignore it — strict resource binding is out of scope for a personal server, but **do not reject** requests that include it.
+3. Serve an HTML login form. The form must include hidden fields for all the OAuth params (client_id, redirect_uri, code_challenge, code_challenge_method, state).
+4. The form has email + password fields and a Submit button.
+5. The form POSTs to `/authorize`.
 
 #### `POST /authorize` — Validate credentials and redirect
 
 **What to do:**
 1. Extract email, password, and all hidden OAuth fields from the form body.
-2. Call Budget Tracker's login API:
+2. **Re-validate** `client_id` + `redirect_uri` exactly as in `GET /authorize` (hidden fields are attacker-tamperable — never trust them). If invalid → `400`. Also accept (and ignore) a `resource` field if present.
+3. Call Budget Tracker's login API:
    ```
    POST http://localhost:3300/api/v1/auth/login
    Content-Type: application/json
    Body: { "email": "...", "password": "..." }
    ```
-3. If login fails → re-render login page with an error message.
-4. If login succeeds → you get a JWT token from the response.
-5. Generate a random authorization code (use `uuid`).
-6. Store it: `storeAuthCode(code, { budgetTrackerJwt, codeChallenge, redirectUri, clientId })`.
-7. Redirect the browser to: `{redirect_uri}?code={code}&state={state}`.
+4. If login fails → re-render login page with an error message.
+5. If login succeeds → you get a JWT token from the response.
+6. Generate a random authorization code (use `uuid`).
+7. Store it: `storeAuthCode(code, { budgetTrackerJwt, codeChallenge, redirectUri, clientId })`.
+8. Redirect the browser to: `{redirect_uri}?code={code}&state={state}`.
 
-**File: `mcp-server/src/oauth/login.html`**
+**How to serve the HTML**: Instead of a separate file, embed the HTML as a string template directly in `authorize.ts` and return it. This avoids complex build steps with copying HTML files into `dist/`. 
 
-A simple, clean HTML login page. Must contain:
-- Email input field
-- Password input field
-- Submit button
-- Hidden inputs for: `client_id`, `redirect_uri`, `code_challenge`, `code_challenge_method`, `state`
-- Error display area (for invalid credentials)
-- Form action: `POST /authorize`
+**Escape everything you interpolate.** Every one of these values comes from the URL/form and is attacker-controlled. A page that harvests passwords must never reflect raw input into HTML (a `"` in `redirect_uri` or `state` would let an attacker break out of the attribute and inject script). Always pass values through an escaping helper:
 
-Style it simply (inline CSS is fine). Budget Tracker branding (title: "Budget Tracker — Sign In") is a nice touch.
+```typescript
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
-> **How to serve the HTML**: Use `fs.readFileSync` to load the HTML template, then replace `{{placeholder}}` values with the actual OAuth params before sending it.
+const loginHtmlTemplate = (clientId: string, redirectUri: string, codeChallenge: string, codeChallengeMethod: string, state: string, error?: string) => `
+<!DOCTYPE html>
+<html>
+<head><title>Budget Tracker — Sign In</title></head>
+<body>
+  <h2>Sign In</h2>
+  ${error ? `<p style="color: red;">${escapeHtml(error)}</p>` : ''}
+  <form action="/authorize" method="POST">
+    <input type="hidden" name="client_id" value="${escapeHtml(clientId)}">
+    <input type="hidden" name="redirect_uri" value="${escapeHtml(redirectUri)}">
+    <input type="hidden" name="code_challenge" value="${escapeHtml(codeChallenge)}">
+    <input type="hidden" name="code_challenge_method" value="${escapeHtml(codeChallengeMethod)}">
+    <input type="hidden" name="state" value="${escapeHtml(state)}">
+    
+    <label>Email: <input type="email" name="email" required></label><br>
+    <label>Password: <input type="password" name="password" required></label><br>
+    <button type="submit">Sign In</button>
+  </form>
+</body>
+</html>
+`;
+```
 
 ---
 
@@ -572,13 +626,14 @@ code_verifier=the-original-pkce-verifier
 ```
 
 **What to do:**
-1. Look up the authorization code in your store via `consumeAuthCode(code)`.
+1. Look up the authorization code in your store via `consumeAuthCode(code)`. Spec-compliant clients also send a `resource` parameter here (RFC 8707) — accept and ignore it.
 2. If not found or expired → return `400 { "error": "invalid_grant" }`.
-3. Verify PKCE: compute `SHA256(code_verifier)` → base64url-encode it → compare with stored `code_challenge`. They must match.
-4. If PKCE fails → return `400 { "error": "invalid_grant" }`.
-5. Generate a random access token (use `uuid`).
-6. Store the mapping: `storeToken(accessToken, budgetTrackerJwt)`.
-7. Return:
+3. Verify the submitted `redirect_uri` and `client_id` **exactly match** the values stored with the code — a code is only spendable by the same client, to the same redirect target, that obtained it. Mismatch → `400 { "error": "invalid_grant" }`.
+4. Verify PKCE: compute `SHA256(code_verifier)` → base64url-encode it → compare with stored `code_challenge`. They must match.
+5. If PKCE fails → return `400 { "error": "invalid_grant" }`.
+6. Generate a random access token (use `uuid`).
+7. Store the mapping: `storeToken(accessToken, budgetTrackerJwt)`.
+8. Return:
 ```json
 {
   "access_token": "generated-access-token",
@@ -672,11 +727,13 @@ class BudgetTrackerClient {
   // Categories
   async listCategories() { return this.request('GET', '/api/v1/categories'); }
   async createCategory(data: any) { return this.request('POST', '/api/v1/categories', data); }
+  async updateCategory(id: string, data: any) { return this.request('PUT', `/api/v1/categories/${id}`, data); }
   async deleteCategory(id: string) { return this.request('DELETE', `/api/v1/categories/${id}`); }
 
   // Labels
   async listLabels() { return this.request('GET', '/api/v1/labels'); }
   async createLabel(data: any) { return this.request('POST', '/api/v1/labels', data); }
+  async updateLabel(id: string, data: any) { return this.request('PUT', `/api/v1/labels/${id}`, data); }
   async deleteLabel(id: string) { return this.request('DELETE', `/api/v1/labels/${id}`); }
 }
 ```
@@ -695,15 +752,18 @@ import { BudgetTrackerClient } from '../api/client.js';
 
 export function registerAccountTools(
   server: McpServer,
-  getClient: (token: string) => BudgetTrackerClient
+  jwt: string,
+  baseUrl: string
 ) {
-  server.tool(
+  const client = new BudgetTrackerClient(baseUrl, jwt);
+
+  server.registerTool(
     'list_accounts',
-    'List all accounts with their balances',
-    {},  // no input params
-    async (_params, extra) => {
-      const jwt = extra.authInfo?.token as string;  // the Budget Tracker JWT
-      const client = getClient(jwt);
+    {
+      description: 'List all accounts with their balances',
+      inputSchema: {},  // no input params
+    },
+    async () => {
       const accounts = await client.listAccounts();
       return { content: [{ type: 'text', text: JSON.stringify(accounts, null, 2) }] };
     }
@@ -713,7 +773,9 @@ export function registerAccountTools(
 }
 ```
 
-> **Important**: `extra.authInfo?.token` gives you the raw OAuth access token. You need to look up the corresponding Budget Tracker JWT from your token store.
+> **Note**: Current 1.x SDKs also still accept the older `server.tool(name, description, schema, handler)` call, but it is deprecated — `registerTool` (above) is the supported form.
+
+> **Important**: Notice how we pass `jwt` and `baseUrl` directly to the registration function. This allows the tools to securely close over the authenticated client without needing to parse headers inside the tool itself.
 
 Here are all the tools to implement per file:
 
@@ -724,7 +786,7 @@ Here are all the tools to implement per file:
 | `list_accounts` | `{}` (none) | `GET /api/v1/accounts` |
 | `get_account` | `{ id: z.string().uuid() }` | `GET /api/v1/accounts/:id` |
 | `create_account` | `{ name: z.string(), type: z.enum(["BANK","CREDIT_CARD","CASH","FRIEND_LENDING"]), initialBalance: z.number().optional().default(0), creditLimit: z.number().optional() }` | `POST /api/v1/accounts` |
-| `update_account` | `{ id: z.string().uuid(), name: z.string().optional(), type: z.enum([...]).optional(), initialBalance: z.number().optional(), creditLimit: z.number().optional() }` | `PUT /api/v1/accounts/:id` |
+| `update_account` | `{ id: z.string().uuid(), name: z.string(), type: z.enum(["BANK","CREDIT_CARD","CASH","FRIEND_LENDING"]), initialBalance: z.number().optional(), creditLimit: z.number().optional() }` | `PUT /api/v1/accounts/:id` |
 | `delete_account` | `{ id: z.string().uuid() }` | `DELETE /api/v1/accounts/:id` |
 
 #### `mcp-server/src/tools/transactions.ts` — 6 tools
@@ -756,20 +818,31 @@ Here are all the tools to implement per file:
 |-----------|-------------|----------|
 | `get_activity_feed` | `{ search: z.string().optional(), type: z.enum(["INCOME","EXPENSE","LEND","BORROW","TRANSFER"]).optional(), accountId: z.string().uuid().optional(), startDate: z.string().optional(), endDate: z.string().optional(), page: z.number().optional().default(0), size: z.number().optional().default(20) }` | `GET /api/v1/activity` |
 
-#### `mcp-server/src/tools/categories.ts` — 3 tools
+#### `mcp-server/src/tools/categories.ts` — 4 tools
 
 | Tool Name | Input Schema | API Call |
 |-----------|-------------|----------|
 | `list_categories` | `{}` | `GET /api/v1/categories` |
 | `create_category` | `{ name: z.string(), icon: z.string().optional() }` | `POST /api/v1/categories` |
+| `update_category` | `{ id: z.string().uuid(), name: z.string(), icon: z.string() }` | `PUT /api/v1/categories/:id` |
 | `delete_category` | `{ id: z.string().uuid() }` | `DELETE /api/v1/categories/:id` |
 
-#### `mcp-server/src/tools/labels.ts` — 2 tools
+> **Note (icon required)**: `PUT` replaces the whole object — the backend sets `icon` unconditionally, so omitting it **erases the emoji**. Always fetch the category first (`list_categories`) and re-send its current icon when you don't intend to change it. Same story for `update_account`'s required `name`/`type`.
+>
+> **Note (deletion)**: **Any** category — including defaults (Food/Travel/Transfer) and in-use categories — can be deleted; there is no guard. The `category_id` FK is `ON DELETE SET NULL`, so transactions/transfers using it are **silently detached** (they just lose their category). Put this warning in the `delete_category` tool description so the AI confirms with the user first. Duplicate category names are rejected (400, case-insensitive).
+
+#### `mcp-server/src/tools/labels.ts` — 4 tools
 
 | Tool Name | Input Schema | API Call |
 |-----------|-------------|----------|
 | `list_labels` | `{}` | `GET /api/v1/labels` |
 | `create_label` | `{ name: z.string() }` | `POST /api/v1/labels` |
+| `update_label` | `{ id: z.string().uuid(), name: z.string() }` | `PUT /api/v1/labels/:id` |
+| `delete_label` | `{ id: z.string().uuid() }` | `DELETE /api/v1/labels/:id` |
+
+> **Note**: Label names cannot contain the pipe character `|` (the API rejects them with 400 — surface this in the `create_label`/`update_label` descriptions).
+>
+> **Note (deletion)**: **Default labels (NEEDS/WANTS/SAVINGS) are NOT protected by the API** — only the web UI hides their delete button. Deleting a default label succeeds and triggers a full recompute of dashboard period totals. Put a warning in the `delete_label` tool description so the AI asks the user before touching defaults.
 
 ---
 
@@ -783,16 +856,14 @@ import { registerAccountTools } from '../tools/accounts.js';
 import { registerTransactionTools } from '../tools/transactions.js';
 // ... import others
 
-export function createMcpServer(
-  getClient: (jwt: string) => BudgetTrackerClient
-): McpServer {
+export function createMcpServer(jwt: string, baseUrl: string): McpServer {
   const server = new McpServer({
     name: 'budget-tracker',
     version: '1.0.0',
   });
 
-  registerAccountTools(server, getClient);
-  registerTransactionTools(server, getClient);
+  registerAccountTools(server, jwt, baseUrl);
+  registerTransactionTools(server, jwt, baseUrl);
   // ... register all tool groups
 
   return server;
@@ -811,41 +882,105 @@ This is the core MCP transport layer. You need an Express router that handles:
 - `GET /mcp` — SSE stream for server-initiated notifications
 - `DELETE /mcp` — Close a session
 
-**Key concepts:**
-- Each client session has a unique `mcp-session-id` header.
-- You maintain a `Map<string, StreamableHTTPServerTransport>` to route requests to the right transport.
-- On the first POST (no session ID), create a new `StreamableHTTPServerTransport` and `McpServer`, connect them.
+**Key concepts (verified against the 2025-03-26 spec and the current SDK):**
+- The session ID travels in the **`Mcp-Session-Id` HTTP header** — never a query param. The server returns it on the `initialize` response; the client echoes it on **every** subsequent request (POST, GET, and DELETE).
+- `StreamableHTTPServerTransport` is **stateful only if you pass `sessionIdGenerator`**. `new StreamableHTTPServerTransport()` with no options runs *stateless*: it never issues a session ID, and your session map would never fill up. Always pass `sessionIdGenerator: () => randomUUID()`.
+- Current SDK 1.x exposes **one** entry method: `transport.handleRequest(req, res, parsedBody?)` for all three verbs. (`handlePostMessage`/`handleGetMessage`/`handleDeleteMessage` are from old 1.x point-releases and **no longer exist** — calling them throws `TypeError`.)
+- You must pass **`req.body`** explicitly: `express.json()` in Step 11 consumes the request stream, so the transport cannot read the body itself.
+- Populate the session map from the transport's **`onsessioninitialized`** callback (race-safe — requests can arrive before your code after `handleRequest` returns) and remove entries in **`transport.onclose`**.
+- A non-`initialize` request with a missing/unknown session ID must get **400** per spec.
+- **Auth applies to all three routes**, and every 401 must use the `send401` helper from Step 3 (`WWW-Authenticate` + resource-metadata pointer) — that header is what makes clients re-run the OAuth flow when the stored Budget Tracker JWT expires mid-session.
 
-**Rough structure:**
+**Structure:**
 ```typescript
+import { randomUUID } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createMcpServer } from './server.js';
+import { getJwtForToken } from '../oauth/store.js';
+import { send401 } from '../oauth/metadata.js'; // from Step 3 — sets WWW-Authenticate, sends 401
 
 const sessions = new Map<string, StreamableHTTPServerTransport>();
 
-// POST /mcp
+// Extract + validate the bearer token. Returns the Budget Tracker JWT, or null (after sending 401).
+function requireBearer(req: express.Request, res: express.Response): string | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    send401(res, 'Missing Bearer token');
+    return null;
+  }
+  const jwt = getJwtForToken(authHeader.split(' ')[1]);
+  // Eagerly reject if the stored Budget Tracker JWT is gone or expired:
+  // a 401 *with the WWW-Authenticate header* makes the client re-trigger the OAuth flow.
+  if (!jwt || isJwtExpired(jwt)) {
+    send401(res, 'Unauthorized or token expired');
+    return null;
+  }
+  return jwt;
+}
+
+// Helper to check if Budget Tracker JWT is expired
+function isJwtExpired(token: string): boolean {
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf8'));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // invalid token
+  }
+}
+
+// POST /mcp — every JSON-RPC message arrives here
 router.post('/mcp', async (req, res) => {
-  // 1. Check Authorization: Bearer <token> header
-  //    → look up JWT from token store
-  //    → if invalid: return 401
-  // 2. Check mcp-session-id header
-  //    → if exists and known: route to existing transport
-  //    → if not: create new transport + server, connect them, store in sessions map
-  // 3. Let the transport handle the request
+  const jwt = requireBearer(req, res);
+  if (!jwt) return;
+
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  let transport = sessionId ? sessions.get(sessionId) : undefined;
+
+  if (!transport) {
+    if (sessionId || !isInitializeRequest(req.body)) {
+      // Unknown/absent session on a non-initialize request → 400 per spec
+      res.status(400).json({
+        jsonrpc: '2.0', error: { code: -32000, message: 'Bad Request: No valid session ID provided' }, id: null,
+      });
+      return;
+    }
+    // New session: stateful transport + one McpServer per session, closed over this user's JWT
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => { sessions.set(sid, transport!); },
+    });
+    transport.onclose = () => {
+      const sid = transport!.sessionId;
+      if (sid) delete sessions[sid];
+    };
+    const baseUrl = process.env.BUDGET_TRACKER_URL || 'http://localhost:3300';
+    const server = createMcpServer(jwt, baseUrl);
+    await server.connect(transport); // connect BEFORE handling, so responses can flow back
+  }
+
+  await transport.handleRequest(req, res, req.body); // req.body: express.json() already consumed the stream
 });
 
-// GET /mcp — SSE stream
+// GET /mcp — SSE stream for server-initiated messages (the transport speaks SSE itself)
 router.get('/mcp', async (req, res) => {
-  // Route to existing session's transport for SSE
+  if (!requireBearer(req, res)) return;
+  const transport = sessions.get(req.headers['mcp-session-id'] as string);
+  if (!transport) return res.status(400).send('Invalid or missing session ID');
+  await transport.handleRequest(req, res);
 });
 
-// DELETE /mcp — close session
+// DELETE /mcp — session termination (the transport deletes state and fires onclose)
 router.delete('/mcp', async (req, res) => {
-  // Clean up session
+  if (!requireBearer(req, res)) return;
+  const transport = sessions.get(req.headers['mcp-session-id'] as string);
+  if (!transport) return res.status(400).send('Invalid or missing session ID');
+  await transport.handleRequest(req, res);
 });
 ```
 
-> **Refer to the official SDK examples**: https://github.com/modelcontextprotocol/typescript-sdk — look at the `src/examples/` directory for `StreamableHTTPServerTransport` usage.
+> **Refer to the official SDK example**: `src/examples/server/simpleStreamableHttp.ts` in https://github.com/modelcontextprotocol/typescript-sdk (branch `v1.x`) — the structure above mirrors it, minus the SDK's built-in auth middleware (`requireBearerAuth` / `mcpAuthMetadataRouter`), which we replace with our token-store lookup because our OAuth server lives in this same process.
 
 ---
 
@@ -865,6 +1000,18 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// DNS-rebinding protection (MUST per the MCP spec's security considerations).
+// Native/CLI MCP clients send no Origin header at all; browsers hitting this
+// server will always send a localhost origin (the OAuth login form included).
+const ALLOWED_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && !ALLOWED_ORIGIN.test(origin)) {
+    return res.status(403).send('Forbidden: disallowed Origin');
+  }
+  next();
+});
+
 // OAuth endpoints
 app.use(metadataRouter);
 app.use(registerRouter);
@@ -875,7 +1022,11 @@ app.use(tokenRouter);
 app.use(mcpRouter);
 
 const port = parseInt(process.env.MCP_PORT || '3001');
-app.listen(port, () => {
+// Bind loopback by default when run directly (spec recommendation).
+// IMPORTANT: in Docker set MCP_HOST=0.0.0.0 — inside a container, 127.0.0.1
+// is unreachable through published ports. (Step 12's compose env does this.)
+const host = process.env.MCP_HOST || '127.0.0.1';
+app.listen(port, host, () => {
   console.log(`Budget Tracker MCP server running on http://localhost:${port}`);
   console.log(`MCP endpoint: http://localhost:${port}/mcp`);
   console.log(`Budget Tracker API: ${process.env.BUDGET_TRACKER_URL || 'http://localhost:3300'}`);
@@ -886,8 +1037,9 @@ app.listen(port, () => {
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MCP_PORT` | `3001` | Port for the MCP server |
+| `MCP_HOST` | `127.0.0.1` | Bind address (set `0.0.0.0` in Docker, see Step 12) |
 | `BUDGET_TRACKER_URL` | `http://localhost:3300` | Budget Tracker backend URL |
-| `MCP_BASE_URL` | `http://localhost:3001` | Public URL of this MCP server (used in OAuth metadata) |
+| `MCP_BASE_URL` | `http://localhost:3001` | Public URL of this MCP server (used in OAuth metadata + `WWW-Authenticate` 401 pointer) |
 
 ---
 
@@ -917,6 +1069,7 @@ CMD ["node", "dist/index.js"]
       BUDGET_TRACKER_URL: http://backend:8080
       MCP_BASE_URL: http://localhost:3001
       MCP_PORT: "3001"
+      MCP_HOST: "0.0.0.0"   # required in Docker: published ports can't reach a 127.0.0.1 bind
     depends_on:
       backend:
         condition: service_healthy
@@ -924,16 +1077,12 @@ CMD ["node", "dist/index.js"]
       - budget-tracker-net
 ```
 
-**Update `Makefile`** targets that should include the MCP server:
-- `run-stack` and `run-demo`: Include `mcp` in the `docker compose up` command
-- `stop-stack` and `stop-demo`: Include `mcp` in the `docker compose down` command
-- Do NOT add `mcp` to test targets (`test-int`, `test-e2e`) — tests don't need the MCP server
-
+> **Note on Makefile**: Because `run-stack` and `run-demo` use `docker compose up`, the new `mcp` service will be picked up automatically. No changes to the `Makefile` are needed!
 ---
 
 ### Step 13: Antigravity MCP Config
 
-**File: `.agents/mcp_config.json`** (at the project root, NOT inside `mcp-server/`)
+**File: `~/.gemini/config/mcp_config.json`** (Global config on your machine)
 
 ```json
 {
@@ -963,11 +1112,10 @@ Check off each task as you complete it. Do them in order — later steps depend 
 
 ### Phase 2: OAuth Layer
 - [ ] `src/oauth/store.ts` — Implement all stores and helper functions
-- [ ] `src/oauth/metadata.ts` — Implement metadata endpoint, test with `curl http://localhost:3001/.well-known/oauth-authorization-server`
+- [ ] `src/oauth/metadata.ts` — Implement BOTH metadata endpoints (`/.well-known/oauth-authorization-server` **and** `/.well-known/oauth-protected-resource`) + the `send401` helper, test with `curl http://localhost:3001/.well-known/oauth-authorization-server` and `curl http://localhost:3001/.well-known/oauth-protected-resource`
 - [ ] `src/oauth/register.ts` — Implement registration, test with `curl -X POST http://localhost:3001/register -H 'Content-Type: application/json' -d '{"client_name":"test","redirect_uris":["http://localhost:9999/cb"]}'`
-- [ ] `src/oauth/login.html` — Create login page HTML
-- [ ] `src/oauth/authorize.ts` — Implement GET (serve login page) and POST (validate + redirect)
-- [ ] `src/oauth/token.ts` — Implement token exchange with PKCE verification
+- [ ] `src/oauth/authorize.ts` — Implement GET (serve embedded login HTML **with `escapeHtml` on every interpolated value**) and POST; validate `client_id` + **exact-match `redirect_uri`** on BOTH routes
+- [ ] `src/oauth/token.ts` — Implement token exchange with PKCE verification + `redirect_uri`/`client_id` match against the stored code
 
 ### Phase 3: API Client
 - [ ] `src/api/client.ts` — Implement all methods
@@ -978,31 +1126,33 @@ Check off each task as you complete it. Do them in order — later steps depend 
 - [ ] `src/tools/transactions.ts` — 6 tools (including expenditure summary)
 - [ ] `src/tools/transfers.ts` — 5 tools
 - [ ] `src/tools/activity.ts` — 1 tool
-- [ ] `src/tools/categories.ts` — 3 tools
-- [ ] `src/tools/labels.ts` — 2 tools
+- [ ] `src/tools/categories.ts` — 4 tools
+- [ ] `src/tools/labels.ts` — 4 tools
 
 ### Phase 5: MCP Transport
-- [ ] `src/mcp/server.ts` — Create McpServer, register all tools
-- [ ] `src/mcp/handler.ts` — Streamable HTTP handler with session management
-- [ ] `src/index.ts` — Wire everything together in Express
+- [ ] `src/mcp/server.ts` — Create McpServer per session (closed over the user's JWT), register all tools with `registerTool`
+- [ ] `src/mcp/handler.ts` — Streamable HTTP handler: sessions keyed by the **`Mcp-Session-Id` header**, `sessionIdGenerator: () => randomUUID()`, map filled via `onsessioninitialized` / cleared via `onclose`, single `handleRequest(req, res, req.body)` entry point, `send401` (with `WWW-Authenticate`) on all three routes
+- [ ] `src/index.ts` — Wire everything in Express: JSON + urlencoded parsers, **Origin allow-list middleware**, listen on `MCP_HOST` (default `127.0.0.1`)
 
 ### Phase 6: Build & Test
 - [ ] `npm run build` — compiles without errors
 - [ ] Start Budget Tracker: `make run-demo`
 - [ ] Start MCP server: `cd mcp-server && npm start`
+- [ ] `curl -i -X POST http://localhost:3001/mcp` (no token) → expect **401 with a `WWW-Authenticate: Bearer resource_metadata="..."` header**
 - [ ] Test with MCP Inspector: `npx @modelcontextprotocol/inspector http://localhost:3001/mcp`
 - [ ] Verify OAuth flow works (browser opens, login succeeds, tools appear)
+- [ ] Verify a session is established: after initialize, subsequent requests carry the `Mcp-Session-Id` header (visible in Inspector's request log); the DELETE terminates it
 - [ ] Test at least one tool from each category
+- [ ] Expired-token recovery: restart the MCP server (empty token store) while the Inspector session is open → next request gets 401 and the Inspector re-runs the browser login
 
-### Phase 7: Docker & Makefile
+### Phase 7: Docker
 - [ ] Create `mcp-server/Dockerfile`
 - [ ] Add `mcp` service to `docker-compose.yml`
-- [ ] Update `Makefile` targets (run-stack, stop-stack, run-demo, stop-demo)
 - [ ] Test `make run-stack` — all 3 services start
 - [ ] Verify MCP server is accessible at `http://localhost:3001/mcp`
 
 ### Phase 8: Antigravity Config
-- [ ] Create `.agents/mcp_config.json`
+- [ ] Update `~/.gemini/config/mcp_config.json`
 - [ ] Test in Antigravity: tools should appear after authenticating
 
 ---
@@ -1018,8 +1168,13 @@ make run-demo
 # 2. Start MCP server
 cd mcp-server && npm start
 
-# 3. Test OAuth metadata
+# 3. Test OAuth metadata + protected resource metadata
 curl http://localhost:3001/.well-known/oauth-authorization-server | jq .
+curl http://localhost:3001/.well-known/oauth-protected-resource | jq .
+
+# 3b. Unauthenticated /mcp must 401 AND advertise where auth lives (spec MUST)
+curl -s -o /dev/null -D - -X POST http://localhost:3001/mcp | grep -i www-authenticate
+# expect: WWW-Authenticate: Bearer resource_metadata="http://localhost:3001/.well-known/oauth-protected-resource"
 
 # 4. Test dynamic registration
 curl -X POST http://localhost:3001/register \
@@ -1049,8 +1204,13 @@ This opens a web UI where you can:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `401 Unauthorized` from Budget Tracker | JWT expired or invalid | Re-authenticate (OAuth flow will trigger automatically) |
+| `401 Unauthorized` and client shows "auth failed"/never opens a browser | 401 is missing the `WWW-Authenticate: Bearer resource_metadata="..."` header — clients discover OAuth **through that header**; a bare 401 is a dead end | Use `send401` everywhere; verify with `curl -i -X POST .../mcp` (smoke test 3b) |
+| `401 Unauthorized` mid-session | Stored Budget Tracker JWT expired (24h TTL) | Expected — the 401 + `WWW-Authenticate` makes the client re-run the browser login automatically |
+| `TypeError: transport.handlePostMessage is not a function` | Old 1.x transport API — current 1.x only has `handleRequest` | Use `transport.handleRequest(req, res, req.body)` (Step 10) |
+| Every request after `initialize` fails with 400 "No valid session ID" | Transport built without `sessionIdGenerator` (stateless → no session ID ever handed out), or session read from query param instead of the `Mcp-Session-Id` header | Pass `sessionIdGenerator: () => randomUUID()`; key the map from `onsessioninitialized`; read the **header** |
+| POST /mcp hangs / body is undefined | `express.json()` consumed the stream and `req.body` wasn't passed to the transport | `handleRequest(req, res, req.body)` |
 | `ECONNREFUSED` on port 3300 | Budget Tracker not running | Run `make run-demo` first |
-| `invalid_grant` on token exchange | PKCE verification failed or code expired | Check your SHA256 + base64url encoding logic |
-| Tools not appearing | McpServer not connected to transport | Check that `server.connect(transport)` is called |
+| `invalid_grant` on token exchange | PKCE verification failed, code expired, or `redirect_uri`/`client_id` don't match the stored code | Check SHA256 + base64url encoding; compare the exact values used at `/authorize` |
+| Tools not appearing | McpServer not connected to transport | Check that `server.connect(transport)` is called before `handleRequest` |
+| MCP server unreachable in Docker (curl from host hangs/refused) | App bound to `127.0.0.1` *inside the container* | Set `MCP_HOST=0.0.0.0` in the compose service (Step 12) |
 | `Cannot find module` | TypeScript not compiled | Run `npm run build` before `npm start` |
