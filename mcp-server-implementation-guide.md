@@ -35,7 +35,7 @@ An **MCP server** that lets AI assistants (Claude Desktop, Cursor, etc.) interac
 **Key features:**
 - **Streamable HTTP transport**: The server is a remote HTTP service. Users configure it by entering a URL (e.g., `http://localhost:3001/mcp`) — that's it.
 - **OAuth 2.1 authentication with PKCE**: When an AI client connects for the first time, a browser opens with a login form. The user enters their Budget Tracker email + password. After that, everything is automatic.
-- **25 tools** covering accounts, transactions, transfers, activity feed, expenditure summary, categories, and labels.
+- **19 tools** covering accounts, transactions, transfers, activity feed, expenditure summary, categories, and labels (accounts and labels are read-only — no create/update/delete tools for them).
 
 ---
 
@@ -168,6 +168,8 @@ POST   /api/v1/accounts              → Account     (body: Account)
 PUT    /api/v1/accounts/:id          → Account     (body: Account)
 DELETE /api/v1/accounts/:id          → 204
 ```
+
+> **Note:** MCP exposes accounts **read-only** (`list_accounts`, `get_account`) — the write endpoints above exist on the backend but no MCP tool calls them (deleting an account would cascade-delete its transactions and transfers).
 
 **Account shape:**
 ```json
@@ -311,6 +313,8 @@ POST   /api/v1/labels                → Label     (body: { "name": "NEEDS" }; n
 PUT    /api/v1/labels/:id            → Label     (rename; recomputes dashboard totals)
 DELETE /api/v1/labels/:id            → 204       (works on ALL labels incl. defaults; recomputes dashboard totals)
 ```
+
+> **Note:** MCP exposes labels **read-only** (`list_labels`) — the write endpoints exist on the backend but no MCP tool calls them.
 
 ### 4.9 Pagination (Spring Data format)
 
@@ -690,9 +694,6 @@ class BudgetTrackerClient {
   // Accounts
   async listAccounts() { return this.request('GET', '/api/v1/accounts'); }
   async getAccount(id: string) { return this.request('GET', `/api/v1/accounts/${id}`); }
-  async createAccount(data: any) { return this.request('POST', '/api/v1/accounts', data); }
-  async updateAccount(id: string, data: any) { return this.request('PUT', `/api/v1/accounts/${id}`, data); }
-  async deleteAccount(id: string) { return this.request('DELETE', `/api/v1/accounts/${id}`); }
 
   // Transactions
   async listTransactions(params: Record<string, string>) {
@@ -731,9 +732,6 @@ class BudgetTrackerClient {
 
   // Labels
   async listLabels() { return this.request('GET', '/api/v1/labels'); }
-  async createLabel(data: any) { return this.request('POST', '/api/v1/labels', data); }
-  async updateLabel(id: string, data: any) { return this.request('PUT', `/api/v1/labels/${id}`, data); }
-  async deleteLabel(id: string) { return this.request('DELETE', `/api/v1/labels/${id}`); }
 }
 ```
 
@@ -778,15 +776,12 @@ export function registerAccountTools(
 
 Here are all the tools to implement per file:
 
-#### `mcp-server/src/tools/accounts.ts` — 5 tools
+#### `mcp-server/src/tools/accounts.ts` — 2 tools (read-only)
 
 | Tool Name | Input Schema (Zod) | API Call |
 |-----------|-------------------|----------|
 | `list_accounts` | `{}` (none) | `GET /api/v1/accounts` |
 | `get_account` | `{ id: z.string().uuid() }` | `GET /api/v1/accounts/:id` |
-| `create_account` | `{ name: z.string(), type: z.enum(["BANK","CREDIT_CARD","CASH","FRIEND_LENDING"]), initialBalance: z.number().optional().default(0), creditLimit: z.number().optional() }` | `POST /api/v1/accounts` |
-| `update_account` | `{ id: z.string().uuid(), name: z.string(), type: z.enum(["BANK","CREDIT_CARD","CASH","FRIEND_LENDING"]), initialBalance: z.number().optional(), creditLimit: z.number().optional() }` | `PUT /api/v1/accounts/:id` |
-| `delete_account` | `{ id: z.string().uuid() }` | `DELETE /api/v1/accounts/:id` |
 
 #### `mcp-server/src/tools/transactions.ts` — 6 tools
 
@@ -826,22 +821,15 @@ Here are all the tools to implement per file:
 | `update_category` | `{ id: z.string().uuid(), name: z.string(), icon: z.string() }` | `PUT /api/v1/categories/:id` |
 | `delete_category` | `{ id: z.string().uuid() }` | `DELETE /api/v1/categories/:id` |
 
-> **Note (icon required)**: `PUT` replaces the whole object — the backend sets `icon` unconditionally, so omitting it **erases the emoji**. Always fetch the category first (`list_categories`) and re-send its current icon when you don't intend to change it. Same story for `update_account`'s required `name`/`type`.
+> **Note (icon required)**: `PUT` replaces the whole object — the backend sets `icon` unconditionally, so omitting it **erases the emoji**. Always fetch the category first (`list_categories`) and re-send its current icon when you don't intend to change it.
 >
 > **Note (deletion)**: **Any** category — including defaults (Food/Travel/Transfer) and in-use categories — can be deleted; there is no guard. The `category_id` FK is `ON DELETE SET NULL`, so transactions/transfers using it are **silently detached** (they just lose their category). Put this warning in the `delete_category` tool description so the AI confirms with the user first. Duplicate category names are rejected (400, case-insensitive).
 
-#### `mcp-server/src/tools/labels.ts` — 4 tools
+#### `mcp-server/src/tools/labels.ts` — 1 tool (read-only)
 
 | Tool Name | Input Schema | API Call |
 |-----------|-------------|----------|
 | `list_labels` | `{}` | `GET /api/v1/labels` |
-| `create_label` | `{ name: z.string() }` | `POST /api/v1/labels` |
-| `update_label` | `{ id: z.string().uuid(), name: z.string() }` | `PUT /api/v1/labels/:id` |
-| `delete_label` | `{ id: z.string().uuid() }` | `DELETE /api/v1/labels/:id` |
-
-> **Note**: Label names cannot contain the pipe character `|` (the API rejects them with 400 — surface this in the `create_label`/`update_label` descriptions).
->
-> **Note (deletion)**: **Default labels (NEEDS/WANTS/SAVINGS) are NOT protected by the API** — only the web UI hides their delete button. Deleting a default label succeeds and triggers a full recompute of dashboard period totals. Put a warning in the `delete_label` tool description so the AI asks the user before touching defaults.
 
 ---
 
@@ -1103,12 +1091,12 @@ Check off each task as you complete it. Do them in order — later steps depend 
 - [ ] Manually test a few methods against a running Budget Tracker (`make run-demo`)
 
 ### Phase 4: MCP Tools
-- [ ] `src/tools/accounts.ts` — 5 tools
+- [ ] `src/tools/accounts.ts` — 2 tools (read-only)
 - [ ] `src/tools/transactions.ts` — 6 tools (including expenditure summary)
 - [ ] `src/tools/transfers.ts` — 5 tools
 - [ ] `src/tools/activity.ts` — 1 tool
 - [ ] `src/tools/categories.ts` — 4 tools
-- [ ] `src/tools/labels.ts` — 4 tools
+- [ ] `src/tools/labels.ts` — 1 tool (read-only)
 
 ### Phase 5: MCP Transport
 - [ ] `src/mcp/server.ts` — Create McpServer per session (closed over the user's JWT), register all tools with `registerTool`
