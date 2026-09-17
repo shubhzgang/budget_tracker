@@ -23,7 +23,6 @@
    - [Step 10: Streamable HTTP Handler](#step-10-streamable-http-handler)
    - [Step 11: Express Entry Point](#step-11-express-entry-point)
    - [Step 12: Docker & Makefile Integration](#step-12-docker--makefile-integration)
-   - [Step 13: Antigravity MCP Config](#step-13-antigravity-mcp-config)
 6. [Task Checklist](#6-task-checklist)
 7. [Testing Guide](#7-testing-guide)
 
@@ -31,7 +30,7 @@
 
 ## 1. What You're Building
 
-An **MCP server** that lets AI assistants (Claude, Antigravity, Cursor, etc.) interact with the Budget Tracker app. Think of it as an API adapter: the AI calls MCP tools like `create_transaction` or `get_expenditure_summary`, and the MCP server translates those into REST API calls to the Budget Tracker backend.
+An **MCP server** that lets AI assistants (Claude Desktop, Cursor, etc.) interact with the Budget Tracker app. Think of it as an API adapter: the AI calls MCP tools like `create_transaction` or `get_expenditure_summary`, and the MCP server translates those into REST API calls to the Budget Tracker backend.
 
 **Key features:**
 - **Streamable HTTP transport**: The server is a remote HTTP service. Users configure it by entering a URL (e.g., `http://localhost:3001/mcp`) — that's it.
@@ -61,7 +60,7 @@ An **MCP server** that lets AI assistants (Claude, Antigravity, Cursor, etc.) in
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  MCP Client (AI IDE like Antigravity/Claude Desktop/Cursor) │
+│  MCP Client (AI IDE like Claude Desktop/Cursor)             │
 │                                                             │
 │  Config: serverUrl = "http://localhost:3001/mcp"            │
 └──────┬──────────────────────────────────────────────────────┘
@@ -498,7 +497,7 @@ Content-Type: application/json
 **Request body** (from MCP client, per RFC 7591):
 ```json
 {
-  "client_name": "Antigravity",
+  "client_name": "My AI Client",
   "redirect_uris": ["http://localhost:12345/callback"],
   "grant_types": ["authorization_code"],
   "response_types": ["code"],
@@ -513,7 +512,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "generated-uuid",
-  "client_name": "Antigravity",
+  "client_name": "My AI Client",
   "redirect_uris": ["http://localhost:12345/callback"],
   "grant_types": ["authorization_code"],
   "response_types": ["code"],
@@ -1080,24 +1079,6 @@ CMD ["node", "dist/index.js"]
 > **Note on Makefile**: Because `run-stack` and `run-demo` use `docker compose up`, the new `mcp` service will be picked up automatically. No changes to the `Makefile` are needed!
 ---
 
-### Step 13: Antigravity MCP Config
-
-**File: `~/.gemini/config/mcp_config.json`** (Global config on your machine)
-
-```json
-{
-  "mcpServers": {
-    "budget-tracker": {
-      "serverUrl": "http://localhost:3001/mcp"
-    }
-  }
-}
-```
-
-This tells Antigravity (or any MCP client) where to find the MCP server. Everything else (OAuth discovery, browser login, token management) happens automatically.
-
----
-
 ## 6. Task Checklist
 
 Check off each task as you complete it. Do them in order — later steps depend on earlier ones.
@@ -1150,10 +1131,6 @@ Check off each task as you complete it. Do them in order — later steps depend 
 - [ ] Add `mcp` service to `docker-compose.yml`
 - [ ] Test `make run-stack` — all 3 services start
 - [ ] Verify MCP server is accessible at `http://localhost:3001/mcp`
-
-### Phase 8: Antigravity Config
-- [ ] Update `~/.gemini/config/mcp_config.json`
-- [ ] Test in Antigravity: tools should appear after authenticating
 
 ---
 
