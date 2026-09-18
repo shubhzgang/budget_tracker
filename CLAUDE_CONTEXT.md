@@ -6,8 +6,8 @@ Budget Tracker is a full-stack application for managing personal finances, featu
 ## Tech Stack
 - **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle. Schema migrations via Flyway (`V1__initial_schema.sql`, `V2__expenditure_period_totals.sql`, `V3__expenditure_period_totals_by_label.sql`).
 - **Frontend**: HTMX + Thymeleaf server-rendered templates with Alpine.js for interactivity and plain CSS (CSS-variable theming: Light/Dark/OLED). The old React/Vite frontend has been fully removed (see `frontend-rewrite-plan.md`).
-- **Testing**: JUnit 5, Playwright (E2E), Testcontainers (Integration, via `make test-int`), contract tests in `src/test/java/com/budget/tracker/contract`.
-- **Infrastructure**: Docker, Docker Compose (Postgres + Backend only; Spring Boot serves the UI and static assets).
+- **Testing**: JUnit 5, Playwright (E2E), Testcontainers (Integration, via `make test-int`), contract tests in `src/test/java/com/budget/tracker/contract`. MCP server (`mcp-server/`) uses Vitest (`npm test`).
+- **Infrastructure**: Docker, Docker Compose (Postgres + Backend + MCP server; Spring Boot serves the UI and static assets).
 
 ## Architecture & Design
 - **Identity**: Multi-user architecture. All entities (`Account`, `Category`, `Label`, `Transaction`, `Transfer`) are scoped to a `user_id`.
@@ -27,12 +27,13 @@ Budget Tracker is a full-stack application for managing personal finances, featu
     - `model`: JPA entities.
 - **Templates (`src/main/resources/templates`)**: `layout.html`, `login.html`, `register.html`, `dashboard.html`, `transactions.html`, `settings.html` + `fragments/` (account/activity/transaction forms, period-cards, category/label managers, backup-manager, emoji-picker, etc.).
 - **E2E (`/e2e`)**: Playwright test suites for critical user flows.
+- **MCP server (`/mcp-server`)**: Node 22 + Express Streamable-HTTP MCP server (port 3001, 19 tools, OAuth 2.1/PKCE wrapper over `/api/v1/auth/login`). See `mcp-server-implementation-guide.md`. Commands: `cd mcp-server && npm install && npm run build && npm test && npm start`.
 
 ## Key Commands
 - **Backend Unit Tests**: `./gradlew test`
 - **Backend Integration Tests (Docker)**: `make test-int`
 - **End-to-End Tests (Full Stack)**: `make test-e2e`
-- **Run Entire Stack**: `make run-stack` (via Docker Compose, app on host port 3300)
+- **Run Entire Stack**: `make run-stack` (via Docker Compose, app on host port 3300, MCP on 3001)
 - **Run Demo Mode**: `make run-demo`
 
 ## Current State & Next Steps

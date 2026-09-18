@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: test-int test-int-up test-int-down test-int-clean test-int-build java-test test-e2e
+.PHONY: test-int test-int-up test-int-down test-int-clean test-int-build java-test test-e2e run-demo-mcp
 
 # Main target: Run the full integration test suite
 test-int: test-int-build test-int-up
@@ -129,3 +129,36 @@ endif
 stop-demo:
 	@echo "Stopping demo stack (keeping demo volume, use 'make run-demo fresh_setup=1' to reset)..."
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+
+# Full demo setup with MCP: seeded backend + MCP server, with health waits and smoke checks
+# (pass fresh_setup=1 to wipe demo data first, same as run-demo)
+run-demo-mcp: build
+	@echo "Launching Budget Tracker DEMO + MCP (test@example.com / password)..."
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+ifneq ($(strip $(fresh_setup)),)
+	@echo "fresh_setup: removing demo volume..."
+	@-docker volume rm budget_tracker_pgdata_demo 2>/dev/null || true
+endif
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build -d postgres backend mcp
+	@echo "Waiting for backend to be healthy..."
+	@n=0; until [ $$(docker inspect --format='{{.State.Health.Status}}' budget-tracker-backend) = 'healthy' ] || [ $$n -ge 30 ]; do sleep 2; n=$$(($$n + 1)); done; \
+	if [ $$n -ge 30 ]; then \
+	  echo "Error: Backend failed to become healthy after 60 seconds"; \
+	  docker compose -f docker-compose.yml -f docker-compose.demo.yml logs backend mcp; \
+	  exit 1; \
+	fi
+	@echo "Waiting for MCP server to be ready..."
+	@m=0; until curl -sf http://localhost:3001/.well-known/oauth-authorization-server >/dev/null || [ $$m -ge 30 ]; do sleep 2; m=$$(($$m + 1)); done; \
+	if [ $$m -ge 30 ]; then \
+	  echo "Error: MCP server failed to become ready after 60 seconds"; \
+	  docker compose -f docker-compose.yml -f docker-compose.demo.yml logs mcp; \
+	  exit 1; \
+	fi
+	@echo "Smoke-checking MCP auth discovery..."
+	@curl -sf http://localhost:3001/.well-known/oauth-protected-resource >/dev/null || (echo "Error: MCP protected-resource metadata unreachable"; exit 1)
+	@curl -s -o /dev/null -D - -X POST http://localhost:3001/mcp | grep -qi 'www-authenticate: Bearer resource_metadata=' || (echo "Error: MCP /mcp missing WWW-Authenticate header"; exit 1)
+	@echo ""
+	@echo "Demo + MCP is ready:"
+	@echo "  App: http://localhost:3300 (test@example.com / password)"
+	@echo "  MCP: http://localhost:3001/mcp"
+	@echo "  Stop with: make stop-demo"

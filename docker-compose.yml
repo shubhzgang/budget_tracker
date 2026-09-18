@@ -38,6 +38,22 @@ services:
     networks:
       - budget-tracker-net
 
+  mcp:
+    build: ./mcp-server
+    container_name: budget-tracker-mcp
+    ports:
+      - "3001:3001"
+    environment:
+      BUDGET_TRACKER_URL: http://backend:8080
+      MCP_BASE_URL: http://localhost:3001
+      MCP_PORT: "3001"
+      MCP_HOST: "0.0.0.0"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - budget-tracker-net
+
 networks:
   budget-tracker-net:
     driver: bridge

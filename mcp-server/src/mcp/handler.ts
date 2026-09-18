@@ -1,0 +1,94 @@
+import { randomUUID } from 'node:crypto';
+import { Router, type Request, type Response } from 'express';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { createMcpServer } from './server.js';
+import { getJwtForToken } from '../oauth/store.js';
+import { send401 } from '../oauth/metadata.js';
+
+const sessions = new Map<string, StreamableHTTPServerTransport>();
+
+export function isJwtExpired(token: string): boolean {
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf8')) as { exp?: number };
+    if (typeof payload.exp !== 'number') return true;
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+function requireBearer(req: Request, res: Response): string | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    send401(res, 'Missing Bearer token');
+    return null;
+  }
+  const jwt = getJwtForToken(authHeader.slice('Bearer '.length));
+  if (!jwt || isJwtExpired(jwt)) {
+    send401(res, 'Unauthorized or token expired');
+    return null;
+  }
+  return jwt;
+}
+
+export const mcpRouter = Router();
+
+mcpRouter.post('/mcp', async (req: Request, res: Response) => {
+  const jwt = requireBearer(req, res);
+  if (!jwt) return;
+
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  let transport = sessionId ? sessions.get(sessionId) : undefined;
+
+  if (!transport) {
+    if (sessionId || !isInitializeRequest(req.body)) {
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
+        id: null,
+      });
+      return;
+    }
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => {
+        sessions.set(sid, transport!);
+      },
+    });
+    transport.onclose = () => {
+      const sid = transport!.sessionId;
+      if (sid) sessions.delete(sid);
+    };
+    const baseUrl = process.env.BUDGET_TRACKER_URL || 'http://localhost:3300';
+    const server = createMcpServer(jwt, baseUrl);
+    await server.connect(transport);
+  }
+
+  await transport.handleRequest(req, res, req.body);
+});
+
+mcpRouter.get('/mcp', async (req: Request, res: Response) => {
+  if (!requireBearer(req, res)) return;
+  const transport = sessions.get(req.headers['mcp-session-id'] as string);
+  if (!transport) {
+    res.status(400).send('Invalid or missing session ID');
+    return;
+  }
+  await transport.handleRequest(req, res);
+});
+
+mcpRouter.delete('/mcp', async (req: Request, res: Response) => {
+  if (!requireBearer(req, res)) return;
+  const transport = sessions.get(req.headers['mcp-session-id'] as string);
+  if (!transport) {
+    res.status(400).send('Invalid or missing session ID');
+    return;
+  }
+  await transport.handleRequest(req, res);
+});
+
+export function clearSessions(): void {
+  sessions.clear();
+}
