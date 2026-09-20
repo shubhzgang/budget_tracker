@@ -23,6 +23,8 @@
    - [Step 10: Streamable HTTP Handler](#step-10-streamable-http-handler)
    - [Step 11: Express Entry Point](#step-11-express-entry-point)
    - [Step 12: Docker & Makefile Integration](#step-12-docker--makefile-integration)
+   - [Step 13: Unit & Component Tests](#step-13-unit--component-tests)
+   - [Step 14: Demo-Data Smoke Test & make test-mcp](#step-14-demo-data-smoke-test--make-test-mcp)
 6. [Task Checklist](#6-task-checklist)
 7. [Testing Guide](#7-testing-guide)
 
@@ -131,14 +133,18 @@ mcp-server/
     ├── mcp/
     │   ├── server.ts             # McpServer + tool registration
     │   └── handler.ts            # Streamable HTTP transport handler
-    └── tools/
-        ├── accounts.ts
-        ├── transactions.ts
-        ├── transfers.ts
-        ├── activity.ts
-        ├── categories.ts
-        └── labels.ts
+    ├── tools/
+    │   ├── accounts.ts
+    │   ├── transactions.ts
+    │   ├── transfers.ts
+    │   ├── activity.ts
+    │   ├── categories.ts
+    │   └── labels.ts
+    └── test/
+        └── tool-smoke.ts         # Demo-data smoke: OAuth flow + tool-call assertions (Step 14)
 ```
+
+Unit/component tests (Step 13) live next to their sources as `src/**/*.test.ts` — they are excluded from the build by `tsconfig`.
 
 ---
 
@@ -350,7 +356,9 @@ Create `mcp-server/` directory at the project root.
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc --watch & node --watch dist/index.js"
+    "dev": "tsc --watch & node --watch dist/index.js",
+    "test": "vitest run",
+    "smoke": "tsx src/test/tool-smoke.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -361,7 +369,11 @@ Create `mcp-server/` directory at the project root.
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
-    "typescript": "^5.8.0"
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
   }
 }
 ```
@@ -383,6 +395,7 @@ Create `mcp-server/` directory at the project root.
     "declaration": true,
     "sourceMap": true
   },
+  "exclude": ["src/**/*.test.ts", "src/test/**"],
   "include": ["src/**/*"]
 }
 ```
@@ -1060,11 +1073,278 @@ CMD ["node", "dist/index.js"]
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/.well-known/oauth-authorization-server > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     networks:
       - budget-tracker-net
 ```
 
-> **Note on Makefile**: Because `run-stack` and `run-demo` use `docker compose up`, the new `mcp` service will be picked up automatically. No changes to the `Makefile` are needed!
+> **Note on Makefile**: Because `run-stack` and `run-demo` use `docker compose up`, the new `mcp` service will be picked up automatically. The only Makefile change needed anywhere in this guide is the `test-mcp` target added in Step 14.
+
+---
+
+### Step 13: Unit & Component Tests
+
+**Files: `mcp-server/src/**/*.test.ts`** (co-located with the code they test), run with **vitest** (already in your devDependencies): `cd mcp-server && npm test`.
+
+This is the layer that guards the security requirements the guide keeps flagging (exact redirect_uri match, HTML escaping, PKCE, single-use codes, Origin checks, session handling). None of those paths are exercised by clicking through the browser flow — they must be asserted.
+
+**Two small refactors first (they make the code testable):**
+
+1. **Export the app without listening** — in `index.ts`, wrap the Express app in `export function createApp() { ... }` and only call `app.listen(...)` when run directly: `if (import.meta.url === \`file://${process.argv[1]}\`) { ... }`. Tests use `supertest(createApp())`.
+2. **Inject the API client factory** — in `mcp/server.ts`: `export type MakeClient = (baseUrl: string, jwt: string) => BudgetTrackerClient;` and `createMcpServer(jwt, baseUrl, makeClient = (b, j) => new BudgetTrackerClient(b, j))`. Tests pass a fake factory that records which JWT each session closed over and returns canned data — no Budget Tracker backend needed.
+
+**Test matrix** (write one `describe` block per row):
+
+| # | Area | Case | Expect |
+|---|------|------|--------|
+| 1 | metadata | Both `/.well-known/...` endpoints | 200; every URL derived from `MCP_BASE_URL` |
+| 2 | auth | `POST`/`GET`/`DELETE /mcp` with no/unknown bearer | 401 **with** `WWW-Authenticate: Bearer resource_metadata="..."` on **all three** routes |
+| 3 | register | `POST /register` | `client_id` returned and `redirect_uris` stored |
+| 4 | authorize | Unknown `client_id` (GET and POST) | 400; login API never called |
+| 5 | authorize | `redirect_uri` not in the client's registered list | 400 (both verbs) — the open-redirect guard |
+| 6 | authorize | Malicious `state`/`redirect_uri` like `"><script>alert(1)</script>` | Served HTML contains the escaped form (`&lt;script&gt;`) only |
+| 7 | authorize | Valid credentials (fake login fetch) | 302 to `redirect_uri` carrying `code` **and** `state` |
+| 8 | token | Wrong `code_verifier` | 400 `invalid_grant` |
+| 9 | token | Correct verifier | access token issued |
+| 10 | token | Same code exchanged **twice** | second attempt → `invalid_grant` (codes are single-use) |
+| 11 | token | `redirect_uri`/`client_id` differ from the stored code | 400 `invalid_grant` |
+| 12 | origin | `Origin: https://evil.com` | 403; missing and localhost origins pass |
+| 13 | transport | `initialize` response carries `Mcp-Session-Id`; follow-up POST without the header / with unknown id | 400 on the follow-ups; unknown-session DELETE → 400 |
+| 14 | tools | `tools/list` contains **exactly the 19 planned tools**, and none of `create_account`/`update_account`/`delete_account`/`create_label`/`update_label`/`delete_label` | the read-only contract, guarded against regressions |
+| 15 | isolation | Two sessions, different bearer tokens (→ different mapped JWTs) | the fake client factory records **each session's own JWT** — no cross-user bleed. This catches any accidental module-level client/JWT sharing |
+| 16 | units | `verifyPkce` (true/false), `escapeHtml` (all 5 characters) | — |
+
+> **TTL testing tip**: read the auth-code TTL from an env like `AUTH_CODE_TTL_MS` (default 300000) and token TTL likewise, so tests can set them to ~50 ms and assert expiry without waiting minutes. Same for `isJwtExpired` — build JWTs with a past `exp`.
+
+---
+
+### Step 14: Demo-Data Smoke Test & `make test-mcp`
+
+The repo's testing philosophy: `make test-int` and `make test-e2e` spin up the Dockerized stack and test against the *real* running app. Do the same for MCP: **`make test-mcp` brings up the demo stack (fresh DB → `DataSeeder` writes a known fixture), runs the Step 13 unit suite, then runs a smoke script that drives the MCP server exactly like an AI client would — full OAuth login, then tool calls — and asserts the tool calls return the data the demo seed actually wrote.**
+
+**The assertions lean on the seeded fixture (`DataSeeder`), which is deterministic on a fresh volume:**
+
+| Smoke step | Expected result |
+|---|---|
+| `tools/list` | Exactly 19 tools; no account/label write tools |
+| `list_accounts` | Names exactly: `Main Bank`, `Cash`, `Visa Credit`, `Bob (Lend)` |
+| `list_categories` | `Food` present with icon 🍔 |
+| `list_labels` | Names exactly: `BILLS`, `FUN`, `NEEDS`, `SAVINGS`, `WANTS` |
+| `get_expenditure_summary` | `today` ≥ 25 (seeded "Lunch" expense is dated now); `thisWeek` ≥ `today`; `thisMonth` ≥ `thisWeek` |
+| `list_transactions` `search="Salary credit"` | ≥ 3 hits (the monthly salary recurrence exists across all 3 seeded cycles) |
+| `get_activity_feed` `size=10` | Sorted newest-first; `Lunch` present |
+| `list_transfers` | Contains `ATM Withdrawal` with `fromAmount` 50, `adjustment` 5, `toAmount` **55** — the seeded auto-computed third field |
+| `create_transaction` (EXPENSE 10, now, Main Bank) → summary | `today` moves by **exactly +10** |
+| `delete_transaction` → summary | `today` back to baseline (delete reverts totals) |
+| `create_transfer` (`fromAmount` 40, `adjustment` −2) | `toAmount` auto-computed to **38** |
+| `create_transfer` with from = to account | Result is a tool error (`isError`) — the API's "must be different" surfaces to the AI |
+| `create_category` → `update_category` new icon → `delete_category` | Icon round-trips; category cleaned up afterwards |
+
+Every mutation the smoke test performs is deleted again, so the demo fixture survives the run; creates and deletes apply/revert balances and totals symmetrically, so balances end where they started.
+
+**File: `mcp-server/src/test/tool-smoke.ts`** — a plain script run with `tsx` (`npm run smoke`). OAuth over `fetch` (no browser needed), tool calls through the official SDK client:
+
+```typescript
+/**
+ * Demo-data smoke: OAuth flow + tool-call assertions against seeded demo data.
+ * Exit 0 = pass. Run via `npm run smoke` (Makefile: `make test-mcp`).
+ */
+import { randomBytes, createHash } from 'node:crypto';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+const MCP = process.env.MCP_URL || 'http://localhost:3001';
+const EMAIL = process.env.TEST_EMAIL || 'test@example.com';
+const PASSWORD = process.env.TEST_PASSWORD || 'password';
+const CB = 'http://localhost:1/cb';
+
+let failures = 0;
+const check = (name: string, ok: boolean, detail = '') => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
+  if (!ok) failures++;
+};
+const num = (v: unknown) => Number(v ?? 0);
+const nearly = (a: number, b: number, eps = 0.001) => Math.abs(a - b) < eps;
+const text = (res: any) => JSON.parse(res.content[0].text);
+
+async function login(): Promise<string> {
+  const reg: any = await fetch(`${MCP}/register`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_name: 'smoke', redirect_uris: [CB] }),
+  }).then(r => r.json());
+
+  const verifier = randomBytes(32).toString('base64url');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  const auth = await fetch(`${MCP}/authorize`, {
+    method: 'POST', redirect: 'manual',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: reg.client_id, redirect_uri: CB, code_challenge: challenge,
+      code_challenge_method: 'S256', state: 'smoke', email: EMAIL, password: PASSWORD,
+    }),
+  });
+  const code = new URL(auth.headers.get('location')!, CB).searchParams.get('code');
+
+  const tok: any = await fetch(`${MCP}/token`, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code', code: code!, redirect_uri: CB,
+      client_id: reg.client_id, code_verifier: verifier,
+    }),
+  }).then(r => r.json());
+  if (!tok.access_token) throw new Error(`OAuth failed: ${JSON.stringify(tok)}`);
+  return tok.access_token;
+}
+
+async function main() {
+  const client = new Client({ name: 'smoke', version: '1.0.0' });
+  await client.connect(new StreamableHTTPClientTransport(new URL(`${MCP}/mcp`), {
+    requestInit: { headers: { Authorization: `Bearer ${await login()}` } },
+  }));
+  const call = (name: string, args: any) => client.callTool({ name, arguments: args });
+
+  // ── Read-only contract + seeded fixtures ────────────────────────────
+  const tools = (await client.listTools()).tools.map(t => t.name);
+  check('exactly 19 tools', tools.length === 19, String(tools.length));
+  for (const gone of ['create_account', 'update_account', 'delete_account',
+                      'create_label', 'update_label', 'delete_label'])
+    check(`no ${gone} tool`, !tools.includes(gone));
+
+  const accounts = text(await call('list_accounts', {}));
+  check('demo accounts', accounts.map((a: any) => a.name).sort().join() ===
+        ['Bob (Lend)', 'Cash', 'Main Bank', 'Visa Credit'].join());
+
+  const labels = text(await call('list_labels', {}));
+  check('demo labels', labels.map((l: any) => l.name).sort().join() ===
+        'BILLS,FUN,NEEDS,SAVINGS,WANTS');
+
+  const cats = text(await call('list_categories', {}));
+  check('Food icon 🍔', cats.find((c: any) => c.name === 'Food')?.icon === '🍔');
+
+  const summary = async () => text(await call('get_expenditure_summary', {}));
+  const s0 = await summary();
+  check('today ≥ seeded Lunch', num(s0.today) >= 25, `today=${s0.today}`);
+  check('thisWeek ≥ today', num(s0.thisWeek) >= num(s0.today));
+  check('thisMonth ≥ thisWeek', num(s0.thisMonth) >= num(s0.thisWeek));
+
+  const txns = text(await call('list_transactions', { search: 'Salary credit', size: 50 }));
+  check('salary credit ≥ 3', txns.totalElements >= 3, String(txns.totalElements));
+
+  const feed = text(await call('get_activity_feed', { size: 10 }));
+  check('Lunch in recent activity', feed.content.some((i: any) => i.description === 'Lunch'));
+
+  const transfers = text(await call('list_transfers', { size: 50 }));
+  const atm = transfers.content.find((t: any) => t.description === 'ATM Withdrawal');
+  check('seeded transfer toAmount=55', !!atm && num(atm.fromAmount) === 50 && num(atm.toAmount) === 55);
+
+  // ── Write path: summary must move by exactly +10 and come back ──────
+  const mainBank = accounts.find((a: any) => a.name === 'Main Bank').id;
+  const cash = accounts.find((a: any) => a.name === 'Cash').id;
+  const base = num((await summary()).today);
+  const created = text(await call('create_transaction', {
+    accountId: mainBank, amount: 10, type: 'EXPENSE',
+    transactionDate: new Date().toISOString(), description: 'MCP smoke tx',
+  }));
+  check('summary today +10', nearly(num((await summary()).today), base + 10), `base=${base}`);
+  await call('delete_transaction', { id: created.id });
+  check('summary back to baseline', nearly(num((await summary()).today), base));
+
+  // ── Transfer auto-compute + error surface + cleanup ─────────────────
+  const tr = text(await call('create_transfer', {
+    fromAccountId: mainBank, toAccountId: cash, fromAmount: 40, adjustment: -2,
+    transactionDate: new Date().toISOString(), description: 'MCP smoke transfer',
+  }));
+  check('toAmount auto-computed (40, −2) → 38', nearly(num(tr.toAmount), 38));
+  await call('delete_transfer', { id: tr.id });
+
+  const bad = await call('create_transfer', {
+    fromAccountId: mainBank, toAccountId: mainBank, fromAmount: 5, toAmount: 5,
+    transactionDate: new Date().toISOString(), description: 'should fail',
+  });
+  check('same-account transfer → isError', (bad as any).isError === true);
+
+  const cat = text(await call('create_category', { name: 'ZZ MCP Smoke', icon: '🧪' }));
+  const upd = text(await call('update_category', { id: cat.id, name: 'ZZ MCP Smoke', icon: '🧫' }));
+  check('icon round-trips', upd.icon === '🧫');
+  await call('delete_category', { id: cat.id });
+
+  await client.close();
+  console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
+  process.exit(failures ? 1 : 0);
+}
+
+main().catch(e => { console.error('Smoke run crashed:', e); process.exit(1); });
+```
+
+**File: `docker-compose.test-mcp.yml`** — its own **fresh** DB volume so `DataSeeder` re-seeds every run (same trick as `pgdata_test_e2e` in `docker-compose.e2e.yml`):
+
+```yaml
+services:
+  postgres:
+    volumes:
+      - pgdata_test_mcp:/var/lib/postgresql
+
+volumes:
+  pgdata_test_mcp:
+```
+
+**Makefile target** (follows the `test-int`/`test-e2e` house style — add `test-mcp` to `.PHONY`; ⚠️ recipe lines must be indented with **tabs**, not spaces):
+
+```make
+# Unit tests + demo-data MCP tool-call smoke test against the demo stack
+test-mcp: build
+	@echo "Starting stack for MCP tests (postgres + seeded backend + mcp)..."
+	@-docker volume rm budget_tracker_pgdata_test_mcp 2>/dev/null || true
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.test-mcp.yml up -d --build
+	@echo "Waiting for backend to be healthy..."
+	@n=0; until [ $$(docker inspect --format='{{.State.Health.Status}}' budget-tracker-backend) = 'healthy' ] || [ $$n -ge 30 ]; do sleep 2; n=$$(($$n + 1)); done; \
+	if [ $$n -ge 30 ]; then \
+	  echo "Error: Backend failed to become healthy"; \
+	  docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.test-mcp.yml down; \
+	  exit 1; \
+	fi
+	@echo "Waiting for MCP server to be healthy..."
+	@n=0; until [ $$(docker inspect --format='{{.State.Health.Status}}' budget-tracker-mcp) = 'healthy' ] || [ $$n -ge 30 ]; do sleep 2; n=$$(($$n + 1)); done; \
+	if [ $$n -ge 30 ]; then \
+	  echo "Error: MCP server failed to become healthy"; \
+	  docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.test-mcp.yml down; \
+	  exit 1; \
+	fi
+	@EXIT_CODE=0; \
+	echo "Running unit/component tests..."; \
+	(cd mcp-server && npm ci && npm test) || EXIT_CODE=1; \
+	echo "Running demo-data tool-call smoke test..."; \
+	if [ $$EXIT_CODE -eq 0 ]; then (cd mcp-server && npm run smoke) || EXIT_CODE=1; fi; \
+	echo "Tearing down MCP test stack..."; \
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.test-mcp.yml down; \
+	docker volume rm budget_tracker_pgdata_test_mcp 2>/dev/null || true; \
+	if [ $$EXIT_CODE -eq 0 ]; then echo "MCP tests completed successfully."; else echo "MCP tests failed."; fi; \
+	exit $$EXIT_CODE
+```
+
+**Environment knobs** (all optional):
+
+| Variable | Default | Used by |
+|----------|---------|---------|
+| `MCP_URL` | `http://localhost:3001` | smoke script (host → published `mcp` port) |
+| `TEST_EMAIL` | `test@example.com` | smoke script (demo login) |
+| `TEST_PASSWORD` | `password` | smoke script |
+
+**Why this mirrors the repo's existing layers:**
+
+- `npm test` ≈ the backend's unit tests — fast, no Docker, fakes at the REST boundary.
+- `make test-mcp` ≈ `test-int`/`test-e2e` — real Docker stack, real OAuth flow, real Spring backend, real Postgres; a green run means an AI client can actually log in and get truthful numbers back.
+- The smoke test is also the cheapest full-chain regression for the OAuth wrapper, the session/JWT plumbing (Step 10's per-session closure), and the read-only tool contract — all through one command.
+
+**Caveats (put them in the Makefile comment):**
+- The smoke test's `+10` delta check assumes the run doesn't cross midnight in `Asia/Kolkata` (the app's zone) between reading the baseline and re-checking — if the stack is left up across midnight the `today ≥ 25` baseline check will fail loudly, never silently.
+- The stack can't run alongside `run-demo`/`test-e2e` (fixed `container_name`s) — same constraint as the existing test targets.
+- Requires a committed `package-lock.json` (`npm ci` is used by both the Dockerfile and the target) — run `npm install` once and commit it.
+
 ---
 
 ## 6. Task Checklist
@@ -1113,12 +1393,22 @@ Check off each task as you complete it. Do them in order — later steps depend 
 - [ ] Verify a session is established: after initialize, subsequent requests carry the `Mcp-Session-Id` header (visible in Inspector's request log); the DELETE terminates it
 - [ ] Test at least one tool from each category
 - [ ] Expired-token recovery: restart the MCP server (empty token store) while the Inspector session is open → next request gets 401 and the Inspector re-runs the browser login
+- [ ] Negative paths (covered by the Step 13 suite, `npm test`): redirect_uri mismatch (GET **and** POST), PKCE failure, code reuse, Origin 403, session-ID 400s, 401-with-`WWW-Authenticate` on **all three** `/mcp` routes
+- [ ] Two-session isolation test: different bearer tokens → each session's tools hold their **own** user's JWT/data
 
 ### Phase 7: Docker
 - [ ] Create `mcp-server/Dockerfile`
 - [ ] Add `mcp` service to `docker-compose.yml`
 - [ ] Test `make run-stack` — all 3 services start
 - [ ] Verify MCP server is accessible at `http://localhost:3001/mcp`
+
+### Phase 8: Automated Tests (Steps 13–14)
+- [ ] Refactors done: `createApp()` exported (listen guarded), client factory injectable in `mcp/server.ts`
+- [ ] Step 13 test matrix green: `cd mcp-server && npm test` (all 16 rows, incl. the 19-tools read-only contract and two-session isolation)
+- [ ] `docker-compose.test-mcp.yml` created; `test-mcp` target added to `Makefile` (tab-indented) and `.PHONY`
+- [ ] `package-lock.json` committed
+- [ ] `make test-mcp` green end-to-end: spins up demo stack, runs unit tests + demo-data tool-call smoke, tears everything down, propagates exit code
+- [ ] Smoke-run log shows every check `PASS` (fixtures + exact +10 summary delta + auto-computed 38 + isError case)
 
 ---
 
@@ -1151,6 +1441,25 @@ curl -X POST http://localhost:3001/register \
 
 # 6. Enter test@example.com / password → should redirect (will fail since localhost:9999 isn't running, but you'll see the code in the URL)
 ```
+
+### Automated: `npm test` and `make test-mcp`
+
+```bash
+cd mcp-server && npm test     # Step 13: unit/component suite (no Docker, mocked REST client)
+
+make test-mcp                 # Step 14: one command —
+                              #   1. builds the backend jar
+                              #   2. starts postgres + seeded backend + mcp on a FRESH demo volume
+                              #   3. waits for both healthchecks
+                              #   4. npm ci + npm test (unit suite)
+                              #   5. npm run smoke (full OAuth login → tool calls asserted
+                              #      against known DataSeeder fixtures)
+                              #   6. tears the stack down and removes the volume, exit code propagates
+```
+
+`make test-mcp` is the acceptance test for the whole plan: if it passes, an AI client can really
+run the OAuth dance and get truthful numbers out of your data. Add `-f` overrides
+(`MCP_URL`, `TEST_EMAIL`, `TEST_PASSWORD`) only when your ports/credentials differ.
 
 ### MCP Inspector (recommended)
 
