@@ -76,6 +76,17 @@ describe('MCP session lifecycle', () => {
     ]) {
       expect(bodyText).toContain(name);
     }
+    // Read-only contract: the 6 account/label write tools must never surface at the HTTP layer.
+    for (const gone of [
+      'create_account',
+      'update_account',
+      'delete_account',
+      'create_label',
+      'update_label',
+      'delete_label',
+    ]) {
+      expect(bodyText).not.toContain(gone);
+    }
   });
 
   it('non-initialize request without session returns 400', async () => {

@@ -1,3 +1,7 @@
+export type MakeClient = (baseUrl: string, jwt: string) => BudgetTrackerClient;
+
+export const defaultMakeClient: MakeClient = (baseUrl, jwt) => new BudgetTrackerClient(baseUrl, jwt);
+
 export class BudgetTrackerClient {
   constructor(
     private baseUrl: string,

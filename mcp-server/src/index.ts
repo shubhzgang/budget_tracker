@@ -3,9 +3,10 @@ import { metadataRouter } from './oauth/metadata.js';
 import { registerRouter } from './oauth/register.js';
 import { authorizeRouter } from './oauth/authorize.js';
 import { tokenRouter } from './oauth/token.js';
-import { mcpRouter } from './mcp/handler.js';
+import { createMcpRouter } from './mcp/handler.js';
+import { type MakeClient, defaultMakeClient } from './api/client.js';
 
-export function createApp() {
+export function createApp(makeClient: MakeClient = defaultMakeClient) {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -24,7 +25,7 @@ export function createApp() {
   app.use(registerRouter);
   app.use(authorizeRouter);
   app.use(tokenRouter);
-  app.use(mcpRouter);
+  app.use(createMcpRouter(makeClient));
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
