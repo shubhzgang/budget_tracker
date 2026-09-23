@@ -5,7 +5,7 @@ Budget Tracker is a full-stack application for managing personal finances, featu
 
 ## Tech Stack
 - **Backend**: Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, PostgreSQL, Gradle. Schema migrations via Flyway (`V1__initial_schema.sql`, `V2__expenditure_period_totals.sql`, `V3__expenditure_period_totals_by_label.sql`).
-- **Frontend**: HTMX + Thymeleaf server-rendered templates with Alpine.js for interactivity and plain CSS (CSS-variable theming: Light/Dark/OLED). The old React/Vite frontend has been fully removed (see `frontend-rewrite-plan.md`).
+- **Frontend**: HTMX + Thymeleaf server-rendered templates with Alpine.js for interactivity and plain CSS (CSS-variable theming: Light/Dark/OLED). The old React/Vite frontend has been fully removed.
 - **Testing**: JUnit 5, Playwright (E2E), Testcontainers (Integration, via `make test-int`), contract tests in `src/test/java/com/budget/tracker/contract`. MCP server (`mcp-server/`) uses Vitest (`npm test`).
 - **Infrastructure**: Docker, Docker Compose (Postgres + Backend + MCP server; Spring Boot serves the UI and static assets).
 
