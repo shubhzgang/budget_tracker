@@ -32,11 +32,45 @@ function requireBearer(req: Request, res: Response): string | null {
   return jwt;
 }
 
-const defaultSessions = new Map<string, StreamableHTTPServerTransport>();
+interface McpSession {
+  transport: StreamableHTTPServerTransport;
+  principal: string;
+}
+
+export function principalOf(jwt: string): string {
+  try {
+    const payloadBase64 = jwt.split('.')[1];
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf8')) as { sub?: unknown };
+    if (typeof payload.sub === 'string' && payload.sub) return payload.sub;
+  } catch {
+    // fall through to JWT fingerprint
+  }
+  return jwt;
+}
+
+const defaultSessions = new Map<string, McpSession>();
+
+function findOwnedSession(
+  sessions: Map<string, McpSession>,
+  req: Request,
+  res: Response,
+  jwt: string,
+): StreamableHTTPServerTransport | null {
+  const session = sessions.get(req.headers['mcp-session-id'] as string);
+  if (!session) {
+    res.status(400).send('Invalid or missing session ID');
+    return null;
+  }
+  if (session.principal !== principalOf(jwt)) {
+    send401(res, 'Unauthorized: session belongs to a different principal');
+    return null;
+  }
+  return session.transport;
+}
 
 export function createMcpRouter(
   makeClient: MakeClient = defaultMakeClient,
-  sessions: Map<string, StreamableHTTPServerTransport> = defaultSessions,
+  sessions: Map<string, McpSession> = defaultSessions,
 ): Router {
   const mcpRouter = Router();
 
@@ -45,7 +79,13 @@ export function createMcpRouter(
     if (!jwt) return;
 
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    let transport = sessionId ? sessions.get(sessionId) : undefined;
+    const existing = sessionId ? sessions.get(sessionId) : undefined;
+
+    if (existing && existing.principal !== principalOf(jwt)) {
+      send401(res, 'Unauthorized: session belongs to a different principal');
+      return;
+    }
+    let transport = existing?.transport;
 
     if (!transport) {
       if (sessionId || !isInitializeRequest(req.body)) {
@@ -56,10 +96,11 @@ export function createMcpRouter(
         });
         return;
       }
+      const principal = principalOf(jwt);
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
-          sessions.set(sid, transport!);
+          sessions.set(sid, { transport: transport!, principal });
         },
       });
       transport.onclose = () => {
@@ -75,22 +116,18 @@ export function createMcpRouter(
   });
 
   mcpRouter.get('/mcp', async (req: Request, res: Response) => {
-    if (!requireBearer(req, res)) return;
-    const transport = sessions.get(req.headers['mcp-session-id'] as string);
-    if (!transport) {
-      res.status(400).send('Invalid or missing session ID');
-      return;
-    }
+    const jwt = requireBearer(req, res);
+    if (!jwt) return;
+    const transport = findOwnedSession(sessions, req, res, jwt);
+    if (!transport) return;
     await transport.handleRequest(req, res);
   });
 
   mcpRouter.delete('/mcp', async (req: Request, res: Response) => {
-    if (!requireBearer(req, res)) return;
-    const transport = sessions.get(req.headers['mcp-session-id'] as string);
-    if (!transport) {
-      res.status(400).send('Invalid or missing session ID');
-      return;
-    }
+    const jwt = requireBearer(req, res);
+    if (!jwt) return;
+    const transport = findOwnedSession(sessions, req, res, jwt);
+    if (!transport) return;
     await transport.handleRequest(req, res);
   });
 

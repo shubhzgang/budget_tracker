@@ -10,10 +10,10 @@
 
 ## Verdict
 Functionally complete and security-sound. OAuth 2.1/PKCE, the 19-tool read-only
-contract, and per-session isolation are implemented correctly **and now verified
-by tests**. The remaining gaps are low-risk (session principal binding, an
-untested UUIDv7 edge case, hardcoded OAuth TTLs) plus doc hygiene — not in the
-runtime code.
+contract, and per-session isolation (including session↔principal binding) are
+implemented correctly **and now verified by tests**. The remaining gaps are
+low-risk (an untested UUIDv7 edge case, hardcoded OAuth TTLs) plus doc hygiene —
+not in the runtime code.
 
 ## What is solid (verified)
 - **Exactly 19 tools**, accounts + labels strictly read-only. `api/client.ts`
@@ -66,10 +66,14 @@ runtime code.
    smoke test exercises real create/get/delete on actual UUIDv7 ids, so a
    rejecting regex would surface there, but there is no focused unit assertion.
    Confirm zod `^3.25` accepts the app's UUIDv7 IDs.
-6. **Sessions bound only by `sessionId`** (`mcp/handler.ts:42-45,74,84`) — ⏳
-   **OPEN**. Any valid bearer + a guessed session id could drive another user's
-   transport. Low risk (ids are `randomUUID`) but there is no owner binding;
-   hardening would require storing the principal alongside each transport.
+6. **Sessions bound only by `sessionId`** (`mcp/handler.ts`) — ✅ **RESOLVED**.
+    Each session now stores the authenticating principal (the backend JWT's `sub`
+    claim — the username — falling back to the JWT string when `sub` is absent).
+    Every POST/GET/DELETE on an existing session re-checks the caller's principal
+    against the stored one and returns 401 on mismatch, so a valid bearer can no
+    longer drive another user's transport with a guessed session id. Covered by
+    five tests in `mcp/session.test.ts` (cross-principal POST/GET/DELETE → 401,
+    owner access preserved, same-principal second token accepted).
 7. **`loginToBudgetTracker` couples to `data.token ?? data.accessToken`**
    (`oauth/authorize.ts:64`) — ✅ **RESOLVED in practice**. The real OAuth flow
    in `tool-smoke.ts` now hits the actual backend login shape via live tokens.
@@ -86,7 +90,6 @@ runtime code.
   `htmx-rewrite-review-concerns.md`, and this file were updated accordingly.
 
 ## Suggested order
-1. Bind MCP sessions to their authenticating principal (item 6) — the only
-   security-relevant open item.
+1. ~~Bind MCP sessions to their authenticating principal (item 6)~~ — done.
 2. Add a focused UUIDv7 round-trip test (item 5) and, if desired, env-configurable
    OAuth TTLs (item 8).
