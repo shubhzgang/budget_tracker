@@ -91,6 +91,7 @@ buildNumber.properties
 
 # Gradle
 .gradle
+.gradle-home/
 **/build/
 !src/**/build/
 gradle-app.setting

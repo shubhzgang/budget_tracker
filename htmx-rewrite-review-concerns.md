@@ -43,7 +43,7 @@ Constant in Java (`TimeZones.APP_ZONE`), literal in the V2 Flyway SQL backfill, 
 
 ## 7. Branch fails its own exit criteria
 
-`frontend-rewrite-todos.md` Step 15 (final full verification + manual sweep) is unchecked; last commit predates completion.
+The final full verification + manual sweep (migration Step 15) is unchecked; last commit predates completion.
 
 ## 8. Code quality (minor)
 
