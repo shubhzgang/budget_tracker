@@ -6,7 +6,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
-const MCP = process.env.MCP_URL || 'http://localhost:3001';
+const MCP = process.env.MCP_URL || 'http://localhost:3002';
 const EMAIL = process.env.TEST_EMAIL || 'test@example.com';
 const PASSWORD = process.env.TEST_PASSWORD || 'password';
 const CB = 'http://localhost:1/cb';

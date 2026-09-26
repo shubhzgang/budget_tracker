@@ -36,7 +36,7 @@ const isMain = process.argv[1]?.endsWith('dist/index.js') || process.argv[1]?.en
 
 if (isMain) {
   const app = createApp();
-  const port = parseInt(process.env.MCP_PORT || '3001', 10);
+  const port = parseInt(process.env.MCP_PORT || '3002', 10);
   const host = process.env.MCP_HOST || '127.0.0.1';
   app.listen(port, host, () => {
     console.log(`Budget Tracker MCP server running on http://localhost:${port}`);

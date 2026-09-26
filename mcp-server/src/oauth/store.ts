@@ -17,7 +17,7 @@ export interface AuthCodeData {
 }
 
 const AUTH_CODE_TTL_MS = 5 * 60 * 1000;
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+export const TOKEN_TTL_MS = 15 * 24 * 60 * 60 * 1000;
 
 export const registeredClients = new Map<string, ClientInfo>();
 export const authorizationCodes = new Map<string, AuthCodeData>();

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
-import { consumeAuthCode, storeToken } from './store.js';
+import { consumeAuthCode, storeToken, TOKEN_TTL_MS } from './store.js';
 
 export function verifyPkce(codeVerifier: string, codeChallenge: string): boolean {
   const hash = createHash('sha256').update(codeVerifier).digest();
@@ -43,5 +43,5 @@ tokenRouter.post('/token', (req: Request, res: Response) => {
     return;
   }
   const accessToken = storeToken(stored.budgetTrackerJwt);
-  res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: 86400 });
+  res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: TOKEN_TTL_MS / 1000 });
 });

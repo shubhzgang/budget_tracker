@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 
 export function getBaseUrl(): string {
-  return (process.env.MCP_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
+  return (process.env.MCP_BASE_URL || 'http://localhost:3002').replace(/\/$/, '');
 }
 
 export function send401(res: Response, message: string): void {

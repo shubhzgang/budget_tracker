@@ -146,7 +146,7 @@ test-mcp: build
 	  exit 1; \
 	fi
 	@echo "Waiting for MCP server to be ready..."
-	@m=0; until curl -sf http://localhost:3001/.well-known/oauth-authorization-server >/dev/null || [ $$m -ge 30 ]; do sleep 2; m=$$(($$m + 1)); done; \
+	@m=0; until curl -sf http://localhost:3002/.well-known/oauth-authorization-server >/dev/null || [ $$m -ge 30 ]; do sleep 2; m=$$(($$m + 1)); done; \
 	if [ $$m -ge 30 ]; then \
 	  echo "Error: MCP server failed to become ready"; \
 	  docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.test-mcp.yml logs mcp; \
@@ -182,17 +182,17 @@ endif
 	  exit 1; \
 	fi
 	@echo "Waiting for MCP server to be ready..."
-	@m=0; until curl -sf http://localhost:3001/.well-known/oauth-authorization-server >/dev/null || [ $$m -ge 30 ]; do sleep 2; m=$$(($$m + 1)); done; \
+	@m=0; until curl -sf http://localhost:3002/.well-known/oauth-authorization-server >/dev/null || [ $$m -ge 30 ]; do sleep 2; m=$$(($$m + 1)); done; \
 	if [ $$m -ge 30 ]; then \
 	  echo "Error: MCP server failed to become ready after 60 seconds"; \
 	  docker compose -f docker-compose.yml -f docker-compose.demo.yml logs mcp; \
 	  exit 1; \
 	fi
 	@echo "Smoke-checking MCP auth discovery..."
-	@curl -sf http://localhost:3001/.well-known/oauth-protected-resource >/dev/null || (echo "Error: MCP protected-resource metadata unreachable"; exit 1)
-	@curl -s -o /dev/null -D - -X POST http://localhost:3001/mcp | grep -qi 'www-authenticate: Bearer resource_metadata=' || (echo "Error: MCP /mcp missing WWW-Authenticate header"; exit 1)
+	@curl -sf http://localhost:3002/.well-known/oauth-protected-resource >/dev/null || (echo "Error: MCP protected-resource metadata unreachable"; exit 1)
+	@curl -s -o /dev/null -D - -X POST http://localhost:3002/mcp | grep -qi 'www-authenticate: Bearer resource_metadata=' || (echo "Error: MCP /mcp missing WWW-Authenticate header"; exit 1)
 	@echo ""
 	@echo "Demo + MCP is ready:"
 	@echo "  App: http://localhost:3300 (test@example.com / password)"
-	@echo "  MCP: http://localhost:3001/mcp"
+	@echo "  MCP: http://localhost:3002/mcp"
 	@echo "  Stop with: make stop-demo"
