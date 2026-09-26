@@ -45,7 +45,8 @@ services:
       - "3002:3002"
     environment:
       BUDGET_TRACKER_URL: http://backend:8080
-      MCP_BASE_URL: http://localhost:3002
+      MCP_BASE_URL: ${MCP_BASE_URL:-http://localhost:3002}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-}
       MCP_PORT: "3002"
       MCP_HOST: "0.0.0.0"
     depends_on:

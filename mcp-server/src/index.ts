@@ -6,12 +6,26 @@ import { tokenRouter } from './oauth/token.js';
 import { createMcpRouter } from './mcp/handler.js';
 import { type MakeClient, defaultMakeClient } from './api/client.js';
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function buildAllowedOrigin(env = process.env.MCP_ALLOWED_ORIGINS): RegExp {
+  const extra = (env || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+    .map(escapeRegex);
+  const sources = ['https?:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?', ...extra];
+  return new RegExp(`^(${sources.join('|')})$`);
+}
+
 export function createApp(makeClient: MakeClient = defaultMakeClient) {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  const ALLOWED_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+  const ALLOWED_ORIGIN = buildAllowedOrigin();
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (typeof origin === 'string' && origin && !ALLOWED_ORIGIN.test(origin)) {
