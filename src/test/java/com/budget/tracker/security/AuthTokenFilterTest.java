@@ -1,5 +1,9 @@
 package com.budget.tracker.security;
 
+import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.User;
+import com.budget.tracker.repository.UserRepository;
+import com.budget.tracker.service.ApiTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,7 +17,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,6 +31,10 @@ class AuthTokenFilterTest {
     private JwtUtils jwtUtils;
     @Mock
     private UserDetailsServiceImpl userDetailsService;
+    @Mock
+    private ApiTokenService apiTokenService;
+    @Mock
+    private UserRepository userRepository;
     @Mock
     private HttpServletRequest request;
     @Mock
@@ -38,7 +49,7 @@ class AuthTokenFilterTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        tokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService);
+        tokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService, apiTokenService, userRepository);
         SecurityContextHolder.clearContext();
         when(userDetails.getAuthorities()).thenReturn(List.of());
     }
@@ -109,6 +120,63 @@ class AuthTokenFilterTest {
         assertEquals(userDetails, auth.getPrincipal());
         verify(jwtUtils).validateJwtToken(headerToken);
         verify(jwtUtils, never()).validateJwtToken(cookieToken);
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_withValidReadOnlyBearerToken_shouldAuthenticateWithReadOnlyAuthority() throws Exception {
+        String token = "bt_ro_" + "a".repeat(64);
+        UUID userId = UUID.randomUUID();
+        ApiToken apiToken = new ApiToken();
+        apiToken.setUserId(userId);
+        apiToken.setExpiresAt(OffsetDateTime.now().plusDays(30));
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+        user.setPasswordHash("hash");
+
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(request.getCookies()).thenReturn(new Cookie[]{});
+        when(apiTokenService.authenticateToken(token)).thenReturn(Optional.of(apiToken));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        tokenFilter.doFilterInternal(request, response, filterChain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        assertTrue(auth.getAuthorities().stream()
+                .anyMatch(a -> ReadOnlyTokenFilter.READ_ONLY_AUTHORITY.equals(a.getAuthority())));
+        verify(jwtUtils, never()).validateJwtToken(anyString());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_withUnknownOrExpiredReadOnlyToken_shouldNotAuthenticate() throws Exception {
+        String token = "bt_ro_" + "b".repeat(64);
+
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(request.getCookies()).thenReturn(new Cookie[]{});
+        when(apiTokenService.authenticateToken(token)).thenReturn(Optional.empty());
+
+        tokenFilter.doFilterInternal(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(jwtUtils, never()).validateJwtToken(anyString());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_withReadOnlyTokenInJwtCookie_shouldNotAuthenticate() throws Exception {
+        String token = "bt_ro_" + "d".repeat(64);
+
+        when(request.getHeader("Authorization")).thenReturn(null);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("jwt", token)});
+
+        tokenFilter.doFilterInternal(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(apiTokenService, never()).authenticateToken(anyString());
+        verify(jwtUtils, never()).validateJwtToken(anyString());
         verify(filterChain).doFilter(request, response);
     }
 }

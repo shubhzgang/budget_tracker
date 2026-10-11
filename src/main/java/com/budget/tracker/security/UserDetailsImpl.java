@@ -17,22 +17,34 @@ public class UserDetailsImpl implements UserDetails {
     @JsonIgnore
     private final String password;
 
+    private final Collection<? extends GrantedAuthority> authorities;
+
     public UserDetailsImpl(UUID id, String email, String password) {
+        this(id, email, password, List.of());
+    }
+
+    public UserDetailsImpl(UUID id, String email, String password, Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.email = email;
         this.password = password;
+        this.authorities = authorities;
     }
 
     public static UserDetailsImpl build(User user) {
+        return build(user, List.of());
+    }
+
+    public static UserDetailsImpl build(User user, Collection<? extends GrantedAuthority> authorities) {
         return new UserDetailsImpl(
                 user.getId(),
                 user.getEmail(),
-                user.getPasswordHash());
+                user.getPasswordHash(),
+                authorities);
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(); // We don't have roles yet
+        return authorities;
     }
 
     public UUID getId() {

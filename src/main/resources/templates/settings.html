@@ -17,6 +17,7 @@
         <button type="button" class="settings-tab" data-tab="labels">Labels</button>
         <button type="button" class="settings-tab" data-tab="defaults">Defaults</button>
         <button type="button" class="settings-tab" data-tab="data">Data &amp; Backup</button>
+        <button type="button" class="settings-tab" data-tab="api">API</button>
     </div>
 
     <div id="settings-panels" data-active="categories">
@@ -36,6 +37,9 @@
     </template>
     <template data-panel-src="data">
         <div th:replace="~{fragments/backup-manager}"></div>
+    </template>
+    <template data-panel-src="api">
+        <div th:replace="~{fragments/api-token-manager}"></div>
     </template>
 </main>
 <nav th:replace="~{layout :: mobile-bottom-nav}"></nav>

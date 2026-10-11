@@ -1,6 +1,7 @@
 package com.budget.tracker.exception;
 
 import com.budget.tracker.payload.response.MessageResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -16,6 +17,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
         return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new MessageResponse("Request conflicts with existing data"));
     }
 
     @ExceptionHandler(AuthenticationException.class)

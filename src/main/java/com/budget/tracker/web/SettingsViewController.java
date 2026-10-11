@@ -7,6 +7,7 @@ import com.budget.tracker.model.Label;
 import com.budget.tracker.model.TransactionType;
 import com.budget.tracker.model.UserPreference;
 import com.budget.tracker.service.AccountService;
+import com.budget.tracker.service.ApiTokenService;
 import com.budget.tracker.service.BackupService;
 import com.budget.tracker.service.CategoryService;
 import com.budget.tracker.service.LabelService;
@@ -34,17 +35,20 @@ public class SettingsViewController {
     private final AccountService accountService;
     private final UserPreferenceService userPreferenceService;
     private final BackupService backupService;
+    private final ApiTokenService apiTokenService;
 
     public SettingsViewController(CategoryService categoryService,
                                   LabelService labelService,
                                   AccountService accountService,
                                   UserPreferenceService userPreferenceService,
-                                  BackupService backupService) {
+                                  BackupService backupService,
+                                  ApiTokenService apiTokenService) {
         this.categoryService = categoryService;
         this.labelService = labelService;
         this.accountService = accountService;
         this.userPreferenceService = userPreferenceService;
         this.backupService = backupService;
+        this.apiTokenService = apiTokenService;
     }
 
     @GetMapping("/settings")
@@ -55,6 +59,7 @@ public class SettingsViewController {
         addLabelAttributes(model, null);
         addDefaultsAttributes(model);
         addBackupAttributes(model);
+        addApiTokenAttributes(model, null, null);
         return "settings";
     }
 
@@ -181,6 +186,44 @@ public class SettingsViewController {
 
     private void addBackupAttributes(Model model) {
         model.addAttribute("backups", backupService.getBackupHistory(AuthContext.getUserId()));
+    }
+
+    // ── API Tokens tab ────────────────────────────────────────────────────────
+
+    @GetMapping("/settings/api-token")
+    public String apiToken(Model model) {
+        addApiTokenAttributes(model, null, null);
+        return "fragments/api-token-manager";
+    }
+
+    @PostMapping("/settings/api-token/generate")
+    public String generateApiToken(@RequestParam(required = false) Integer expiryDays,
+                                   Model model,
+                                   HttpServletResponse response) {
+        String error = null;
+        String rawToken = null;
+        try {
+            rawToken = apiTokenService.generateToken(AuthContext.getUserId(), expiryDays);
+            response.setHeader("HX-Trigger", "{\"toast-success\":\"API token generated\"}");
+        } catch (IllegalArgumentException e) {
+            error = e.getMessage();
+        }
+        addApiTokenAttributes(model, error, rawToken);
+        return "fragments/api-token-manager";
+    }
+
+    @DeleteMapping("/settings/api-token")
+    public String revokeApiToken(Model model, HttpServletResponse response) {
+        apiTokenService.revokeToken(AuthContext.getUserId());
+        response.setHeader("HX-Trigger", "{\"toast-success\":\"API token revoked\"}");
+        addApiTokenAttributes(model, null, null);
+        return "fragments/api-token-manager";
+    }
+
+    private void addApiTokenAttributes(Model model, String error, String rawToken) {
+        model.addAttribute("apiToken", apiTokenService.getTokenInfo(AuthContext.getUserId()).orElse(null));
+        model.addAttribute("error", error);
+        model.addAttribute("rawToken", rawToken);
     }
 
     // ── Model helpers ─────────────────────────────────────────────────────────
