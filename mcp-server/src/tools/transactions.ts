@@ -21,7 +21,9 @@ const transactionInput = {
   accountId: z.string().uuid(),
   amount: z.number().positive(),
   type: transactionType,
-  transactionDate: z.string(),
+  transactionDate: z.string().describe(
+    'ISO-8601 date-time with timezone offset, e.g. "2026-05-21T14:30:00+05:30" or "2026-05-21T09:00:00Z". A plain date like "2026-05-21" is rejected.',
+  ),
   description: z.string().optional(),
   categoryId: z.string().uuid().optional(),
   labelIds: z.array(z.string().uuid()).optional(),

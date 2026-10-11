@@ -104,6 +104,23 @@ async function main() {
   await call('delete_transaction', { id: created.id });
   check('summary back to baseline', nearly(num((await summary()).today), base));
 
+  // ── transactionDate format contract ─────────────────────────────────
+  const badDate = await call('create_transaction', {
+    accountId: mainBank, amount: 1, type: 'EXPENSE',
+    transactionDate: '2026-05-21', description: 'plain date, should fail',
+  });
+  check('plain date "2026-05-21" → isError', (badDate as any).isError === true);
+
+  const goodDate = text(await call('create_transaction', {
+    accountId: mainBank, amount: 1, type: 'EXPENSE',
+    transactionDate: '2026-05-21T14:30:00+05:30', description: 'offset date-time, should pass',
+  }));
+  check('offset date-time accepted', !!goodDate.id);
+  check('date round-trips (same instant)',
+        new Date(goodDate.transactionDate).getTime() === new Date('2026-05-21T14:30:00+05:30').getTime(),
+        `got ${goodDate.transactionDate}`);
+  await call('delete_transaction', { id: goodDate.id });
+
   // ── Transfer auto-compute + error surface + cleanup ─────────────────
   const tr = text(await call('create_transfer', {
     fromAccountId: mainBank, toAccountId: cash, fromAmount: 40, adjustment: -2,
