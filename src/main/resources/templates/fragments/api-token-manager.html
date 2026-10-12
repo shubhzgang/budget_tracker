@@ -1,0 +1,91 @@
+<div id="api-token-manager" class="card pad space-y-8" xmlns:th="http://www.thymeleaf.org">
+    <div>
+        <h3 class="section-title">API Tokens</h3>
+        <p class="muted">Create a long-lived read-only token for scripts and curl. It can call read (GET) endpoints only; create/update/delete requests are rejected.</p>
+
+        <p class="form-error" th:if="${error != null}" th:text="${error}"></p>
+
+        <div class="token-reveal" th:if="${rawToken != null}">
+            <p class="token-reveal-note">Your new token — copy it now. It is shown only once and cannot be retrieved later:</p>
+            <div class="token-reveal-row">
+                <code class="mono token-value" id="new-api-token" th:text="${rawToken}">bt_ro_...</code>
+                <button type="button" class="btn-secondary"
+                        onclick="navigator.clipboard.writeText(document.getElementById('new-api-token').textContent)">Copy</button>
+            </div>
+        </div>
+
+        <th:block th:if="${apiToken != null}">
+            <h4 class="subsection-title">Current Token</h4>
+            <div class="token-info">
+                <div class="token-info-row">
+                    <span class="muted">Token</span>
+                    <span class="mono" th:text="${apiToken.tokenPreview} + '…'">bt_ro_…</span>
+                </div>
+                <div class="token-info-row">
+                    <span class="muted">Created</span>
+                    <span th:text="${#temporals.format(apiToken.createdAt.atZoneSameInstant(appZone), 'MMM d, yyyy h:mm a')}">date</span>
+                </div>
+                <div class="token-info-row">
+                    <span class="muted">Expires</span>
+                    <span th:text="${#temporals.format(apiToken.expiresAt.atZoneSameInstant(appZone), 'MMM d, yyyy h:mm a')}">date</span>
+                </div>
+                <div class="token-info-row">
+                    <span class="muted">Status</span>
+                    <span class="format-badge" th:unless="${apiToken.expired}">Active</span>
+                    <span class="format-badge expired" th:if="${apiToken.expired}">Expired</span>
+                </div>
+            </div>
+
+            <div class="backup-actions">
+                <div class="field">
+                    <label for="token-expiry-regen" class="field-label">Valid for</label>
+                    <select id="token-expiry-regen" name="expiryDays" class="input">
+                        <option value="30">30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="360">360 days</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary"
+                        hx-post="/settings/api-token/generate"
+                        hx-include="#token-expiry-regen"
+                        hx-confirm="Regenerating replaces your current token immediately. Any script using the old token will stop working."
+                        hx-target="#api-token-manager"
+                        hx-swap="outerHTML"
+                        hx-disabled hx-disabled-swapping>
+                    Regenerate
+                </button>
+                <button type="button" class="btn-danger"
+                        hx-delete="/settings/api-token"
+                        hx-confirm="Are you sure you want to revoke this token? Scripts using it will stop working immediately."
+                        hx-target="#api-token-manager"
+                        hx-swap="outerHTML">
+                    Revoke
+                </button>
+            </div>
+        </th:block>
+
+        <th:block th:unless="${apiToken != null}">
+            <h4 class="subsection-title">No Active Token</h4>
+            <div class="backup-actions">
+                <div class="field">
+                    <label for="token-expiry-create" class="field-label">Valid for</label>
+                    <select id="token-expiry-create" name="expiryDays" class="input">
+                        <option value="30">30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="360">360 days</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary"
+                        hx-post="/settings/api-token/generate"
+                        hx-include="#token-expiry-create"
+                        hx-target="#api-token-manager"
+                        hx-swap="outerHTML"
+                        hx-disabled hx-disabled-swapping>
+                    Generate Token
+                </button>
+            </div>
+        </th:block>
+    </div>
+</div>

@@ -1748,3 +1748,43 @@ input:focus, select:focus, textarea:focus {
 .backup-download:hover { text-decoration: underline; }
 
 .hidden-panel { display: none; }
+
+.token-reveal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.token-reveal-note { margin: 0 0 0.5rem; font-size: 0.8125rem; }
+
+.token-reveal-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+.token-value {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+  padding: 0.375rem 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.token-info {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.token-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.token-info-row + .token-info-row { border-top: 1px solid var(--border); }
+
+.format-badge.expired { background: var(--destructive); color: var(--destructive-foreground); }

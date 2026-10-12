@@ -1,11 +1,15 @@
 package com.budget.tracker.config;
 
+import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.security.AuthContextFilter;
 import com.budget.tracker.security.AuthEntryPointJwt;
 import com.budget.tracker.security.AuthTokenFilter;
 import com.budget.tracker.security.CsrfHeaderFilter;
 import com.budget.tracker.security.JwtUtils;
+import com.budget.tracker.security.ReadOnlyTokenFilter;
 import com.budget.tracker.security.UserDetailsServiceImpl;
+import com.budget.tracker.service.ApiTokenService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -46,8 +50,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter(jwtUtils, userDetailsService);
+    public AuthTokenFilter authenticationJwtTokenFilter(ApiTokenService apiTokenService, UserRepository userRepository) {
+        return new AuthTokenFilter(jwtUtils, userDetailsService, apiTokenService, userRepository);
+    }
+
+    @Bean
+    public ReadOnlyTokenFilter readOnlyTokenFilter(ObjectMapper objectMapper) {
+        return new ReadOnlyTokenFilter(objectMapper);
     }
 
     @Bean
@@ -94,7 +103,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource,
+                                          ApiTokenService apiTokenService, UserRepository userRepository,
+                                          ObjectMapper objectMapper) throws Exception {
         if (!securityEnabled) {
             http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -120,9 +131,10 @@ public class SecurityConfig {
                 );
 
             http.authenticationProvider(authenticationProvider());
-            http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+            http.addFilterBefore(authenticationJwtTokenFilter(apiTokenService, userRepository), UsernamePasswordAuthenticationFilter.class);
             http.addFilterBefore(csrfHeaderFilter(), AuthTokenFilter.class);
-            http.addFilterAfter(authContextFilter(), AuthTokenFilter.class);
+            http.addFilterAfter(readOnlyTokenFilter(objectMapper), AuthTokenFilter.class);
+            http.addFilterAfter(authContextFilter(), ReadOnlyTokenFilter.class);
         }
         return http.build();
     }

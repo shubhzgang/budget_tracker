@@ -36,6 +36,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleDataIntegrityViolation_returnsConflict() {
+        org.springframework.http.ResponseEntity<?> response = handler.handleDataIntegrityViolation(
+                new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Request conflicts with existing data", ((MessageResponse) response.getBody()).getMessage());
+    }
+
+    @Test
     void handleAuthenticationException_returnsUnauthorized() {
         org.springframework.http.ResponseEntity<?> response =
                 handler.handleAuthenticationException(new AuthenticationException("bad credentials") {
