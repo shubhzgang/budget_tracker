@@ -119,6 +119,32 @@ public class ApiTokenIntegrationTest {
     }
 
     @Test
+    void testFullAccessTokenFlow() throws Exception {
+        String readOnlyToken = generateReadOnlyToken();
+        HttpResponse<String> generated = send("POST", "/api-tokens", jwt, "{\"expiryDays\": 30, \"scope\": \"FULL_ACCESS\"}");
+        assertEquals(200, generated.statusCode(), "Response: " + generated.body());
+        String fullAccessToken = mapper.readTree(generated.body()).get("token").asText();
+        assertTrue(fullAccessToken.startsWith("bt_rw_"), "Token should have bt_rw_ prefix");
+
+        // Writes to budget data work
+        String accountJson = "{\"name\":\"Assistant Account\",\"type\":\"BANK\",\"initialBalance\":100.00}";
+        HttpResponse<String> created = send("POST", "/accounts", fullAccessToken, accountJson);
+        assertEquals(200, created.statusCode(), "Response: " + created.body());
+
+        // Token management, backups and login stay out of reach
+        assertEquals(403, send("GET", "/api-tokens", fullAccessToken, null).statusCode());
+        assertEquals(403, send("POST", "/api-tokens", fullAccessToken, "{\"expiryDays\": 30}").statusCode());
+        assertEquals(403, send("DELETE", "/backups/clear", fullAccessToken, null).statusCode());
+
+        // Info and revoke are per scope; the read-only token keeps working
+        JsonNode info = mapper.readTree(send("GET", "/api-tokens?scope=FULL_ACCESS", jwt, null).body());
+        assertEquals(fullAccessToken.substring(0, 10), info.get("tokenPreview").asText());
+        assertEquals(204, send("DELETE", "/api-tokens?scope=FULL_ACCESS", jwt, null).statusCode());
+        assertEquals(401, send("GET", "/accounts", fullAccessToken, null).statusCode());
+        assertEquals(200, send("GET", "/accounts", readOnlyToken, null).statusCode());
+    }
+
+    @Test
     void testInvalidExpiryDaysRejected() throws Exception {
         HttpResponse<String> response = send("POST", "/api-tokens", jwt, "{\"expiryDays\": 45}");
         assertEquals(400, response.statusCode(), "Invalid expiryDays should return 400");

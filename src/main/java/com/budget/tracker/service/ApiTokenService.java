@@ -1,6 +1,7 @@
 package com.budget.tracker.service;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.repository.ApiTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,7 +11,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -18,7 +21,6 @@ import java.util.UUID;
 @Service
 public class ApiTokenService {
 
-    public static final String TOKEN_PREFIX = "bt_ro_";
     public static final int PREVIEW_LENGTH = 10;
     private static final Set<Integer> ALLOWED_EXPIRY_DAYS = Set.of(30, 60, 90, 360);
 
@@ -30,25 +32,27 @@ public class ApiTokenService {
     }
 
     @Transactional
-    public String generateToken(UUID userId, Integer expiryDays) {
+    public String generateToken(UUID userId, ApiTokenScope scope, Integer expiryDays) {
+        Objects.requireNonNull(scope, "scope");
         if (expiryDays == null || !ALLOWED_EXPIRY_DAYS.contains(expiryDays)) {
             throw new IllegalArgumentException("expiryDays must be one of: 30, 60, 90, 360");
         }
 
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
-        String rawToken = TOKEN_PREFIX + HexFormat.of().formatHex(randomBytes);
+        String rawToken = scope.getPrefix() + HexFormat.of().formatHex(randomBytes);
 
         // Delete + flush before insert: the flush guarantees the delete reaches the DB
         // before the new row, so this request's own delete/insert never violates the
-        // user_id UNIQUE constraint (two concurrent first-time generations can still
+        // (user_id, scope) UNIQUE constraint (two concurrent first-time generations can still
         // race — that surfaces as a 409 via the global handler). Inserting a fresh row
         // also gives the new token its own created_at.
-        apiTokenRepository.deleteByUserId(userId);
+        apiTokenRepository.deleteByUserIdAndScope(userId, scope);
         apiTokenRepository.flush();
 
         ApiToken apiToken = new ApiToken();
         apiToken.setUserId(userId);
+        apiToken.setScope(scope);
         apiToken.setTokenHash(sha256Hex(rawToken));
         apiToken.setTokenPreview(rawToken.substring(0, PREVIEW_LENGTH));
         apiToken.setExpiresAt(OffsetDateTime.now().plusDays(expiryDays));
@@ -57,13 +61,17 @@ public class ApiTokenService {
         return rawToken;
     }
 
-    public Optional<ApiToken> getTokenInfo(UUID userId) {
-        return apiTokenRepository.findByUserId(userId);
+    public Optional<ApiToken> getTokenInfo(UUID userId, ApiTokenScope scope) {
+        return apiTokenRepository.findByUserIdAndScope(userId, scope);
     }
 
     @Transactional
-    public void revokeToken(UUID userId) {
-        apiTokenRepository.deleteByUserId(userId);
+    public void revokeToken(UUID userId, ApiTokenScope scope) {
+        apiTokenRepository.deleteByUserIdAndScope(userId, scope);
+    }
+
+    public static boolean isApiToken(String token) {
+        return Arrays.stream(ApiTokenScope.values()).anyMatch(scope -> token.startsWith(scope.getPrefix()));
     }
 
     public Optional<ApiToken> authenticateToken(String rawToken) {

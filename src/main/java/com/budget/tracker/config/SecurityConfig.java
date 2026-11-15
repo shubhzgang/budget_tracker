@@ -5,6 +5,7 @@ import com.budget.tracker.security.AuthContextFilter;
 import com.budget.tracker.security.AuthEntryPointJwt;
 import com.budget.tracker.security.AuthTokenFilter;
 import com.budget.tracker.security.CsrfHeaderFilter;
+import com.budget.tracker.security.FullAccessTokenFilter;
 import com.budget.tracker.security.JwtUtils;
 import com.budget.tracker.security.ReadOnlyTokenFilter;
 import com.budget.tracker.security.UserDetailsServiceImpl;
@@ -57,6 +58,11 @@ public class SecurityConfig {
     @Bean
     public ReadOnlyTokenFilter readOnlyTokenFilter(ObjectMapper objectMapper) {
         return new ReadOnlyTokenFilter(objectMapper);
+    }
+
+    @Bean
+    public FullAccessTokenFilter fullAccessTokenFilter(ObjectMapper objectMapper) {
+        return new FullAccessTokenFilter(objectMapper);
     }
 
     @Bean
@@ -134,7 +140,8 @@ public class SecurityConfig {
             http.addFilterBefore(authenticationJwtTokenFilter(apiTokenService, userRepository), UsernamePasswordAuthenticationFilter.class);
             http.addFilterBefore(csrfHeaderFilter(), AuthTokenFilter.class);
             http.addFilterAfter(readOnlyTokenFilter(objectMapper), AuthTokenFilter.class);
-            http.addFilterAfter(authContextFilter(), ReadOnlyTokenFilter.class);
+            http.addFilterAfter(fullAccessTokenFilter(objectMapper), ReadOnlyTokenFilter.class);
+            http.addFilterAfter(authContextFilter(), FullAccessTokenFilter.class);
         }
         return http.build();
     }

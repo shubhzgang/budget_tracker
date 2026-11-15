@@ -1,6 +1,7 @@
 package com.budget.tracker.service;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.repository.ApiTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,13 +34,13 @@ class ApiTokenServiceTest {
     void generateToken_ReturnsPrefixedHexToken_AndStoresHashAndPreview() {
         UUID userId = UUID.randomUUID();
 
-        String rawToken = apiTokenService.generateToken(userId, 90);
+        String rawToken = apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 90);
 
         assertTrue(rawToken.startsWith("bt_ro_"));
         assertEquals("bt_ro_".length() + 64, rawToken.length());
         assertTrue(rawToken.substring("bt_ro_".length()).matches("[0-9a-f]{64}"));
 
-        verify(apiTokenRepository).deleteByUserId(userId);
+        verify(apiTokenRepository).deleteByUserIdAndScope(userId, ApiTokenScope.READ_ONLY);
         verify(apiTokenRepository).flush();
 
         ArgumentCaptor<ApiToken> captor = ArgumentCaptor.forClass(ApiToken.class);
@@ -54,6 +55,28 @@ class ApiTokenServiceTest {
     }
 
     @Test
+    void generateToken_FullAccessUsesRwPrefixAndReplacesOnlyThatScope() {
+        UUID userId = UUID.randomUUID();
+
+        String rawToken = apiTokenService.generateToken(userId, ApiTokenScope.FULL_ACCESS, 360);
+
+        assertTrue(rawToken.startsWith("bt_rw_"));
+        verify(apiTokenRepository).deleteByUserIdAndScope(userId, ApiTokenScope.FULL_ACCESS);
+        verify(apiTokenRepository, never()).deleteByUserIdAndScope(userId, ApiTokenScope.READ_ONLY);
+        ArgumentCaptor<ApiToken> captor = ArgumentCaptor.forClass(ApiToken.class);
+        verify(apiTokenRepository).save(captor.capture());
+        assertEquals(ApiTokenScope.FULL_ACCESS, captor.getValue().getScope());
+    }
+
+    @Test
+    void isApiToken_MatchesBothPrefixesOnly() {
+        assertTrue(ApiTokenService.isApiToken("bt_ro_abc"));
+        assertTrue(ApiTokenService.isApiToken("bt_rw_abc"));
+        assertFalse(ApiTokenService.isApiToken("bt_xx_abc"));
+        assertFalse(ApiTokenService.isApiToken("eyJhbGciOiJIUzI1NiJ9.e30.sig"));
+    }
+
+    @Test
     void generateToken_ReplacesExistingRowWithFreshEntity() {
         UUID userId = UUID.randomUUID();
         ApiToken existing = new ApiToken();
@@ -61,9 +84,9 @@ class ApiTokenServiceTest {
         existing.setUserId(userId);
         existing.setTokenHash("old-hash");
 
-        String rawToken = apiTokenService.generateToken(userId, 60);
+        String rawToken = apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 60);
 
-        verify(apiTokenRepository).deleteByUserId(userId);
+        verify(apiTokenRepository).deleteByUserIdAndScope(userId, ApiTokenScope.READ_ONLY);
         verify(apiTokenRepository).flush();
         ArgumentCaptor<ApiToken> captor = ArgumentCaptor.forClass(ApiToken.class);
         verify(apiTokenRepository).save(captor.capture());
@@ -78,7 +101,7 @@ class ApiTokenServiceTest {
         UUID userId = UUID.randomUUID();
 
         for (Integer days : new Integer[]{null, 0, 1, 45, 361, -90}) {
-            assertThrows(IllegalArgumentException.class, () -> apiTokenService.generateToken(userId, days));
+            assertThrows(IllegalArgumentException.class, () -> apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, days));
         }
         verify(apiTokenRepository, never()).save(any());
     }
@@ -87,14 +110,14 @@ class ApiTokenServiceTest {
     void generateToken_AcceptsAllAllowedExpiryDays() {
         UUID userId = UUID.randomUUID();
         for (Integer days : new Integer[]{30, 60, 90, 360}) {
-            assertNotNull(apiTokenService.generateToken(userId, days));
+            assertNotNull(apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, days));
         }
     }
 
     @Test
     void generateToken_ProducesDifferentTokensEachTime() {
         UUID userId = UUID.randomUUID();
-        assertNotEquals(apiTokenService.generateToken(userId, 30), apiTokenService.generateToken(userId, 30));
+        assertNotEquals(apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 30), apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 30));
     }
 
     @Test
@@ -132,8 +155,8 @@ class ApiTokenServiceTest {
     @Test
     void revokeToken_DeletesByUserId() {
         UUID userId = UUID.randomUUID();
-        apiTokenService.revokeToken(userId);
-        verify(apiTokenRepository).deleteByUserId(userId);
+        apiTokenService.revokeToken(userId, ApiTokenScope.READ_ONLY);
+        verify(apiTokenRepository).deleteByUserIdAndScope(userId, ApiTokenScope.READ_ONLY);
     }
 
     @Test

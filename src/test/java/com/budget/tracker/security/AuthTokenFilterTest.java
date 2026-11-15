@@ -1,6 +1,7 @@
 package com.budget.tracker.security;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.model.User;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.service.ApiTokenService;
@@ -129,6 +130,7 @@ class AuthTokenFilterTest {
         UUID userId = UUID.randomUUID();
         ApiToken apiToken = new ApiToken();
         apiToken.setUserId(userId);
+        apiToken.setScope(ApiTokenScope.READ_ONLY);
         apiToken.setExpiresAt(OffsetDateTime.now().plusDays(30));
         User user = new User();
         user.setId(userId);
@@ -148,6 +150,33 @@ class AuthTokenFilterTest {
                 .anyMatch(a -> ReadOnlyTokenFilter.READ_ONLY_AUTHORITY.equals(a.getAuthority())));
         verify(jwtUtils, never()).validateJwtToken(anyString());
         verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_withFullAccessBearerToken_shouldAuthenticateWithFullAccessAuthority() throws Exception {
+        String token = "bt_rw_" + "e".repeat(64);
+        UUID userId = UUID.randomUUID();
+        ApiToken apiToken = new ApiToken();
+        apiToken.setUserId(userId);
+        apiToken.setScope(ApiTokenScope.FULL_ACCESS);
+        apiToken.setExpiresAt(OffsetDateTime.now().plusDays(30));
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+        user.setPasswordHash("hash");
+
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(request.getCookies()).thenReturn(new Cookie[]{});
+        when(apiTokenService.authenticateToken(token)).thenReturn(Optional.of(apiToken));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        tokenFilter.doFilterInternal(request, response, filterChain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        assertEquals(List.of(FullAccessTokenFilter.FULL_ACCESS_AUTHORITY),
+                auth.getAuthorities().stream().map(a -> a.getAuthority()).toList());
+        verify(jwtUtils, never()).validateJwtToken(anyString());
     }
 
     @Test
