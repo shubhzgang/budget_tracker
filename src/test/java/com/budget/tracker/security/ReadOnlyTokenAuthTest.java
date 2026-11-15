@@ -1,6 +1,7 @@
 package com.budget.tracker.security;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.payload.request.LoginRequest;
 import com.budget.tracker.payload.request.SignupRequest;
 import com.budget.tracker.repository.ApiTokenRepository;
@@ -73,12 +74,12 @@ public class ReadOnlyTokenAuthTest {
 
     @Test
     void expiredTokenIsRejectedWith401() throws Exception {
-        String rawToken = apiTokenService.generateToken(userId, 30);
+        String rawToken = apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 30);
 
         mockMvc.perform(get("/api/v1/accounts").header("Authorization", "Bearer " + rawToken))
                 .andExpect(status().isOk());
 
-        ApiToken apiToken = apiTokenRepository.findByUserId(userId).orElseThrow();
+        ApiToken apiToken = apiTokenRepository.findByUserIdAndScope(userId, ApiTokenScope.READ_ONLY).orElseThrow();
         apiToken.setExpiresAt(OffsetDateTime.now().minusDays(1));
         apiTokenRepository.save(apiToken);
 
@@ -88,7 +89,7 @@ public class ReadOnlyTokenAuthTest {
 
     @Test
     void logoutWithReadOnlyTokenIsHarmless() throws Exception {
-        String rawToken = apiTokenService.generateToken(userId, 30);
+        String rawToken = apiTokenService.generateToken(userId, ApiTokenScope.READ_ONLY, 30);
 
         mockMvc.perform(post("/logout").header("Authorization", "Bearer " + rawToken))
                 .andExpect(status().is3xxRedirection())

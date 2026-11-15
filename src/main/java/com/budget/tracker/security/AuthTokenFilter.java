@@ -1,6 +1,7 @@
 package com.budget.tracker.security;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.model.User;
 import com.budget.tracker.repository.UserRepository;
 import com.budget.tracker.service.ApiTokenService;
@@ -47,8 +48,8 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             String token = parseJwt(request);
             if (token != null) {
-                if (token.startsWith(ApiTokenService.TOKEN_PREFIX)) {
-                    authenticateReadOnlyToken(token, request);
+                if (ApiTokenService.isApiToken(token)) {
+                    authenticateApiToken(token, request);
                 } else if (jwtUtils.validateJwtToken(token)) {
                     String username = jwtUtils.getUserNameFromJwtToken(token);
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -62,7 +63,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void authenticateReadOnlyToken(String token, HttpServletRequest request) {
+    private void authenticateApiToken(String token, HttpServletRequest request) {
         Optional<ApiToken> apiToken = apiTokenService.authenticateToken(token);
         if (apiToken.isEmpty()) {
             return;
@@ -71,8 +72,10 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         if (user.isEmpty()) {
             return;
         }
-        UserDetailsImpl userDetails = UserDetailsImpl.build(user.get(),
-                List.of(new SimpleGrantedAuthority(ReadOnlyTokenFilter.READ_ONLY_AUTHORITY)));
+        String authority = apiToken.get().getScope() == ApiTokenScope.FULL_ACCESS
+                ? FullAccessTokenFilter.FULL_ACCESS_AUTHORITY
+                : ReadOnlyTokenFilter.READ_ONLY_AUTHORITY;
+        UserDetailsImpl userDetails = UserDetailsImpl.build(user.get(), List.of(new SimpleGrantedAuthority(authority)));
         setAuthentication(userDetails, request);
     }
 
@@ -103,7 +106,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 if ("jwt".equals(cookie.getName())) {
                     String value = cookie.getValue();
                     // API tokens are Bearer-only; never accept them from cookies
-                    return value != null && value.startsWith(ApiTokenService.TOKEN_PREFIX) ? null : value;
+                    return value != null && ApiTokenService.isApiToken(value) ? null : value;
                 }
             }
         }

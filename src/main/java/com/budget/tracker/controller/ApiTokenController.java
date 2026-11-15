@@ -1,6 +1,7 @@
 package com.budget.tracker.controller;
 
 import com.budget.tracker.model.ApiToken;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.payload.request.ApiTokenRequest;
 import com.budget.tracker.payload.response.ApiTokenInfoResponse;
 import com.budget.tracker.payload.response.ApiTokenResponse;
@@ -24,22 +25,22 @@ public class ApiTokenController {
     @PostMapping
     public ResponseEntity<ApiTokenResponse> generateToken(@RequestBody ApiTokenRequest request) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        String rawToken = apiTokenService.generateToken(userId, request.getExpiryDays());
+        String rawToken = apiTokenService.generateToken(userId, request.getScope(), request.getExpiryDays());
         return ResponseEntity.ok(ApiTokenResponse.builder().token(rawToken).build());
     }
 
     @GetMapping
-    public ResponseEntity<?> getTokenInfo() {
+    public ResponseEntity<?> getTokenInfo(@RequestParam(defaultValue = "READ_ONLY") ApiTokenScope scope) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        return apiTokenService.getTokenInfo(userId)
+        return apiTokenService.getTokenInfo(userId, scope)
                 .<ResponseEntity<?>>map(apiToken -> ResponseEntity.ok(mapToInfoResponse(apiToken)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> revokeToken() {
+    public ResponseEntity<Void> revokeToken(@RequestParam(defaultValue = "READ_ONLY") ApiTokenScope scope) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        apiTokenService.revokeToken(userId);
+        apiTokenService.revokeToken(userId, scope);
         return ResponseEntity.noContent().build();
     }
 

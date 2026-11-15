@@ -39,7 +39,12 @@
         <div th:replace="~{fragments/backup-manager}"></div>
     </template>
     <template data-panel-src="api">
-        <div th:replace="~{fragments/api-token-manager}"></div>
+        <th:block th:with="tokenScope='READ_ONLY', apiToken=${readOnlyToken}">
+            <div th:replace="~{fragments/api-token-manager}"></div>
+        </th:block>
+        <th:block th:with="tokenScope='FULL_ACCESS', apiToken=${fullAccessToken}">
+            <div th:replace="~{fragments/api-token-manager}"></div>
+        </th:block>
     </template>
 </main>
 <nav th:replace="~{layout :: mobile-bottom-nav}"></nav>

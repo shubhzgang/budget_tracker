@@ -94,7 +94,7 @@ public class SettingsApiTokenViewTest {
 
         String body = generated.getResponse().getContentAsString();
         java.util.regex.Matcher matcher = java.util.regex.Pattern
-                .compile("id=\"new-api-token\"[^>]*>([^<]+)<")
+                .compile("id=\"new-api-token-READ_ONLY\"[^>]*>([^<]+)<")
                 .matcher(body);
         assertTrue(matcher.find(), "Raw token should be rendered inside #new-api-token");
         String rawToken = matcher.group(1);
@@ -122,6 +122,46 @@ public class SettingsApiTokenViewTest {
                 .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("No Active Token")));
+    }
+
+    @Test
+    void settingsPageShowsBothTokenCards() throws Exception {
+        mockMvc.perform(get("/settings").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"api-token-manager-READ_ONLY\"")))
+                .andExpect(content().string(containsString("id=\"api-token-manager-FULL_ACCESS\"")));
+    }
+
+    @Test
+    void fullAccessCardGeneratesAndRevokesIndependently() throws Exception {
+        mockMvc.perform(post("/settings/api-token/generate")
+                .header("Authorization", "Bearer " + token)
+                .header("HX-Request", "true")
+                .param("expiryDays", "30"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/settings/api-token/generate")
+                .header("Authorization", "Bearer " + token)
+                .header("HX-Request", "true")
+                .param("scope", "FULL_ACCESS")
+                .param("expiryDays", "360"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Full-access API Token")))
+                .andExpect(content().string(containsString("id=\"new-api-token-FULL_ACCESS\">bt_rw_")))
+                .andExpect(content().string(containsString("/settings/api-token?scope=FULL_ACCESS")));
+
+        mockMvc.perform(delete("/settings/api-token")
+                .header("Authorization", "Bearer " + token)
+                .header("HX-Request", "true")
+                .param("scope", "FULL_ACCESS"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("No Active Token")));
+
+        mockMvc.perform(get("/settings/api-token")
+                .header("Authorization", "Bearer " + token)
+                .header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Current Token")));
     }
 
     @Test

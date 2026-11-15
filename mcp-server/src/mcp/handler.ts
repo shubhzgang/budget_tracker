@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createMcpServer } from './server.js';
-import { type MakeClient, defaultMakeClient } from '../api/client.js';
+import { type BudgetTrackerClient, type MakeClient, defaultMakeClient } from '../api/client.js';
 import { getJwtForToken } from '../oauth/store.js';
 import { send401 } from '../oauth/metadata.js';
 
@@ -18,13 +18,33 @@ export function isJwtExpired(token: string): boolean {
   }
 }
 
+// Budget Tracker API tokens (read-only bt_ro_, full-access bt_rw_) are opaque and long-lived. They are passed to the
+// backend as-is, and the backend checks them on every call.
+const API_TOKEN = /^bt_r[ow]_/;
+
+export function isApiToken(token: string): boolean {
+  return API_TOKEN.test(token);
+}
+
+async function apiTokenAccepted(client: BudgetTrackerClient): Promise<boolean> {
+  try {
+    await client.listLabels();
+    return true;
+  } catch (err) {
+    // Only a 401 means the token is bad; if the backend is down, tool calls report that instead.
+    return !(err instanceof Error && err.message.startsWith('API error 401'));
+  }
+}
+
 function requireBearer(req: Request, res: Response): string | null {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     send401(res, 'Missing Bearer token');
     return null;
   }
-  const jwt = getJwtForToken(authHeader.slice('Bearer '.length));
+  const token = authHeader.slice('Bearer '.length);
+  if (isApiToken(token)) return token;
+  const jwt = getJwtForToken(token);
   if (!jwt || isJwtExpired(jwt)) {
     send401(res, 'Unauthorized or token expired');
     return null;
@@ -96,6 +116,11 @@ export function createMcpRouter(
         });
         return;
       }
+      const baseUrl = process.env.BUDGET_TRACKER_URL || 'http://localhost:3300';
+      if (isApiToken(jwt) && !(await apiTokenAccepted(makeClient(baseUrl, jwt)))) {
+        send401(res, 'Unauthorized or token expired');
+        return;
+      }
       const principal = principalOf(jwt);
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
@@ -107,7 +132,6 @@ export function createMcpRouter(
         const sid = transport!.sessionId;
         if (sid) sessions.delete(sid);
       };
-      const baseUrl = process.env.BUDGET_TRACKER_URL || 'http://localhost:3300';
       const server = createMcpServer(jwt, baseUrl, makeClient);
       await server.connect(transport);
     }

@@ -2,6 +2,7 @@ package com.budget.tracker.web;
 
 import com.budget.tracker.context.AuthContext;
 import com.budget.tracker.model.Account;
+import com.budget.tracker.model.ApiTokenScope;
 import com.budget.tracker.model.Category;
 import com.budget.tracker.model.Label;
 import com.budget.tracker.model.TransactionType;
@@ -59,7 +60,9 @@ public class SettingsViewController {
         addLabelAttributes(model, null);
         addDefaultsAttributes(model);
         addBackupAttributes(model);
-        addApiTokenAttributes(model, null, null);
+        UUID userId = AuthContext.getUserId();
+        model.addAttribute("readOnlyToken", apiTokenService.getTokenInfo(userId, ApiTokenScope.READ_ONLY).orElse(null));
+        model.addAttribute("fullAccessToken", apiTokenService.getTokenInfo(userId, ApiTokenScope.FULL_ACCESS).orElse(null));
         return "settings";
     }
 
@@ -191,37 +194,40 @@ public class SettingsViewController {
     // ── API Tokens tab ────────────────────────────────────────────────────────
 
     @GetMapping("/settings/api-token")
-    public String apiToken(Model model) {
-        addApiTokenAttributes(model, null, null);
+    public String apiToken(@RequestParam(defaultValue = "READ_ONLY") ApiTokenScope scope, Model model) {
+        addApiTokenAttributes(model, scope, null, null);
         return "fragments/api-token-manager";
     }
 
     @PostMapping("/settings/api-token/generate")
     public String generateApiToken(@RequestParam(required = false) Integer expiryDays,
+                                   @RequestParam(defaultValue = "READ_ONLY") ApiTokenScope scope,
                                    Model model,
                                    HttpServletResponse response) {
         String error = null;
         String rawToken = null;
         try {
-            rawToken = apiTokenService.generateToken(AuthContext.getUserId(), expiryDays);
+            rawToken = apiTokenService.generateToken(AuthContext.getUserId(), scope, expiryDays);
             response.setHeader("HX-Trigger", "{\"toast-success\":\"API token generated\"}");
         } catch (IllegalArgumentException e) {
             error = e.getMessage();
         }
-        addApiTokenAttributes(model, error, rawToken);
+        addApiTokenAttributes(model, scope, error, rawToken);
         return "fragments/api-token-manager";
     }
 
     @DeleteMapping("/settings/api-token")
-    public String revokeApiToken(Model model, HttpServletResponse response) {
-        apiTokenService.revokeToken(AuthContext.getUserId());
+    public String revokeApiToken(@RequestParam(defaultValue = "READ_ONLY") ApiTokenScope scope,
+                                 Model model, HttpServletResponse response) {
+        apiTokenService.revokeToken(AuthContext.getUserId(), scope);
         response.setHeader("HX-Trigger", "{\"toast-success\":\"API token revoked\"}");
-        addApiTokenAttributes(model, null, null);
+        addApiTokenAttributes(model, scope, null, null);
         return "fragments/api-token-manager";
     }
 
-    private void addApiTokenAttributes(Model model, String error, String rawToken) {
-        model.addAttribute("apiToken", apiTokenService.getTokenInfo(AuthContext.getUserId()).orElse(null));
+    private void addApiTokenAttributes(Model model, ApiTokenScope scope, String error, String rawToken) {
+        model.addAttribute("tokenScope", scope.name());
+        model.addAttribute("apiToken", apiTokenService.getTokenInfo(AuthContext.getUserId(), scope).orElse(null));
         model.addAttribute("error", error);
         model.addAttribute("rawToken", rawToken);
     }
