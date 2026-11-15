@@ -69,6 +69,20 @@ describe('read-only tool contract (server level)', () => {
   });
 });
 
+describe('tool annotations', () => {
+  it('marks exactly the create/update/delete tools as writes, and only deletes/updates as destructive', () => {
+    const server = createMcpServer(fakeJwt(3600), 'http://localhost:3300');
+    const tools = (server as unknown as { _registeredTools: Record<string, { annotations?: Record<string, boolean> }> })
+      ._registeredTools;
+    for (const name of ALL_19) {
+      const hints = tools[name].annotations;
+      const write = /^(create|update|delete)_/.test(name);
+      expect(hints?.readOnlyHint, name).toBe(!write);
+      if (write) expect(hints?.destructiveHint, name).toBe(!name.startsWith('create_'));
+    }
+  });
+});
+
 describe('per-session JWT isolation', () => {
   it('builds each session its own client bound to that bearer token\'s JWT (no module-level sharing)', async () => {
     const makeClient = vi.fn<MakeClient>(() => ({}) as never);

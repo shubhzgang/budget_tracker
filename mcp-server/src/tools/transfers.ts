@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { type MakeClient, defaultMakeClient } from '../api/client.js';
+import { CHANGE, CREATE, READ } from './annotations.js';
 
 function textResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
@@ -40,6 +41,7 @@ export function registerTransferTools(
   server.registerTool(
     'list_transfers',
     {
+      annotations: READ,
       description: 'List transfers with optional search, date range and pagination',
       inputSchema: {
         search: z.string().optional(),
@@ -53,17 +55,18 @@ export function registerTransferTools(
   );
   server.registerTool(
     'get_transfer',
-    { description: 'Get a single transfer by ID', inputSchema: { id: z.string().uuid() } },
+    { annotations: READ, description: 'Get a single transfer by ID', inputSchema: { id: z.string().uuid() } },
     async ({ id }) => textResult(await client.getTransfer(id)),
   );
   server.registerTool(
     'create_transfer',
-    { description: `Create a transfer between two different accounts. ${TRANSFER_HINT}`, inputSchema: transferInput },
+    { annotations: CREATE, description: `Create a transfer between two different accounts. ${TRANSFER_HINT}`, inputSchema: transferInput },
     async (args) => textResult(await client.createTransfer(args)),
   );
   server.registerTool(
     'update_transfer',
     {
+      annotations: CHANGE,
       description: `Update a transfer by ID. ${TRANSFER_HINT}`,
       inputSchema: { id: z.string().uuid(), ...transferInput },
     },
@@ -71,7 +74,7 @@ export function registerTransferTools(
   );
   server.registerTool(
     'delete_transfer',
-    { description: 'Delete a transfer by ID', inputSchema: { id: z.string().uuid() } },
+    { annotations: CHANGE, description: 'Delete a transfer by ID', inputSchema: { id: z.string().uuid() } },
     async ({ id }) => {
       await client.deleteTransfer(id);
       return textResult({ deleted: id });

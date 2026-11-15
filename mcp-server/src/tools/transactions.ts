@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { type MakeClient, defaultMakeClient } from '../api/client.js';
+import { CHANGE, CREATE, READ } from './annotations.js';
 
 function textResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
@@ -47,27 +48,27 @@ export function registerTransactionTools(
 
   server.registerTool(
     'list_transactions',
-    { description: 'List transactions with optional search, type, date range and pagination', inputSchema: listSchema },
+    { annotations: READ, description: 'List transactions with optional search, type, date range and pagination', inputSchema: listSchema },
     async (args) => textResult(await client.listTransactions(paramsOf(args as Record<string, unknown>))),
   );
   server.registerTool(
     'get_transaction',
-    { description: 'Get a single transaction by ID', inputSchema: { id: z.string().uuid() } },
+    { annotations: READ, description: 'Get a single transaction by ID', inputSchema: { id: z.string().uuid() } },
     async ({ id }) => textResult(await client.getTransaction(id)),
   );
   server.registerTool(
     'create_transaction',
-    { description: 'Create an INCOME, EXPENSE, LEND or BORROW transaction', inputSchema: transactionInput },
+    { annotations: CREATE, description: 'Create an INCOME, EXPENSE, LEND or BORROW transaction', inputSchema: transactionInput },
     async (args) => textResult(await client.createTransaction(args)),
   );
   server.registerTool(
     'update_transaction',
-    { description: 'Update a transaction by ID', inputSchema: { id: z.string().uuid(), ...transactionInput } },
+    { annotations: CHANGE, description: 'Update a transaction by ID', inputSchema: { id: z.string().uuid(), ...transactionInput } },
     async ({ id, ...rest }) => textResult(await client.updateTransaction(id, rest)),
   );
   server.registerTool(
     'delete_transaction',
-    { description: 'Delete a transaction by ID', inputSchema: { id: z.string().uuid() } },
+    { annotations: CHANGE, description: 'Delete a transaction by ID', inputSchema: { id: z.string().uuid() } },
     async ({ id }) => {
       await client.deleteTransaction(id);
       return textResult({ deleted: id });
@@ -76,6 +77,7 @@ export function registerTransactionTools(
   server.registerTool(
     'get_expenditure_summary',
     {
+      annotations: READ,
       description: 'Get expenditure totals for today, yesterday, this/last week and this/last month with per-label breakdowns',
       inputSchema: {},
     },

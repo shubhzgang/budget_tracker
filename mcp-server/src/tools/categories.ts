@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { type MakeClient, defaultMakeClient } from '../api/client.js';
+import { CHANGE, CREATE, READ } from './annotations.js';
 
 function textResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
@@ -8,17 +9,18 @@ function textResult(data: unknown) {
 
 export function registerCategoryTools(server: McpServer, jwt: string, baseUrl: string, makeClient: MakeClient = defaultMakeClient) {
   const client = makeClient(baseUrl, jwt);
-  server.registerTool('list_categories', { description: 'List all categories', inputSchema: {} }, async () =>
+  server.registerTool('list_categories', { annotations: READ, description: 'List all categories', inputSchema: {} }, async () =>
     textResult(await client.listCategories()),
   );
   server.registerTool(
     'create_category',
-    { description: 'Create a category', inputSchema: { name: z.string(), icon: z.string().optional() } },
+    { annotations: CREATE, description: 'Create a category', inputSchema: { name: z.string(), icon: z.string().optional() } },
     async (args) => textResult(await client.createCategory(args)),
   );
   server.registerTool(
     'update_category',
     {
+      annotations: CHANGE,
       description:
         'Update a category by ID. PUT replaces the whole object: always re-send the current icon (fetch via list_categories first) or the emoji will be erased.',
       inputSchema: { id: z.string().uuid(), name: z.string(), icon: z.string() },
@@ -28,6 +30,7 @@ export function registerCategoryTools(server: McpServer, jwt: string, baseUrl: s
   server.registerTool(
     'delete_category',
     {
+      annotations: CHANGE,
       description:
         'Delete ANY category including defaults or in-use ones. Transactions using it are silently detached (category set to null). Confirm with the user first. Duplicate names are rejected (400, case-insensitive).',
       inputSchema: { id: z.string().uuid() },
